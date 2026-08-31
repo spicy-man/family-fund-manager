@@ -172,6 +172,21 @@ try {
   assert.deepStrictEqual(storage.readCustomBenchmarkCache(), customBenchmarkCache);
   assert.strictEqual(fs.readdirSync(backupDir).length, backupsBeforeIndexWrite);
   assert.notStrictEqual(storage.CUSTOM_BENCHMARK_CACHE_FILE, storage.INDEX_CACHE_FILE);
+  const marketHistory = {
+    version: 1,
+    updatedAt: '2026-08-04T00:00:00.000Z',
+    tickers: {
+      '^GSPC': {
+        fetchedFrom: '2026-08-01',
+        fetchedThrough: '2026-08-04',
+        prices: { '2026-08-03': 6330.94 }
+      }
+    }
+  };
+  storage.writeMarketHistory(marketHistory);
+  assert.deepStrictEqual(storage.readMarketHistory(), marketHistory);
+  assert.strictEqual(fs.readdirSync(backupDir).length, backupsBeforeIndexWrite);
+  assert.notStrictEqual(storage.MARKET_HISTORY_FILE, storage.INDEX_CACHE_FILE);
   assert.strictEqual(Object.prototype.hasOwnProperty.call(
     JSON.parse(fs.readFileSync(storage.DB_FILE, 'utf8')),
     'indexCache'

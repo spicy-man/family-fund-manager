@@ -120,6 +120,7 @@ function readDbUnsafe() {
     ...storage.readDb(),
     customBenchmarkCache: storage.readCustomBenchmarkCache(),
     indexCache: storage.readIndexCache(),
+    marketHistory: storage.readMarketHistory(),
     cnhRate: storage.readCnhRateCache().rate
   };
   let settlementLedger = storage.readSettlements();
@@ -214,6 +215,16 @@ function writeCustomBenchmarkCache(cacheData) {
   }
 }
 
+function writeMarketHistory(history) {
+  try {
+    storage.writeMarketHistory(history);
+    _stateCache = null;
+    _stateDirty = true;
+  } catch (error) {
+    throw new StorageError('逐日行情历史写入失败。', { cause: error });
+  }
+}
+
 function writeCnhRate(rate, options) {
   try {
     storage.writeCnhRateCache(rate, options);
@@ -292,149 +303,110 @@ function writeSnapshot(dbData, configData, settlementsData) {
  */
 const {
   fetchYahooPrices,
-  findCloseForPolicy,
   fetchTickerAthData,
   fetchCnhRateFromApi
 } = require('./lib/yahoo');
+const {
+  normalizeMarketHistory,
+  mergeTickerPrices,
+  addUtcDays,
+  previousWeekday,
+  benchmarkDates,
+  materializeBenchmarkCaches
+} = require('./lib/market-history');
 
 /**
  * 异步更新缺失日期的指数收盘价缓存 (静默后台机制)
  */
-async function ensureIndexCache(dates) {
+let benchmarkSyncQueue = Promise.resolve();
+
+function ensureIndexCache(dates) {
+  const requestedDates = [...(dates || [])];
+  const task = benchmarkSyncQueue.then(() => syncBenchmarkHistory(requestedDates));
+  benchmarkSyncQueue = task.catch(() => {});
+  return task;
+}
+
+async function syncBenchmarkHistory(dates) {
   if (!dates || dates.length === 0) return;
-  const indexCache = storage.readIndexCache();
-  const customBenchmarkCache = storage.readCustomBenchmarkCache();
   const benchmarkClosePolicy = 'previous';
-  const {
-    normalizeCustomBenchmark,
-    customBenchmarkSignature,
-    isUsableCustomEntry,
-    customEntryForSlot,
-    mergeCustomEntryForSlot
-  } = require('./lib/custom-benchmark');
+  const { normalizeCustomBenchmark } = require('./lib/custom-benchmark');
   const config = storage.readConfig();
   const customBenchmarks = [
     normalizeCustomBenchmark(config.customBenchmark),
     normalizeCustomBenchmark(config.customBenchmark2)
   ];
-  const customSignatures = customBenchmarks.map(customBenchmarkSignature);
-  const isValidSourceDate = (sourceDate, navDate) => sourceDate < navDate;
+  const datesToBuild = benchmarkDates(dates);
+  if (datesToBuild.length === 0) return;
+  const requestedTickers = [...new Set([
+    '^GSPC',
+    '^NDX',
+    ...customBenchmarks.flatMap(benchmark =>
+      benchmark ? benchmark.components.map(component => component.ticker) : [])
+  ])];
 
-  // Legacy entries have no source-date fields and may contain the same day's close.
-  // Treat them as stale so historical trend data repairs itself on startup.
-  // A January 1 lookup resolves to the prior year's final market close and
-  // gives YTD benchmark calculations a stable, event-independent anchor.
-  const anchorDates = dates.map(date => `${date.slice(0, 4)}-01-01`);
-  const uniqueDates = [...new Set([...dates, ...anchorDates])];
-  const missingIndexDates = uniqueDates.filter(dateStr => {
-    const cached = indexCache[dateStr];
-    return !cached ||
-      cached.policy !== benchmarkClosePolicy ||
-      !cached.spxPriceDate || !isValidSourceDate(cached.spxPriceDate, dateStr) ||
-      !cached.ndxPriceDate || !isValidSourceDate(cached.ndxPriceDate, dateStr);
-  });
-  const missingCustomDatesBySlot = customBenchmarks.map((benchmark, slot) => benchmark
-    ? uniqueDates.filter(dateStr => !isUsableCustomEntry(
-      customEntryForSlot(customBenchmarkCache[dateStr], slot),
-      dateStr,
-      benchmark
-    ))
-    : []);
-  const missingCustomDates = [...new Set(missingCustomDatesBySlot.flat())];
-  const missingDates = [...new Set([...missingIndexDates, ...missingCustomDates])];
-  if (missingDates.length === 0) return;
-
-  console.log(`[Yahoo Sync Worker] Detecting ${missingDates.length} missing dates in cache. Fetching in background...`);
+  console.log(`[Yahoo Sync Worker] Updating daily history for ${requestedTickers.length} benchmark tickers...`);
 
   try {
-    const sortedMissing = [...missingDates].sort();
-    const oldestDate = sortedMissing[0];
-
-    // Keep a 14-day lead-in for long weekends and exchange holidays.
-    const startSec = Math.floor(new Date(oldestDate).getTime() / 1000) - 14 * 24 * 3600;
+    const history = normalizeMarketHistory(storage.readMarketHistory());
+    const oldestRequired = addUtcDays(datesToBuild[0], -14);
+    const today = new Date().toISOString().slice(0, 10);
     const nowSec = Math.floor(Date.now() / 1000);
+    let changed = false;
 
-    const customTickers = customBenchmarks.flatMap((benchmark, slot) =>
-      missingCustomDatesBySlot[slot].length ? benchmark.components.map(item => item.ticker) : []);
-    const requestedTickers = [
-      ...(missingIndexDates.length ? ['^GSPC', '^NDX'] : []),
-      ...(missingCustomDates.length ? customTickers : [])
-    ];
-    const priceMaps = Object.fromEntries(await Promise.all(
-      [...new Set(requestedTickers)].map(async ticker => [ticker, await fetchYahooPrices(ticker, startSec, nowSec)])
-    ));
+    // Fetch a broad daily series first. Existing dates are merged, never
+    // removed, so a later incomplete Yahoo response cannot erase history.
+    await Promise.all(requestedTickers.map(async ticker => {
+      const record = history.tickers[ticker];
+      const latestStored = Object.keys(record?.prices || {}).sort().at(-1);
+      const incrementalStart = latestStored ? addUtcDays(latestStored, -14) : oldestRequired;
+      const requestStart = record?.fetchedFrom
+        ? (incrementalStart < oldestRequired ? oldestRequired : incrementalStart)
+        : oldestRequired;
+      const prices = await fetchYahooPrices(
+        ticker,
+        Math.floor(Date.parse(`${requestStart}T00:00:00Z`) / 1000),
+        nowSec
+      );
+      changed = mergeTickerPrices(history, ticker, prices, {
+        from: requestStart,
+        through: today
+      }) || changed;
+    }));
 
-    const fetchedIndexUpdates = {};
-    const fetchedCustomUpdates = {};
-    missingIndexDates.forEach(dateStr => {
-      const spxClose = findCloseForPolicy(dateStr, priceMaps['^GSPC'], benchmarkClosePolicy);
-      const ndxClose = findCloseForPolicy(dateStr, priceMaps['^NDX'], benchmarkClosePolicy);
-
-      if (spxClose && ndxClose) {
-        fetchedIndexUpdates[dateStr] = {
-          spx: parseFloat(spxClose.price.toFixed(2)),
-          ndx: parseFloat(ndxClose.price.toFixed(2)),
-          spxPriceDate: spxClose.date,
-          ndxPriceDate: ndxClose.date,
-          policy: benchmarkClosePolicy
-        };
+    // Yahoo's broad historical endpoint can occasionally omit its newest
+    // completed candle. Probe each missing expected business day with a narrow
+    // date request; holidays simply remain absent and resolve to the prior close.
+    const expectedDates = [...new Set(datesToBuild.map(previousWeekday))];
+    await Promise.all(requestedTickers.map(async ticker => {
+      for (const date of expectedDates) {
+        if (history.tickers[ticker]?.prices?.[date]) continue;
+        const prices = await fetchYahooPrices(
+          ticker,
+          Math.floor(Date.parse(`${date}T00:00:00Z`) / 1000),
+          Math.floor(Date.parse(`${addUtcDays(date, 2)}T00:00:00Z`) / 1000)
+        );
+        changed = mergeTickerPrices(history, ticker, prices) || changed;
       }
-    });
+    }));
 
-    customBenchmarks.forEach((benchmark, slot) => {
-      if (!benchmark) return;
-      missingCustomDatesBySlot[slot].forEach(dateStr => {
-        const components = {};
-        for (const { ticker } of benchmark.components) {
-          const close = findCloseForPolicy(dateStr, priceMaps[ticker], benchmarkClosePolicy);
-          if (!close) return;
-          components[ticker] = { price: Number(close.price.toFixed(6)), priceDate: close.date };
-        }
-        if (!fetchedCustomUpdates[dateStr]) fetchedCustomUpdates[dateStr] = {};
-        fetchedCustomUpdates[dateStr][slot] = {
-          signature: customSignatures[slot],
-          components
-        };
-      });
-    });
-
-    if (Object.keys(fetchedIndexUpdates).length > 0) {
-      // Re-read the dedicated cache so concurrent background refreshes merge
-      // their results without touching or backing up the financial ledger.
-      const latestCache = storage.readIndexCache();
-      const mergedCache = { ...latestCache };
-      for (const [date, update] of Object.entries(fetchedIndexUpdates)) {
-        mergedCache[date] = { ...(latestCache[date] || {}), ...update };
-      }
-      writeIndexCache(mergedCache);
-      console.log(`[Yahoo Sync Worker] Successfully synced indices for dates:`, Object.keys(fetchedIndexUpdates));
+    if (changed) {
+      history.updatedAt = new Date().toISOString();
+      writeMarketHistory(history);
     }
 
-    if (Object.keys(fetchedCustomUpdates).length > 0) {
-      const latestConfig = storage.readConfig();
-      const latestBenchmarks = [
-        normalizeCustomBenchmark(latestConfig.customBenchmark),
-        normalizeCustomBenchmark(latestConfig.customBenchmark2)
-      ];
-      const latestCache = storage.readCustomBenchmarkCache();
-      const mergedCache = { ...latestCache };
-      let changed = false;
-      for (const [date, entriesBySlot] of Object.entries(fetchedCustomUpdates)) {
-        let nextEntry = latestCache[date];
-        for (const [slotText, entry] of Object.entries(entriesBySlot)) {
-          const slot = Number(slotText);
-          const isCurrent = entry.signature === customBenchmarkSignature(latestBenchmarks[slot]);
-          if (!isCurrent) continue;
-          nextEntry = mergeCustomEntryForSlot(nextEntry, slot, entry);
-          changed = true;
-        }
-        if (nextEntry) mergedCache[date] = nextEntry;
-      }
-      if (changed) {
-        writeCustomBenchmarkCache(mergedCache);
-        console.log(`[Yahoo Sync Worker] Successfully synced custom benchmarks for dates:`, Object.keys(fetchedCustomUpdates));
-      }
-    }
+    const materialized = materializeBenchmarkCaches(
+      dates,
+      history,
+      customBenchmarks,
+      benchmarkClosePolicy
+    );
+    writeIndexCache({ ...storage.readIndexCache(), ...materialized.indexCache });
+    writeCustomBenchmarkCache({
+      ...storage.readCustomBenchmarkCache(),
+      ...materialized.customBenchmarkCache
+    });
+    console.log(`[Yahoo Sync Worker] Daily history saved and ${materialized.dates.length} NAV-date snapshots rebuilt.`);
   } catch (err) {
     console.error(`[Yahoo Sync Worker Error]:`, err.message);
   }
@@ -530,4 +502,4 @@ if (require.main === module) {
   startServer();
 }
 
-module.exports = { app, calculateStateFromDb, startServer };
+module.exports = { app, calculateStateFromDb, ensureIndexCache, startServer };
