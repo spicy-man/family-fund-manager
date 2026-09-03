@@ -6,7 +6,7 @@ const root = path.join(__dirname, '..');
 const pkg = require(path.join(root, 'package.json'));
 const lock = require(path.join(root, 'package-lock.json'));
 const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
-const changelog = fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8');
+const changelog = fs.readFileSync(path.join(root, 'docs', 'CHANGELOG.md'), 'utf8');
 const version = pkg.version;
 
 assert.strictEqual(lock.version, version, 'package-lock top-level version must match package.json');
