@@ -37,10 +37,73 @@ assert.strictEqual(state.summary.totalDeposit, 1600);
 assert.strictEqual(state.summary.totalWithdraw, 0);
 assert.strictEqual(state.summary.profit, 200);
 assert.strictEqual(state.summary.profitRate, 12.5);
+assert.strictEqual(state.summary.remainingPrincipal, 1600);
+assert.strictEqual(state.summary.activeProfit, 200);
+assert.strictEqual(state.summary.activeProfitRate, 12.5);
+assert.strictEqual(state.members.alice.remainingPrincipal, 800);
+assert.strictEqual(state.members.bob.remainingPrincipal, 800);
 assert.strictEqual(state.summary.cnhTotalDeposit, 11520);
 assert.strictEqual(state.summary.cnhTotalWithdraw, 0);
 assert.strictEqual(state.summary.cnhProfit, 1440);
 assert.strictEqual(state.summary.cnhProfitRate, 12.5);
+assert.strictEqual(state.summary.cnhRemainingPrincipal, 11520);
+assert.strictEqual(state.summary.cnhActiveProfit, 1440);
+assert.strictEqual(state.summary.cnhActiveProfitRate, 12.5);
+
+// A proportional withdrawal removes the same fraction of principal and
+// assets, so it must not create an artificial change in active-capital ROI.
+const partialExitState = calculateStateFromDb({
+  cnhRate: 7.2,
+  members: [{ id: 'alice', name: 'Alice' }],
+  indexCache: {},
+  events: [
+    { id: 'partial-deposit', type: 'deposit', member: 'alice', amount: 100, cnhAmount: 720, date: '2026-01-01', createdAt: 1 },
+    { id: 'partial-value', type: 'valuation', totalNAV: 120, date: '2026-01-02', createdAt: 2 },
+    { id: 'partial-withdraw', type: 'withdraw', member: 'alice', amount: 60, cnhAmount: 432, date: '2026-01-03', createdAt: 3 }
+  ]
+});
+assert.strictEqual(partialExitState.summary.totalNAV, 60);
+assert.strictEqual(partialExitState.summary.remainingPrincipal, 50);
+assert.strictEqual(partialExitState.summary.activeProfit, 10);
+assert.strictEqual(partialExitState.summary.activeProfitRate, 20);
+assert.strictEqual(partialExitState.events.at(-1)._principalReturned, 50);
+
+// A fully exited member's historical principal must not dilute the return of
+// capital that remains under management.
+const memberExitDb = {
+  cnhRate: 7.2,
+  members: [
+    { id: 'alice', name: 'Alice' },
+    { id: 'bob', name: 'Bob' }
+  ],
+  indexCache: {},
+  events: [
+    { id: 'exit-a-deposit', type: 'deposit', member: 'alice', amount: 1000, cnhAmount: 7200, date: '2026-01-01', createdAt: 1 },
+    { id: 'exit-b-deposit', type: 'deposit', member: 'bob', amount: 10, cnhAmount: 72, date: '2026-01-01', createdAt: 2 },
+    { id: 'exit-first-gain', type: 'valuation', totalNAV: 1111, date: '2026-01-02', createdAt: 3 },
+    { id: 'exit-a-withdraw', type: 'withdraw', member: 'alice', amount: 1100, cnhAmount: 7920, fullExit: true, date: '2026-01-03', createdAt: 4 },
+    { id: 'exit-b-second-gain', type: 'valuation', totalNAV: 22, date: '2026-01-04', createdAt: 5 }
+  ]
+};
+const memberExitState = calculateStateFromDb(memberExitDb);
+assert.strictEqual(memberExitState.summary.remainingPrincipal, 10);
+assert.strictEqual(memberExitState.summary.activeProfit, 12);
+assert.strictEqual(memberExitState.summary.activeProfitRate, 120);
+assert.strictEqual(memberExitState.summary.profit, 112);
+assert.strictEqual(memberExitState.summary.profitRate, 11.09);
+assert.strictEqual(memberExitState.members.alice.remainingPrincipal, 0);
+assert.strictEqual(memberExitState.members.bob.remainingPrincipal, 10);
+assert.strictEqual(memberExitState.events.find(event => event.id === 'exit-a-withdraw')._principalReturned, 1000);
+
+const noPrincipalState = calculateStateFromDb({
+  cnhRate: 7.2,
+  members: [{ id: 'alice', name: 'Alice' }],
+  indexCache: {},
+  events: []
+});
+assert.strictEqual(noPrincipalState.summary.remainingPrincipal, 0);
+assert.strictEqual(noPrincipalState.summary.activeProfitRate, null);
+assert.strictEqual(noPrincipalState.summary.cnhActiveProfitRate, null);
 
 // Repeating decimal inputs are a common source of silent ledger drift when
 // JavaScript Number is used for intermediate calculations.

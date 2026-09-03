@@ -307,6 +307,11 @@ assert.strictEqual(fullExitState.members.lp.gpCarryShares, 0, 'LP exit must not 
 assert.strictEqual(fullExitState.members.lp.lpLedger.length, 0, 'full exit must remove zero-share lots');
 assert.strictEqual(fullExitState.members.gp.gpCarryValue, 3.5);
 assert.strictEqual(fullExitState.summary.totalNAV, 3.5);
+assert.strictEqual(fullExitState.summary.remainingPrincipal, 0,
+  'a full LP exit must remove all remaining principal even when GP carry stays invested');
+assert.strictEqual(fullExitState.summary.activeProfit, 3.5);
+assert.strictEqual(fullExitState.summary.activeProfitRate, null,
+  'pure carry without remaining contributed principal has no finite active-capital ROI');
 
 const selfGpFullExitState = calculateStateFromDb({
   cnhRate: 7.2,
@@ -448,6 +453,8 @@ const stagedExitState = calculateStateFromDb({
 approximately(stagedExitState.members.lp.totalWithdraw, 116.5);
 approximately(stagedExitState.members.gp.gpCarryValue, 3.5);
 assert.strictEqual(stagedExitState.members.lp.lpShares, 0);
+assert.strictEqual(stagedExitState.summary.remainingPrincipal, 0,
+  'staged and single-step full exits must dispose the same principal');
 
 // A large partial exit with a small winning lot must never let the member
 // share balance diverge from the sum of the surviving LP lots.

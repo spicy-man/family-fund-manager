@@ -2,6 +2,7 @@
   function init({ elements, modal, segmentedControl, navigation, switchOperationView, formController, management, getAllocationChart }) {
     const {
       backupModal, btnCloseModal, principlesModal, btnClosePrinciplesModal,
+      activeReturnCard, returnDetailsModal, btnCloseReturnDetails,
       memberModal, btnCloseMemberModal, btnSaveMemberSettings,
       editEventModal, btnCloseEditModal, tickerConfigModal, btnCloseTickerConfigModal,
       settlementPreviewModal, btnCloseSettlementPreview, btnCancelSettlement,
@@ -13,6 +14,14 @@
 
     modal.bindAccessible(backupModal, btnCloseModal);
     modal.bindAccessible(principlesModal, btnClosePrinciplesModal);
+    modal.bindAccessible(returnDetailsModal, btnCloseReturnDetails);
+    const openReturnDetails = () => modal.open(returnDetailsModal, activeReturnCard);
+    activeReturnCard?.addEventListener('click', openReturnDetails);
+    activeReturnCard?.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      openReturnDetails();
+    });
     modal.bindAccessible(memberModal, btnCloseMemberModal);
     btnSaveMemberSettings?.addEventListener('click', () => modal.close(memberModal));
     modal.bindAccessible(editEventModal, btnCloseEditModal);

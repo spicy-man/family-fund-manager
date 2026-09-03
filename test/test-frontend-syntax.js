@@ -21,6 +21,9 @@ assert(
 );
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+assert(html.includes('id="return-details-modal"'), 'active-capital card must expose a return-details dialog');
+assert(html.includes('id="return-details-history-rate"'), 'return details must preserve historical cumulative ROI');
+assert(html.includes('aria-controls="return-details-modal"'), 'active-capital card must identify its controlled dialog');
 const loadedScripts = [...html.matchAll(/<script\s+src="js\/([^"]+\.js)"/g)]
   .map(match => match[1]);
 files.forEach(file => {

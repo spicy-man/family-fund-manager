@@ -78,12 +78,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const elFundTotalShares = document.getElementById('fund-total-shares');
   const elFundNavPerShare = document.getElementById('fund-nav-per-share');
   const elNavIndicator = document.getElementById('nav-indicator');
-  const elFundProfitRate = document.getElementById('fund-profit-rate');
-  const elFundProfitRateSub = document.getElementById('fund-profit-rate-sub');
+  const elFundActiveProfitRate = document.getElementById('fund-active-profit-rate');
+  const elFundActiveProfitRateSub = document.getElementById('fund-active-profit-rate-sub');
+  const activeReturnCard = document.getElementById('active-return-card');
+  const returnDetailsModal = document.getElementById('return-details-modal');
+  const btnCloseReturnDetails = document.getElementById('btn-close-return-details');
+  const returnDetailsActiveRate = document.getElementById('return-details-active-rate');
+  const returnDetailsPrincipal = document.getElementById('return-details-principal');
+  const returnDetailsActiveProfit = document.getElementById('return-details-active-profit');
+  const returnDetailsHistoryRate = document.getElementById('return-details-history-rate');
+  const returnDetailsHistoryProfit = document.getElementById('return-details-history-profit');
+  const returnDetailsTotalDeposit = document.getElementById('return-details-total-deposit');
+  const returnDetailsTotalWithdraw = document.getElementById('return-details-total-withdraw');
 
   // The overview is deliberately terse: one aligned title, one key figure, one supporting fact.
   document.querySelectorAll('.metric-label').forEach((label, index) => {
-    label.textContent = ['总资产', '单位净值', '累计收益率'][index] || label.textContent;
+    label.textContent = ['总资产', '单位净值', '在管本金收益率'][index] || label.textContent;
   });
 
   // Dynamic Containers
@@ -309,6 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.FundAppShell.init({
       elements: {
         backupModal, btnCloseModal, principlesModal, btnClosePrinciplesModal,
+        activeReturnCard, returnDetailsModal, btnCloseReturnDetails,
         memberModal, btnCloseMemberModal, btnSaveMemberSettings,
         editEventModal, btnCloseEditModal, tickerConfigModal, btnCloseTickerConfigModal,
         settlementPreviewModal, btnCloseSettlementPreview, btnCancelSettlement,
@@ -510,17 +521,52 @@ document.addEventListener('DOMContentLoaded', () => {
     // 根据单位净值更新颜色指示器
     elFundNavPerShare.className = 'metric-value font-outfit privacy-sensitive';
 
-    elNavIndicator.innerHTML = `<span class="status-indicator">已与最新市场数据同步</span>`;
+    const latestValuationDate = appState.events
+      .filter(event => event.type === 'valuation')
+      .map(event => event.date)
+      .sort()
+      .at(-1);
+    elNavIndicator.textContent = latestValuationDate
+      ? `最后更新 ${latestValuationDate}`
+      : '暂无估值更新';
 
-    // Three-card overview: assets, NAV and return rate.
+    // Three-card overview: assets, NAV and the return on capital still managed.
     elFundTotalNav.innerHTML = `<span>$${formatMoney(s.totalNAV)}</span><span class="metric-inline metric-profit-inline ${s.profit >= 0 ? 'text-green' : 'text-magenta'}">${s.profit >= 0 ? '+' : ''}$${formatMoney(s.profit)}</span>`;
-    elFundTotalShares.innerHTML = `<span class="metric-sub-primary">≈ ¥${formatMoney(s.cnhTotalNAV)}</span><span class="metric-inline ${s.cnhProfit >= 0 ? 'text-green' : 'text-magenta'}" title="包含汇率变动影响">CNH收益（含汇率） ${s.cnhProfit >= 0 ? '+' : ''}¥${formatMoney(s.cnhProfit)}</span>`;
+    const formatCnhTenThousands = amount => Number(amount / 10000).toLocaleString('zh-CN', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1
+    });
+    const compactCnhTotalNAV = `${formatCnhTenThousands(s.cnhTotalNAV)}万`;
+    const compactCnhProfit = `${formatCnhTenThousands(Math.abs(s.cnhProfit))}万`;
+    elFundTotalShares.innerHTML = `<span class="metric-sub-primary" title="人民币估值：¥${formatMoney(s.cnhTotalNAV)}">≈ ¥${compactCnhTotalNAV}</span><span class="metric-inline ${s.cnhProfit >= 0 ? 'text-green' : 'text-magenta'}" title="CNH收益（含汇率）：${s.cnhProfit >= 0 ? '+' : '-'}¥${formatMoney(Math.abs(s.cnhProfit))}">CNH收益（含汇率） ${s.cnhProfit >= 0 ? '+' : '-'}¥${compactCnhProfit}</span>`;
     elFundTotalShares.classList.add('privacy-sensitive');
 
-    elFundProfitRate.innerHTML = `<span>${s.profitRate > 0 ? '+' : ''}${s.profitRate.toFixed(2)}%</span>`;
-    const profitRateTone = s.profitRate > 0 ? ' text-green' : s.profitRate < 0 ? ' text-magenta' : '';
-    elFundProfitRate.className = `metric-value font-outfit privacy-sensitive${profitRateTone}`;
-    elFundProfitRateSub.innerHTML = `<span class="metric-inline" title="包含汇率变动影响"><span>CNH收益率（含汇率）</span><strong class="${s.cnhProfitRate >= 0 ? 'text-green' : 'text-magenta'}">${s.cnhProfitRate >= 0 ? '+' : ''}${s.cnhProfitRate.toFixed(2)}%</strong></span>`;
+    const activeRate = Number.isFinite(s.activeProfitRate) ? s.activeProfitRate : null;
+    const cnhActiveRate = Number.isFinite(s.cnhActiveProfitRate) ? s.cnhActiveProfitRate : null;
+    elFundActiveProfitRate.innerHTML = `<span>${activeRate === null ? '—' : `${activeRate > 0 ? '+' : ''}${activeRate.toFixed(2)}%`}</span>`;
+    const activeRateTone = activeRate === null ? '' : activeRate > 0 ? ' text-green' : activeRate < 0 ? ' text-magenta' : '';
+    elFundActiveProfitRate.className = `metric-value font-outfit privacy-sensitive${activeRateTone}`;
+    const cnhActiveRateText = cnhActiveRate === null
+      ? '—'
+      : `${cnhActiveRate >= 0 ? '+' : ''}${cnhActiveRate.toFixed(2)}%`;
+    const cnhActiveRateClass = cnhActiveRate === null
+      ? ''
+      : cnhActiveRate >= 0 ? 'text-green' : 'text-magenta';
+    elFundActiveProfitRateSub.innerHTML = `<span class="metric-inline" title="当前人民币估值相对尚未退出人民币本金的收益率，包含汇率变动影响"><span>CNH在管收益率（含汇率）</span><strong class="${cnhActiveRateClass}">${cnhActiveRateText}</strong></span>`;
+
+    const signedRate = rate => `${rate > 0 ? '+' : ''}${rate.toFixed(2)}%`;
+    const signedMoney = amount => `${amount >= 0 ? '+' : '-'}$${formatMoney(Math.abs(amount))}`;
+    returnDetailsActiveRate.textContent = activeRate === null ? '—' : signedRate(activeRate);
+    returnDetailsActiveRate.className = `privacy-sensitive${activeRate === null ? '' : activeRate >= 0 ? ' text-green' : ' text-magenta'}`;
+    returnDetailsPrincipal.textContent = `$${formatMoney(s.remainingPrincipal)}`;
+    returnDetailsActiveProfit.textContent = signedMoney(s.activeProfit);
+    returnDetailsActiveProfit.className = `privacy-sensitive ${s.activeProfit >= 0 ? 'text-green' : 'text-magenta'}`;
+    returnDetailsHistoryRate.textContent = signedRate(s.profitRate);
+    returnDetailsHistoryRate.className = `privacy-sensitive ${s.profitRate >= 0 ? 'text-green' : 'text-magenta'}`;
+    returnDetailsHistoryProfit.textContent = signedMoney(s.profit);
+    returnDetailsHistoryProfit.className = `privacy-sensitive ${s.profit >= 0 ? 'text-green' : 'text-magenta'}`;
+    returnDetailsTotalDeposit.textContent = `$${formatMoney(s.totalDeposit)}`;
+    returnDetailsTotalWithdraw.textContent = `$${formatMoney(s.totalWithdraw)}`;
   }
 
   // 2. 动态家庭成员资产网格渲染

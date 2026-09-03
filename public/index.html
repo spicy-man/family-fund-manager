@@ -31,7 +31,7 @@
       </svg>
       <span>
         <strong>家庭财富账本</strong>
-        <small>WEALTH LEDGER <b class="sidebar-version">v3.15.0</b></small>
+        <small>WEALTH LEDGER <b class="sidebar-version">v3.16.0</b></small>
       </span>
     </a>
 
@@ -114,7 +114,7 @@
         <div class="logo-text">
           <h1>家庭基金账目管理系统</h1>
           <span class="sub-logo">Family Private Wealth &amp; NAV Ledger &nbsp;<span
-              class="version-badge">v3.15.0</span></span>
+              class="version-badge">v3.16.0</span></span>
         </div>
       </div>
       <div class="header-actions">
@@ -243,7 +243,7 @@
           <div class="metric-info">
             <span class="metric-label">基金单位净值 (NAV / Share)</span>
             <div class="metric-value font-outfit privacy-sensitive" id="fund-nav-per-share">1.0000</div>
-            <div class="metric-sub" id="nav-indicator">已与市场最新同步</div>
+            <div class="metric-sub privacy-sensitive" id="nav-indicator">暂无估值更新</div>
           </div>
           <div class="metric-icon bg-blue-soft">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -253,13 +253,15 @@
           </div>
         </div>
 
-        <!-- Return Rate Card -->
-        <div class="metric-card premium-border">
+        <!-- Active Capital Return Card -->
+        <div class="metric-card metric-card--interactive premium-border" id="active-return-card" role="button"
+          tabindex="0" aria-haspopup="dialog" aria-controls="return-details-modal"
+          aria-label="查看在管本金收益率与历史累计收益率详情">
           <div class="card-glow glow-magenta"></div>
           <div class="metric-info">
-            <span class="metric-label">累计总收益率 (Total ROI)</span>
-            <div class="metric-value font-outfit privacy-sensitive" id="fund-profit-rate">0.00%</div>
-            <span class="metric-sub privacy-sensitive" id="fund-profit-rate-sub">家庭合作投资收益率</span>
+            <span class="metric-label" title="当前资产相对尚未退出本金的收益率">在管本金收益率 (Active Capital ROI)</span>
+            <div class="metric-value font-outfit privacy-sensitive" id="fund-active-profit-rate">0.00%</div>
+            <span class="metric-sub privacy-sensitive" id="fund-active-profit-rate-sub">当前仍在管本金的收益水平</span>
           </div>
           <div class="metric-icon bg-magenta-soft">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -875,6 +877,54 @@
         <p class="principles-footnote">批次门槛 = 批次高水位基准 × (1 + 6%)<sup>本期实际天数 ÷ 365</sup> · 批次报酬 = max(批次当前价值 − 批次门槛, 0) × 25%<br><small
             style="opacity: 0.8; font-size: 0.85em; margin-top: 4px; display: inline-block;">每次正式结算后重新计算下一期天数；每份份额的高水位取“原高水位
             NAV”与“结算日 NAV”的较高者，只升不降。</small></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="return-details-modal" role="dialog" aria-modal="true"
+    aria-labelledby="return-details-modal-title" aria-hidden="true">
+    <div class="modal-content glass-panel premium-border return-details-modal-content" tabindex="-1">
+      <div class="modal-header">
+        <div>
+          <h3 id="return-details-modal-title">收益率详情</h3>
+          <p class="section-desc">在管口径用于观察当前资金，历史口径用于保留基金成立以来的完整回报。</p>
+        </div>
+        <button class="btn-close" id="btn-close-return-details" type="button" aria-label="关闭收益率详情">×</button>
+      </div>
+      <div class="modal-body">
+        <section class="return-details-lead">
+          <span>在管本金收益率</span>
+          <strong class="privacy-sensitive" id="return-details-active-rate">—</strong>
+          <small>（当前资产 − 剩余本金）÷ 剩余本金</small>
+        </section>
+        <div class="return-details-grid">
+          <article>
+            <span>当前剩余本金</span>
+            <strong class="privacy-sensitive" id="return-details-principal">$0.00</strong>
+          </article>
+          <article>
+            <span>当前在管收益</span>
+            <strong class="privacy-sensitive" id="return-details-active-profit">$0.00</strong>
+          </article>
+          <article class="return-details-history">
+            <span>历史累计收益率</span>
+            <strong class="privacy-sensitive" id="return-details-history-rate">0.00%</strong>
+            <small>累计收益 ÷ 历史累计入金</small>
+          </article>
+          <article>
+            <span>历史累计收益</span>
+            <strong class="privacy-sensitive" id="return-details-history-profit">$0.00</strong>
+          </article>
+          <article>
+            <span>历史累计入金</span>
+            <strong class="privacy-sensitive" id="return-details-total-deposit">$0.00</strong>
+          </article>
+          <article>
+            <span>历史累计出金</span>
+            <strong class="privacy-sensitive" id="return-details-total-withdraw">$0.00</strong>
+          </article>
+        </div>
+        <p class="return-details-note">成员退出后，其历史本金不再影响在管收益率，但已经实现的收益仍完整保留在历史累计口径中。</p>
       </div>
     </div>
   </div>

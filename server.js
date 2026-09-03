@@ -312,6 +312,8 @@ const {
   addUtcDays,
   previousWeekday,
   benchmarkDates,
+  historyRequestStart,
+  mergeCustomBenchmarkCaches,
   materializeBenchmarkCaches
 } = require('./lib/market-history');
 
@@ -358,11 +360,7 @@ async function syncBenchmarkHistory(dates) {
     // removed, so a later incomplete Yahoo response cannot erase history.
     await Promise.all(requestedTickers.map(async ticker => {
       const record = history.tickers[ticker];
-      const latestStored = Object.keys(record?.prices || {}).sort().at(-1);
-      const incrementalStart = latestStored ? addUtcDays(latestStored, -14) : oldestRequired;
-      const requestStart = record?.fetchedFrom
-        ? (incrementalStart < oldestRequired ? oldestRequired : incrementalStart)
-        : oldestRequired;
+      const requestStart = historyRequestStart(record, oldestRequired);
       const prices = await fetchYahooPrices(
         ticker,
         Math.floor(Date.parse(`${requestStart}T00:00:00Z`) / 1000),
@@ -377,14 +375,14 @@ async function syncBenchmarkHistory(dates) {
     // Yahoo's broad historical endpoint can occasionally omit its newest
     // completed candle. Probe each missing expected business day with a narrow
     // date request; holidays simply remain absent and resolve to the prior close.
-    const expectedDates = [...new Set(datesToBuild.map(previousWeekday))];
     await Promise.all(requestedTickers.map(async ticker => {
-      for (const date of expectedDates) {
-        if (history.tickers[ticker]?.prices?.[date]) continue;
+      for (const date of datesToBuild) {
+        const expectedDate = previousWeekday(date);
+        if (history.tickers[ticker]?.prices?.[expectedDate]) continue;
         const prices = await fetchYahooPrices(
           ticker,
-          Math.floor(Date.parse(`${date}T00:00:00Z`) / 1000),
-          Math.floor(Date.parse(`${addUtcDays(date, 2)}T00:00:00Z`) / 1000)
+          Math.floor(Date.parse(`${addUtcDays(date, -14)}T00:00:00Z`) / 1000),
+          Math.floor(Date.parse(`${date}T00:00:00Z`) / 1000)
         );
         changed = mergeTickerPrices(history, ticker, prices) || changed;
       }
@@ -402,10 +400,10 @@ async function syncBenchmarkHistory(dates) {
       benchmarkClosePolicy
     );
     writeIndexCache({ ...storage.readIndexCache(), ...materialized.indexCache });
-    writeCustomBenchmarkCache({
-      ...storage.readCustomBenchmarkCache(),
-      ...materialized.customBenchmarkCache
-    });
+    writeCustomBenchmarkCache(mergeCustomBenchmarkCaches(
+      storage.readCustomBenchmarkCache(),
+      materialized.customBenchmarkCache
+    ));
     console.log(`[Yahoo Sync Worker] Daily history saved and ${materialized.dates.length} NAV-date snapshots rebuilt.`);
   } catch (err) {
     console.error(`[Yahoo Sync Worker Error]:`, err.message);

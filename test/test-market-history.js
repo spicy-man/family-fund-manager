@@ -3,9 +3,14 @@ const {
   emptyMarketHistory,
   mergeTickerPrices,
   previousWeekday,
+  historyRequestStart,
+  mergeCustomBenchmarkCaches,
   materializeBenchmarkCaches
 } = require('../lib/market-history');
-const { normalizeCustomBenchmark } = require('../lib/custom-benchmark');
+const {
+  normalizeCustomBenchmark,
+  customBenchmarkSignature
+} = require('../lib/custom-benchmark');
 const { calculateStateFromDb } = require('../lib/calculator');
 
 const benchmark = normalizeCustomBenchmark({
@@ -33,6 +38,15 @@ for (const [ticker, prices] of Object.entries(daily)) {
 assert.strictEqual(previousWeekday('2026-08-31'), '2026-08-28');
 assert.strictEqual(previousWeekday('2026-08-30'), '2026-08-28');
 
+assert.strictEqual(historyRequestStart({
+  fetchedFrom: '2026-01-01',
+  prices: { '2026-08-28': 1 }
+}, '2025-12-18'), '2025-12-18', 'an older ledger date must expand historical coverage');
+assert.strictEqual(historyRequestStart({
+  fetchedFrom: '2025-01-01',
+  prices: { '2026-08-28': 1 }
+}, '2025-12-18'), '2026-08-14', 'covered history should continue incrementally');
+
 const materialized = materializeBenchmarkCaches(
   ['2026-08-28', '2026-08-31'],
   history,
@@ -47,6 +61,41 @@ assert.strictEqual(
 assert.strictEqual(
   materialized.customBenchmarkCache['2026-08-31'].secondary.components['BRK-B'].priceDate,
   '2026-08-28'
+);
+
+const primaryOnlyUpdate = {
+  '2026-08-31': {
+    signature: customBenchmarkSignature(benchmark),
+    components: { VGT: { price: 120.07, priceDate: '2026-08-28' } }
+  }
+};
+const legacyDualSlotCache = {
+  '2026-08-31': {
+    signature: customBenchmarkSignature(benchmark),
+    components: { VGT: { price: 119, priceDate: '2026-08-27' } },
+    secondary: {
+      signature: customBenchmarkSignature(benchmark2),
+      components: { 'BRK-B': { price: 505, priceDate: '2026-08-28' } }
+    }
+  }
+};
+const mergedCustomCache = mergeCustomBenchmarkCaches(legacyDualSlotCache, primaryOnlyUpdate);
+assert.strictEqual(mergedCustomCache['2026-08-31'].components.VGT.price, 120.07);
+assert.strictEqual(
+  mergedCustomCache['2026-08-31'].secondary.components['BRK-B'].price,
+  505,
+  'refreshing one custom benchmark must preserve the other slot'
+);
+
+const failedBackfillHistory = emptyMarketHistory();
+mergeTickerPrices(failedBackfillHistory, '^GSPC', {}, {
+  from: '2020-01-01',
+  through: '2026-08-31'
+});
+assert.strictEqual(
+  failedBackfillHistory.tickers['^GSPC'].fetchedFrom,
+  null,
+  'an empty provider response must not prevent a later backfill retry'
 );
 
 // A later incomplete provider response must never erase a recorded trading day.
