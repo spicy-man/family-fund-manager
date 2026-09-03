@@ -1,0 +1,284 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 1390" width="1120" height="1390" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;">
+  <defs>
+    <!-- Background card gradient matching theme-light modal -->
+    <linearGradient id="modalBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f4f7fb"/>
+    </linearGradient>
+
+    <!-- Title gradient -->
+    <linearGradient id="titleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a63b8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+
+    <!-- Banner background -->
+    <linearGradient id="leadBg" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#eff6ff"/>
+      <stop offset="100%" stop-color="#f0f7ff"/>
+    </linearGradient>
+
+    <!-- Card shadow -->
+    <filter id="modalShadow" x="-3%" y="-2%" width="106%" height="106%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#1e293b" flood-opacity="0.10"/>
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.04"/>
+    </filter>
+
+    <style>
+      .title-text { font-size: 21px; font-weight: 800; fill: url(#titleGrad); letter-spacing: -0.01em; }
+      .subtitle-text { font-size: 11px; font-weight: 700; fill: #64748b; letter-spacing: 0.12em; text-transform: uppercase; }
+      .lead-main { font-size: 13.5px; font-weight: 700; fill: #1e293b; text-anchor: middle; }
+      .lead-motto { font-size: 13px; font-weight: 800; fill: #0a63b8; text-anchor: middle; letter-spacing: 0.04em; }
+      
+      .item-index { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; font-weight: 800; fill: #0a63b8; }
+      .item-title { font-size: 15px; font-weight: 700; fill: #1e293b; }
+      .item-rule { font-size: 12.5px; fill: #4b5563; line-height: 1.65; }
+      
+      .case-tag-bg { fill: rgba(10, 99, 184, 0.08); }
+      .case-tag-text { font-size: 10.5px; font-weight: 800; fill: #0a63b8; text-anchor: middle; }
+      .case-text { font-size: 12.5px; fill: #4b5563; }
+      
+      .footnote-main { font-size: 12px; fill: #64748b; text-anchor: middle; }
+      .footnote-sub { font-size: 11px; fill: #94a3b8; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <!-- Modal Container Card -->
+  <rect x="12" y="12" width="1096" height="1366" rx="20" fill="url(#modalBg)" stroke="#e2e8f0" stroke-width="1.2" filter="url(#modalShadow)"/>
+
+  <!-- ================= HEADER (y: 35) ================= -->
+  <g transform="translate(42, 42)">
+    <text x="0" y="20" class="title-text">基金管理准则</text>
+    <text x="0" y="38" class="subtitle-text">FAMILY FUND GOVERNANCE PRINCIPLES</text>
+    <text x="1030" y="22" font-size="24" font-weight="300" fill="#94a3b8" text-anchor="middle" style="cursor:pointer;">×</text>
+  </g>
+
+  <!-- ================= LEAD BANNER (y: 92) ================= -->
+  <g transform="translate(42, 92)">
+    <rect width="1036" height="74" rx="14" fill="url(#leadBg)" stroke="rgba(10, 99, 184, 0.22)" stroke-width="1"/>
+    <text x="518" y="31" class="lead-main">“不收固定管理费，达到门槛才分成” —— 每笔 LP 资金先跨越按年化 6% 随实际持有天数复利增长的业绩门槛；仅对超额部分提取 25%</text>
+    <text x="518" y="55" class="lead-motto">GP 自有资金同投，利益高度绑定</text>
+  </g>
+
+  <!-- Top Divider Line -->
+  <line x1="42" y1="180" x2="1078" y2="180" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- ================= ITEM 01 (y: 195) ================= -->
+  <g transform="translate(42, 195)">
+    <text x="0" y="16" class="item-index">01</text>
+    <!-- Copy -->
+    <g transform="translate(48, 0)">
+      <text x="0" y="16" class="item-title">成员是 LP，管理人兼任 GP</text>
+      <text x="0" y="40" class="item-rule">所有成员均以 LP 身份持有基金份额，其中一人兼任 GP。GP 的自有 LP 资金与已经归属的</text>
+      <text x="0" y="60" class="item-rule">GP 业绩报酬分账核算，不能混作同一类本金。</text>
+    </g>
+    <!-- Example -->
+    <g transform="translate(605, 0)">
+      <line x1="0" y1="2" x2="0" y2="70" stroke="rgba(10, 99, 184, 0.2)" stroke-width="2"/>
+      <rect x="18" y="3" width="34" height="20" rx="4" class="case-tag-bg"/>
+      <text x="35" y="17" class="case-tag-text">案例</text>
+      <text x="62" y="17" class="case-text">成员 A 自投入 10 万元，同时累计获得 5,000 元 GP 报</text>
+      <text x="62" y="37" class="case-text">酬；系统会分别显示 A 的 LP 资产和 GP 报酬，不把</text>
+      <text x="62" y="57" class="case-text">5,000 元追加为 A 的 LP 入金。</text>
+    </g>
+  </g>
+  <line x1="42" y1="285" x2="1078" y2="285" stroke="#edf2f7" stroke-width="1"/>
+
+  <!-- ================= ITEM 02 (y: 298) ================= -->
+  <g transform="translate(42, 298)">
+    <text x="0" y="16" class="item-index">02</text>
+    <!-- Copy -->
+    <g transform="translate(48, 0)">
+      <text x="0" y="16" class="item-title">每笔资金建立独立批次</text>
+      <text x="0" y="40" class="item-rule">每次入金或受让都按实际入账净额建立新批次，独立记录基准、份额和起算日。不同日期进入</text>
+      <text x="0" y="60" class="item-rule">的资金，不共用同一个业绩门槛。</text>
+    </g>
+    <!-- Example -->
+    <g transform="translate(605, 0)">
+      <line x1="0" y1="2" x2="0" y2="60" stroke="rgba(10, 99, 184, 0.2)" stroke-width="2"/>
+      <rect x="18" y="3" width="34" height="20" rx="4" class="case-tag-bg"/>
+      <text x="35" y="17" class="case-tag-text">案例</text>
+      <text x="62" y="17" class="case-text">1 月 1 日入金 10 万元、7 月 1 日再入金 5 万元，会形成两个</text>
+      <text x="62" y="37" class="case-text">批次；前者从 1 月 1 日起算，后者只从 7 月 1 日起算。</text>
+    </g>
+  </g>
+  <line x1="42" y1="380" x2="1078" y2="380" stroke="#edf2f7" stroke-width="1"/>
+
+  <!-- ================= ITEM 03 (y: 393) ================= -->
+  <g transform="translate(42, 393)">
+    <text x="0" y="16" class="item-index">03</text>
+    <!-- Copy -->
+    <g transform="translate(48, 0)">
+      <text x="0" y="16" class="item-title">门槛按本期实际持有天数计算</text>
+      <text x="0" y="40" class="item-rule">首期从入金或受让日起算，此后每期从上次结算日起算。门槛按“批次高水位基准 × (1 + 6%)</text>
+      <text x="0" y="60" class="item-rule">本期实际天数 ÷ 365”计算；6% 只是收费门槛，不是保本收益承诺。</text>
+    </g>
+    <!-- Example -->
+    <g transform="translate(605, 0)">
+      <line x1="0" y1="2" x2="0" y2="70" stroke="rgba(10, 99, 184, 0.2)" stroke-width="2"/>
+      <rect x="18" y="3" width="34" height="20" rx="4" class="case-tag-bg"/>
+      <text x="35" y="17" class="case-tag-text">案例</text>
+      <text x="62" y="17" class="case-text">10 万元在本期持有 180 天，本期门槛约为 10 万 ×</text>
+      <text x="62" y="37" class="case-text">1.06<tspan dy="-4" font-size="10">180 ÷ 365</tspan><tspan dy="4"> ≈ 10.292 万元；系统不会把不足一年的资</tspan></text>
+      <text x="62" y="57" class="case-text">金直接按完整 6% 计算。</text>
+    </g>
+  </g>
+  <line x1="42" y1="480" x2="1078" y2="480" stroke="#edf2f7" stroke-width="1"/>
+
+  <!-- ================= ITEM 04 (y: 493) ================= -->
+  <g transform="translate(42, 493)">
+    <text x="0" y="16" class="item-index">04</text>
+    <!-- Copy -->
+    <g transform="translate(48, 0)">
+      <text x="0" y="16" class="item-title">按最近估值逐批结算，盈亏不对冲</text>
+      <text x="0" y="40" class="item-rule">正式结算采用不晚于结算日的最近一次基金估值。每个批次单独比较当前价值与自身门槛，只</text>
+      <text x="0" y="60" class="item-rule">对正超额部分提取 25%；未过线批次不能抵减其他批次的应付报酬。</text>
+    </g>
+    <!-- Example -->
+    <g transform="translate(605, 0)">
+      <line x1="0" y1="2" x2="0" y2="70" stroke="rgba(10, 99, 184, 0.2)" stroke-width="2"/>
+      <rect x="18" y="3" width="34" height="20" rx="4" class="case-tag-bg"/>
+      <text x="35" y="17" class="case-tag-text">案例</text>
+      <text x="62" y="17" class="case-text">批次一当前 12 万元、门槛 10.6 万元，超额 1.4 万元，应付</text>
+      <text x="62" y="37" class="case-text">3,500 元；批次二当前价值低于门槛、报酬为 0。批次一的</text>
+      <text x="62" y="57" class="case-text">3,500 元不会被批次二抵消。</text>
+    </g>
+  </g>
+  <line x1="42" y1="580" x2="1078" y2="580" stroke="#edf2f7" stroke-width="1"/>
+
+  <!-- ================= ITEM 05 (y: 593) ================= -->
+  <g transform="translate(42, 593)">
+    <text x="0" y="16" class="item-index">05</text>
+    <!-- Copy -->
+    <g transform="translate(48, 0)">
+      <text x="0" y="16" class="item-title">每次结算结束本期，下期重新计时</text>
+      <text x="0" y="40" class="item-rule">正式结算会结束当前计费周期，无论本期是否收费，下一期都从本次结算日重新计算持有天</text>
+      <text x="0" y="60" class="item-rule">数。若结算日 NAV 创出新高，就以该 NAV 更新每份份额的高水位。</text>
+    </g>
+    <!-- Example -->
+    <g transform="translate(605, 0)">
+      <line x1="0" y1="2" x2="0" y2="82" stroke="rgba(10, 99, 184, 0.2)" stroke-width="2"/>
+      <rect x="18" y="3" width="34" height="20" rx="4" class="case-tag-bg"/>
+      <text x="35" y="17" class="case-tag-text">案例</text>
+      <text x="62" y="17" class="case-text">10 万元第一年上涨 3% 至 10.3 万元，低于 10.6 万元门槛，</text>
+      <text x="62" y="37" class="case-text">不收费，但高水位更新为 10.3 万元。第二年再上涨 24% 至</text>
+      <text x="62" y="57" class="case-text">12.772 万元，本期门槛为 10.3 × 1.06 = 10.918 万元，按本</text>
+      <text x="62" y="77" class="case-text">期超额 1.854 万元收取 25%，即 4,635 元。</text>
+    </g>
+  </g>
+  <line x1="42" y1="695" x2="1078" y2="695" stroke="#edf2f7" stroke-width="1"/>
+
+  <!-- ================= ITEM 06 (y: 708) ================= -->
+  <g transform="translate(42, 708)">
+    <text x="0" y="16" class="item-index">06</text>
+    <!-- Copy -->
+    <g transform="translate(48, 0)">
+      <text x="0" y="16" class="item-title">高水位只升不降，亏损修复前不收费</text>
+      <text x="0" y="40" class="item-rule">结算会重启时间，但不会把每份份额的高水位 NAV 向下重置。批次只有超过“原高水位 NAV ×</text>
+      <text x="0" y="60" class="item-rule">本期 6% 时间系数”才收费；报酬按结算日 NAV 划转份额，不会改变 NAV。高水位 NAV 一</text>
+      <text x="0" y="80" class="item-rule">致的批次可以合并，否则继续分批保留。</text>
+    </g>
+    <!-- Example -->
+    <g transform="translate(605, 0)">
+      <line x1="0" y1="2" x2="0" y2="88" stroke="rgba(10, 99, 184, 0.2)" stroke-width="2"/>
+      <rect x="18" y="3" width="34" height="20" rx="4" class="case-tag-bg"/>
+      <text x="35" y="17" class="case-tag-text">案例</text>
+      <text x="62" y="17" class="case-text">净值从 1.000 第一年跌 10% 至 0.900，第二年涨 3% 至</text>
+      <text x="62" y="37" class="case-text">0.927，两年都不收费，高水位仍为 1.000。第三年涨 40%</text>
+      <text x="62" y="57" class="case-text">至 1.2978，本期门槛为 1.000 × 1.06 = 1.060，超额 0.2378，</text>
+      <text x="62" y="77" class="case-text">报酬为 0.2378 × 25% = 0.05945。</text>
+    </g>
+  </g>
+  <line x1="42" y1="815" x2="1078" y2="815" stroke="#edf2f7" stroke-width="1"/>
+
+  <!-- ================= ITEM 07 (y: 828) ================= -->
+  <g transform="translate(42, 828)">
+    <text x="0" y="16" class="item-index">07</text>
+    <!-- Copy -->
+    <g transform="translate(48, 0)">
+      <text x="0" y="16" class="item-title">部分出金按净额同比处置</text>
+      <text x="0" y="40" class="item-rule">录入金额视为 LP 希望实际收到的净额。系统先计算全部批次扣费后可退出净值，再按“实收</text>
+      <text x="0" y="60" class="item-rule">净额 ÷ 可退出净值”得出处置比例，并以同一比例扣减、结晶每个存量批次，不挑选赚钱或亏</text>
+      <text x="0" y="80" class="item-rule">钱批次。</text>
+    </g>
+    <!-- Example -->
+    <g transform="translate(605, 0)">
+      <line x1="0" y1="2" x2="0" y2="70" stroke="rgba(10, 99, 184, 0.2)" stroke-width="2"/>
+      <rect x="18" y="3" width="34" height="20" rx="4" class="case-tag-bg"/>
+      <text x="35" y="17" class="case-tag-text">案例</text>
+      <text x="62" y="17" class="case-text">账户费前价值 12 万元、全额退出应付报酬 3,500 元，可退出</text>
+      <text x="62" y="37" class="case-text">净值为 11.65 万元。若申请实收 5.825 万元，处置比例就是</text>
+      <text x="62" y="57" class="case-text">50%，LP 收到 5.825 万元，GP 同步结晶 1,750 元。</text>
+    </g>
+  </g>
+  <line x1="42" y1="925" x2="1078" y2="925" stroke="#edf2f7" stroke-width="1"/>
+
+  <!-- ================= ITEM 08 (y: 938) ================= -->
+  <g transform="translate(42, 938)">
+    <text x="0" y="16" class="item-index">08</text>
+    <!-- Copy -->
+    <g transform="translate(48, 0)">
+      <text x="0" y="16" class="item-title">转让两端分开核算</text>
+      <text x="0" y="40" class="item-rule">转出方按部分出金的规则逐批结晶；受让方只按实际受让净值，在转让日建立自己的新批次，</text>
+      <text x="0" y="60" class="item-rule">不继承转出方的历史基准、起算日或高水位。</text>
+    </g>
+    <!-- Example -->
+    <g transform="translate(605, 0)">
+      <line x1="0" y1="2" x2="0" y2="70" stroke="rgba(10, 99, 184, 0.2)" stroke-width="2"/>
+      <rect x="18" y="3" width="34" height="20" rx="4" class="case-tag-bg"/>
+      <text x="35" y="17" class="case-tag-text">案例</text>
+      <text x="62" y="17" class="case-text">转出方费前价值 12 万元、应付报酬 3,500 元并选择全额转让</text>
+      <text x="62" y="37" class="case-text">时，受让方取得 11.65 万元的新批次，GP 取得 3,500 元报</text>
+      <text x="62" y="57" class="case-text">酬，转出方余额归零。</text>
+    </g>
+  </g>
+  <line x1="42" y1="1025" x2="1078" y2="1025" stroke="#edf2f7" stroke-width="1"/>
+
+  <!-- ================= ITEM 09 (y: 1038) ================= -->
+  <g transform="translate(42, 1038)">
+    <text x="0" y="16" class="item-index">09</text>
+    <!-- Copy -->
+    <g transform="translate(48, 0)">
+      <text x="0" y="16" class="item-title">GP 本人退出时，两类份额仍有先后</text>
+      <text x="0" y="40" class="item-rule">兼任 GP 的成员出金或转让时，先从其 LP 扣费后可退出净值支付；超出部分再从其已归属 GP</text>
+      <text x="0" y="60" class="item-rule">报酬中支付。全额退出会把该成员的 LP 份额与 GP 报酬份额一并结清。</text>
+    </g>
+    <!-- Example -->
+    <g transform="translate(605, 0)">
+      <line x1="0" y1="2" x2="0" y2="70" stroke="rgba(10, 99, 184, 0.2)" stroke-width="2"/>
+      <rect x="18" y="3" width="34" height="20" rx="4" class="case-tag-bg"/>
+      <text x="35" y="17" class="case-tag-text">案例</text>
+      <text x="62" y="17" class="case-text">完成结晶后，某 GP 的 LP 可退出净值为 11.65 万元，另有</text>
+      <text x="62" y="37" class="case-text">1 万元已归属报酬；申请实收 12 万元时，先退出全部 LP，再</text>
+      <text x="62" y="57" class="case-text">从 GP 报酬中支付 3,500 元，余下 6,500 元报酬继续留存。</text>
+    </g>
+  </g>
+  <line x1="42" y1="1125" x2="1078" y2="1125" stroke="#edf2f7" stroke-width="1"/>
+
+  <!-- ================= ITEM 10 (y: 1138) ================= -->
+  <g transform="translate(42, 1138)">
+    <text x="0" y="16" class="item-index">10</text>
+    <!-- Copy -->
+    <g transform="translate(48, 0)">
+      <text x="0" y="16" class="item-title">正式结算锁定历史，只能倒序撤销</text>
+      <text x="0" y="40" class="item-rule">正式结算后，结算日及之前的账目进入锁定期，不能直接新增、修改或删除。需要纠错时只能</text>
+      <text x="0" y="60" class="item-rule">撤销最近一次结算；撤销记录与原结算记录都会保留，确保可以追溯。</text>
+    </g>
+    <!-- Example -->
+    <g transform="translate(605, 0)">
+      <line x1="0" y1="2" x2="0" y2="70" stroke="rgba(10, 99, 184, 0.2)" stroke-width="2"/>
+      <rect x="18" y="3" width="34" height="20" rx="4" class="case-tag-bg"/>
+      <text x="35" y="17" class="case-tag-text">案例</text>
+      <text x="62" y="17" class="case-text">12 月 31 日完成结算后，不能直接补改 12 月 30 日的估值；</text>
+      <text x="62" y="37" class="case-text">应先撤销最近的 12 月 31 日结算，修正历史账目，再重新预览</text>
+      <text x="62" y="57" class="case-text">并确认结算。</text>
+    </g>
+  </g>
+  <line x1="42" y1="1235" x2="1078" y2="1235" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- ================= FOOTNOTE (y: 1260) ================= -->
+  <g transform="translate(42, 1265)">
+    <text x="518" y="24" class="footnote-main">批次门槛 = 批次高水位基准 × (1 + 6%)<tspan dy="-3" font-size="9.5">本期实际天数 ÷ 365</tspan><tspan dy="3"> · 批次报酬 = max(批次当前价值 − 批次门槛, 0) × 25%</tspan></text>
+    <text x="518" y="48" class="footnote-sub">每次正式结算后重新计算下一期天数；每份份额的高水位取“原高水位 NAV”与“结算日 NAV”的较高者，只升不降。</text>
+  </g>
+</svg>
