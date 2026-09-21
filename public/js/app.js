@@ -817,12 +817,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       dismissToast(toast);
     }, UNDO_DELAY);
-
-    // 辅助：关闭 Toast（淡出动画后移除）
-    function dismissToast(t) {
-      t.style.animation = 'toastSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) reverse forwards';
-      t.addEventListener('animationend', () => t.remove(), { once: true });
-    }
   }
 
   // 弹出编辑账目模态框并填充回显
@@ -917,6 +911,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // 辅助：可靠关闭 Toast（退场动画 + 300ms超时双重兜底移除）
+  function dismissToast(toast) {
+    if (!toast || toast.dataset.dismissing === 'true') return;
+    toast.dataset.dismissing = 'true';
+    toast.style.animation = 'toastSlideOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+    const removeToast = () => {
+      clearTimeout(safetyTimer);
+      toast.remove();
+    };
+    const safetyTimer = setTimeout(removeToast, 280);
+    toast.addEventListener('animationend', removeToast, { once: true });
+  }
+
   // 轻量级 Toast 弹出式提示
   function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
@@ -926,15 +933,13 @@ document.addEventListener('DOMContentLoaded', () => {
     toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
     toast.textContent = message;
 
+    // 支持点击快速关闭，防止意外遮挡
+    toast.addEventListener('click', () => dismissToast(toast));
+
     container.appendChild(toast);
 
     // 3.5秒后自动淡出销毁
-    setTimeout(() => {
-      toast.style.animation = 'toastSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) reverse forwards';
-      toast.addEventListener('animationend', () => {
-        toast.remove();
-      });
-    }, 3500);
+    setTimeout(() => dismissToast(toast), 3500);
   }
 
   function showSubmissionSuccess(message) {
@@ -947,11 +952,12 @@ document.addEventListener('DOMContentLoaded', () => {
       <svg class="toast-success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="m5 12 4.2 4.2L19 6.5"/></svg>
       <div><strong>提交成功</strong><span>${escapeHtml(message)}</span></div>
     `;
+
+    // 支持点击快速关闭，防止意外遮挡
+    toast.addEventListener('click', () => dismissToast(toast));
+
     container.appendChild(toast);
 
-    setTimeout(() => {
-      toast.style.animation = 'toastSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) reverse forwards';
-      toast.addEventListener('animationend', () => toast.remove(), { once: true });
-    }, 4200);
+    setTimeout(() => dismissToast(toast), 3500);
   }
 });
