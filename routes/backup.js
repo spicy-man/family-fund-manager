@@ -29,6 +29,7 @@ app.get('/api/backup/export', (req, res, next) => {
     const {
       indexCache: _indexCache,
       customBenchmarkCache: _customBenchmarkCache,
+      marketHistory: _marketHistory,
       cnhRate: _cnhRate,
       ...coreDb
     } = db;
@@ -290,7 +291,13 @@ app.post('/api/backup/import', express.raw({
     writeSnapshot(db, importedConfig, settlementMigration.ledger);
     // Older backups may contain this field. Restore it into market cache, not
     // back into the ledger; newer exports deliberately omit it.
-    writeCnhRate(importedCnhRate, { source: 'backup-import' });
+    const warnings = [];
+    try {
+      writeCnhRate(importedCnhRate, { source: 'backup-import' });
+    } catch (error) {
+      console.error('Failed to restore optional exchange rate cache:', error.message);
+      warnings.push('账目已恢复，但汇率未更新，请在设置中重新同步汇率。');
+    }
     try {
       writeIndexCache(importedIndexCache);
     } catch (error) {
@@ -308,7 +315,7 @@ app.post('/api/backup/import', express.raw({
     const migrationNotice = settlementMigration.migrated
       ? `，并已为 ${settlementMigration.migratedCount} 笔历史结算补充算法版本`
       : '';
-    res.json({ success: true, message: `ZIP 快照已恢复，账目、结算与系统配置均已原子覆盖并重新计算${migrationNotice}。` });
+    res.json({ success: true, warnings, message: `ZIP 快照已恢复，账目、结算与系统配置均已原子覆盖并重新计算${migrationNotice}。${warnings.join('')}` });
   } catch (error) {
     handleApiError(error, req, res, next);
   }

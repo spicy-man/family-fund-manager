@@ -41,7 +41,7 @@ app.post('/api/transaction', (req, res, next) => {
 
     // 处理人民币金额手动输入
     let parsedCnhAmount = undefined;
-    if (cnhAmount !== undefined && cnhAmount !== '') {
+    if (cnhAmount !== undefined && cnhAmount !== null && cnhAmount !== '') {
       parsedCnhAmount = toFiniteNumber(cnhAmount);
       if (!Number.isFinite(parsedCnhAmount) || parsedCnhAmount <= 0) {
         throw new InputError('人民币金额必须大于 0');
@@ -254,8 +254,8 @@ app.delete('/api/event/:id', (req, res, next) => {
     if (index === -1) {
       throw new NotFoundError('未找到该条记录');
     }
-    if (db.events[index].type === 'performance_settlement') {
-      throw new ConflictError('已确认的业绩结算不可直接删除。');
+    if (['performance_settlement', 'performance_settlement_reversal'].includes(db.events[index].type)) {
+      throw new ConflictError('业绩结算及冲销记录不可直接删除。');
     }
     rejectLockedPeriod(db, db.events[index].date);
 
@@ -284,8 +284,8 @@ app.put('/api/event/:id', (req, res, next) => {
     if (!event) {
       throw new NotFoundError('未找到该条记录');
     }
-    if (event.type === 'performance_settlement') {
-      throw new ConflictError('已确认的业绩结算不可直接修改。');
+    if (['performance_settlement', 'performance_settlement_reversal'].includes(event.type)) {
+      throw new ConflictError('业绩结算及冲销记录不可直接修改。');
     }
     const wasFullExit = event.fullExit === true;
     const previousAmount = event.amount;
@@ -318,6 +318,9 @@ app.put('/api/event/:id', (req, res, next) => {
         if (!memberObj) {
           throw new InputError('无效的家庭成员');
         }
+        if (memberObj.roles?.lp === false) {
+          throw new InputError('只有具有LP身份的成员可以登记出入金。');
+        }
         event.member = member;
       }
 
@@ -335,7 +338,11 @@ app.put('/api/event/:id', (req, res, next) => {
         }
       }
 
-      if (cnhAmount !== undefined) {
+      if (cnhAmount === null || cnhAmount === '') {
+        // Explicit clearing requests current-rate conversion. Omission above
+        // preserves the original transaction's exchange rate instead.
+        event.cnhAmount = event.amount * (db.cnhRate || 7.2);
+      } else if (cnhAmount !== undefined) {
         const parsedCnh = toFiniteNumber(cnhAmount);
         if (!Number.isFinite(parsedCnh) || parsedCnh <= 0) {
           throw new InputError('人民币金额必须大于 0');
@@ -380,12 +387,14 @@ app.put('/api/event/:id', (req, res, next) => {
       if (fromMember !== undefined) {
         const fromObj = db.members.find(m => m.id === fromMember);
         if (!fromObj) throw new InputError('无效的出让家庭成员');
+        if (fromObj.roles?.lp === false) throw new InputError('普通投资份额只能在LP成员之间转让。');
         event.fromMember = fromMember;
       }
 
       if (toMember !== undefined) {
         const toObj = db.members.find(m => m.id === toMember);
         if (!toObj) throw new InputError('无效的受让家庭成员');
+        if (toObj.roles?.lp === false) throw new InputError('普通投资份额只能在LP成员之间转让。');
         event.toMember = toMember;
       }
 

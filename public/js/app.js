@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let isTrendStatsHovering = false;
   let hasPromptedGpSetup = false;
   let onboardingController = null;
+  let formController = null;
 
   // --- DOM 元素定义 ---
   const elSystemTime = document.getElementById('system-time');
@@ -276,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- 业务控制器初始化 ---
   function initControllers() {
-    const formController = window.FundTransactionController.init({
+    formController = window.FundTransactionController.init({
       elements: {
         txDate, tfDate, valDate, editDate, editEventType,
         tfAmount, tfRate, tfCnhDisplay, inputCnhRate,
@@ -780,12 +781,15 @@ document.addEventListener('DOMContentLoaded', () => {
     toast.style.animation = 'toastSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards';
 
     let undone = false;
+    let deletionStarted = false;
 
     // 撤销按钮点击处理
     const undoBtn = document.getElementById(`undo-btn-${id}`);
     if (undoBtn) {
       undoBtn.addEventListener('click', () => {
+        if (undone || deletionStarted) return;
         undone = true;
+        undoBtn.disabled = true;
         clearTimeout(deleteTimer);
         // 恢复行显示
         if (targetRow) {
@@ -802,6 +806,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3 秒后执行真正删除
     const deleteTimer = setTimeout(() => {
       if (undone) return;
+      deletionStarted = true;
+      if (undoBtn) undoBtn.disabled = true;
       Api.deleteEvent(id)
         .then(() => {
           showToast('账目记录已删除，系统已完成全额重算！', 'success');
@@ -879,6 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
       editCnhRate.value = e.cnhRate || appState.summary.cnhRate || 7.2000;
     }
 
+    formController.prepareEdit(e);
     window.FundCustomSelect?.refresh(editEventModal);
     openModal(editEventModal);
   }

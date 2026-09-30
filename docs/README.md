@@ -39,6 +39,7 @@
 | :--- | :--- |
 | [ARCHITECTURE.md](./technical/ARCHITECTURE.md) | **分层架构**：事件溯源重放引擎、状态机、双轨无滑点守恒与数据流向 |
 | [CODE_REVIEW.md](./technical/CODE_REVIEW.md) | **架构审查**：系统核心模块评分、架构健壮度与代码质量评估报告 |
+| [BUG_REPORT.md](./technical/BUG_REPORT.md) | **缺陷审查**：账目、结算、备份与界面问题的复现记录及修复状态 |
 | [TECHNICAL_DEBT.md](./technical/TECHNICAL_DEBT.md) | **技术债务**：当前系统的已知债务追踪与长期重构演进清单 |
 | [数据迁移说明.md](../数据迁移说明.md) | **运维操作**：底层数据结构规范、冷热备份与版本迁移操作指引（根目录） |
 

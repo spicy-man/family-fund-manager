@@ -117,11 +117,19 @@
       }
     });
 
+    let editRate = 7.2;
+    let editCnhManual = false;
+    const prepareEdit = event => {
+      editRate = event.amount > 0 && event.cnhAmount > 0
+        ? event.cnhAmount / event.amount
+        : (parseFloat(inputCnhRate.value) || 7.2);
+      editCnhManual = false;
+    };
+    editCnhAmount.addEventListener('input', () => { editCnhManual = true; });
     editAmount.addEventListener('input', () => {
       const usdVal = parseFloat(editAmount.value);
-      const rateVal = parseFloat(inputCnhRate.value) || 7.2;
-      if (!isNaN(usdVal) && editEventType.value !== 'valuation') {
-        editCnhAmount.value = (usdVal * rateVal).toFixed(2);
+      if (!editCnhManual && ['deposit', 'withdraw'].includes(editEventType.value)) {
+        editCnhAmount.value = Number.isFinite(usdVal) ? (usdVal * editRate).toFixed(2) : '';
       }
     });
 
@@ -180,7 +188,7 @@
       if (type === 'deposit' || type === 'withdraw') {
         payload.member = editMember.value;
         payload.amount = parseFloat(editAmount.value);
-        payload.cnhAmount = parseFloat(editCnhAmount.value);
+        payload.cnhAmount = editCnhAmount.value.trim() === '' ? null : parseFloat(editCnhAmount.value);
       } else if (type === 'valuation') {
         payload.totalNAV = parseFloat(editAmount.value);
       } else if (type === 'transfer') {
@@ -215,7 +223,7 @@
       const member = elTxMember.value;
       const type = document.querySelector('input[name="txType"]:checked').value;
       const amount = parseFloat(txAmount.value);
-      const cnhAmount = parseFloat(txCnhAmount.value);
+      const cnhAmount = txCnhAmount.value.trim() === '' ? undefined : parseFloat(txCnhAmount.value);
       const date = txDate.value;
       const remark = txRemark.value.trim();
 
@@ -261,7 +269,7 @@
       });
     });
 
-    return { updateTransferDisplay: updateTfCnhDisplay };
+    return { updateTransferDisplay: updateTfCnhDisplay, prepareEdit };
   }
 
   window.FundTransactionController = { init };

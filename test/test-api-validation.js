@@ -86,6 +86,38 @@ async function request(handler, body, params = {}) {
   const reverseSettlement = api.routes['post:/api/performance-settlement/reverse-latest'];
   const updateEvent = api.routes['put:/api/event/:id'];
 
+  // Exercise the conditional LP guard without startup migration normalizing
+  // roles. A rejected reassignment must leave the persisted ledger unchanged.
+  const roleDb = {
+    cnhRate: 7.2,
+    members: [
+      { id: 'a', name: 'Alice', roles: { lp: true, gp: false } },
+      { id: 'b', name: 'Bob', roles: { lp: true, gp: true } },
+      { id: 'gp', name: 'GP only', roles: { lp: false, gp: true } }
+    ],
+    performanceFee: { gpMemberId: 'b', annualRate: 0.06, feeRate: 0.25 },
+    indexCache: {},
+    events: [
+      { id: 'd', type: 'deposit', member: 'a', amount: 100, cnhAmount: 720, date: '2026-01-04', createdAt: 1 },
+      { id: 'w', type: 'withdraw', member: 'a', amount: 10, cnhAmount: 72, date: '2026-01-11', createdAt: 2 },
+      { id: 't', type: 'transfer', fromMember: 'a', toMember: 'b', amount: 10, cnhRate: 7.2, cnhAmount: 72, date: '2026-01-18', createdAt: 3 }
+    ]
+  };
+  for (const [id, body] of [
+    ['d', { member: 'gp' }], ['w', { member: 'gp' }],
+    ['t', { fromMember: 'gp' }], ['t', { toMember: 'gp' }]
+  ]) {
+    const roleApi = makeApi(undefined, roleDb);
+    const result = await request(roleApi.routes['put:/api/event/:id'], body, { id });
+    assert.strictEqual(result.status, 400);
+    assert.match(result.body.message, /LP/);
+    assert.strictEqual(roleApi.getWrites(), 0);
+    assert.deepStrictEqual(roleApi.getDb(), roleDb);
+  }
+  const validRoleApi = makeApi(undefined, { ...roleDb, events: [roleDb.events[0]] });
+  const validRoleEdit = await request(validRoleApi.routes['put:/api/event/:id'], { member: 'b' }, { id: 'd' });
+  assert.strictEqual(validRoleEdit.status, 200, 'a GP with LP identity remains eligible');
+
   const beforeCutoffApi = makeApi(() => new Date('2026-08-06T08:04:00Z'));
   const beforeCutoffValuation = await request(beforeCutoffApi.routes['post:/api/valuation'], {
     totalNAV: 120, date: '2026-08-06'

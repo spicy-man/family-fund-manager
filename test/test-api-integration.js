@@ -150,6 +150,9 @@ async function startExternalFailureServer() {
     assert.deepStrictEqual(exportedDb.events.map(event => event.sequenceNumber), [1, 2, 3]);
     assert.strictEqual(Object.prototype.hasOwnProperty.call(exportedDb, 'indexCache'), false);
     assert.strictEqual(Object.prototype.hasOwnProperty.call(exportedDb, 'customBenchmarkCache'), false);
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(exportedDb, 'marketHistory'), false);
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(
+      JSON.parse(fs.readFileSync(path.join(dataDir, 'db.json'), 'utf8')), 'marketHistory'), false);
     assert(Array.isArray(exportedConfig.tickers));
     assert.deepStrictEqual(exportedConfig.customBenchmark, {
       name: 'VOO',
@@ -493,6 +496,59 @@ async function startExternalFailureServer() {
     const afterRoundTrip = await request(server, 'GET', '/api/state');
     assert.deepStrictEqual(afterRoundTrip.body.data.summary, beforeRoundTrip.body.data.summary);
     assert.deepStrictEqual(afterRoundTrip.body.data.members, beforeRoundTrip.body.data.members);
+
+    // Both settlement types are immutable through the ordinary event API.
+    const reversal = crossLedger.records.find(item => item.type === 'performance_settlement_reversal');
+    const ledgerBefore = fs.readFileSync(path.join(dataDir, 'settlements.json'), 'utf8');
+    for (const method of ['PUT', 'DELETE']) {
+      response = await request(server, method, `/api/event/${reversal.id}`,
+        method === 'PUT' ? { remark: 'must not change' } : undefined);
+      assert.strictEqual(response.status, 409);
+      assert.strictEqual(response.body.code, 'BUSINESS_CONFLICT');
+    }
+    assert.strictEqual(fs.readFileSync(path.join(dataDir, 'settlements.json'), 'utf8'), ledgerBefore);
+
+    // After a successful core commit, a disposable rate-cache failure is a
+    // warning, never a false failed restore. Use a different live book first.
+    const storage = require('../lib/storage');
+    const oldWriteRate = storage.writeCnhRateCache;
+    const oldConsoleError = console.error;
+    let warningRestore;
+    try {
+      storage.writeCnhRateCache = () => { throw new Error('injected rate cache failure'); };
+      console.error = () => {};
+      warningRestore = await requestBuffer(server, 'POST', '/api/backup/import', exported.body);
+    } finally {
+      storage.writeCnhRateCache = oldWriteRate;
+      console.error = oldConsoleError;
+    }
+    assert.strictEqual(warningRestore.status, 200);
+    const warningPayload = JSON.parse(warningRestore.body.toString('utf8'));
+    assert.strictEqual(warningPayload.success, true);
+    assert.match(warningPayload.warnings[0], /账目已恢复.*汇率未更新/);
+    assert.deepStrictEqual(storage.readDb().events, exportedDb.events);
+
+    // Omitting CNH retains historical FX; explicit clearing uses current FX.
+    response = await request(server, 'POST', '/api/settings', { cnhRate: 7.8 });
+    assert.strictEqual(response.status, 200);
+    const depositId = exportedDb.events[0].id;
+    response = await request(server, 'PUT', `/api/event/${depositId}`, { amount: 200 });
+    assert.strictEqual(response.status, 200);
+    assert(Math.abs(response.body.data.cnhAmount - 1440) < 1e-8);
+    for (const cnhAmount of [null, '']) {
+      response = await request(server, 'PUT', `/api/event/${depositId}`, { cnhAmount });
+      assert.strictEqual(response.status, 200);
+      assert.strictEqual(response.body.data.cnhAmount, 1560);
+    }
+    response = await request(server, 'PUT', `/api/event/${depositId}`, { cnhAmount: 0 });
+    assert.strictEqual(response.status, 400, 'zero CNH remains invalid');
+    for (const cnhAmount of [null, '']) {
+      response = await request(server, 'POST', '/api/transaction', {
+        member: 'me', type: 'deposit', amount: 10, cnhAmount, date: '2026-03-08'
+      });
+      assert.strictEqual(response.status, 200);
+      assert.strictEqual(response.body.data.cnhAmount, 78);
+    }
 
     response = await request(server, 'GET', '/api/does-not-exist');
     assert.strictEqual(response.status, 404);

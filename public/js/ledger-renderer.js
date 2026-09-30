@@ -181,7 +181,7 @@ window.FundLedgerRenderer = {
     if (!rendered) {
       const empty = document.createElement('tr');
       empty.className = 'empty-row';
-      empty.innerHTML = '<td colspan="7" style="text-align:center;color:var(--color-text-muted);padding:40px 0;">未检索到符合过滤条件的交易记录</td>';
+      empty.innerHTML = '<td colspan="8" style="text-align:center;color:var(--color-text-muted);padding:40px 0;">未检索到符合过滤条件的交易记录</td>';
       ledgerTbody.appendChild(empty);
     }
   }

@@ -31,7 +31,7 @@
       </svg>
       <span>
         <strong>家庭财富账本</strong>
-        <small>WEALTH LEDGER <b class="sidebar-version">v3.16.2</b></small>
+        <small>WEALTH LEDGER <b class="sidebar-version">v3.16.3</b></small>
       </span>
     </a>
 
@@ -114,7 +114,7 @@
         <div class="logo-text">
           <h1>家庭基金账目管理系统</h1>
           <span class="sub-logo">Family Private Wealth &amp; NAV Ledger &nbsp;<span
-              class="version-badge">v3.16.2</span></span>
+              class="version-badge">v3.16.3</span></span>
         </div>
       </div>
       <div class="header-actions">
@@ -667,10 +667,12 @@
           </select>
           <select id="filter-type" class="select-input">
             <option value="all">所有流水类型</option>
-            <option value="deposit">入金 (Deposit)</option>
-            <option value="withdraw">出金 (Withdraw)</option>
-            <option value="valuation">估值重估 (Valuation)</option>
+            <option value="deposit">入金</option>
+            <option value="withdraw">出金</option>
+            <option value="valuation">估值重估</option>
             <option value="performance_settlement">业绩结算</option>
+            <option value="transfer">内部转让</option>
+            <option value="performance_settlement_reversal">结算冲销</option>
           </select>
         </div>
       </div>
@@ -1140,7 +1142,8 @@
               <label for="edit-cnh-amount">对应人民币金额 (CNH)</label>
               <div class="input-wrapper text-glow">
                 <span class="currency-prefix">¥</span>
-                <input type="number" id="edit-cnh-amount" step="0.01" min="0.01" placeholder="0.00">
+                <input type="number" id="edit-cnh-amount" step="0.01" min="0.01" placeholder="留空按当前汇率换算"
+                  title="修改美元金额时保留原交易汇率；手动填写的人民币金额保持不变，清空后按当前汇率换算。">
               </div>
             </div>
             <!-- 受让汇率 (仅转让类型显示) -->

@@ -247,6 +247,7 @@ select:focus-visible {
 }
 
 .toast.toast-undo {
+  cursor: default;
   border-color: rgba(245, 158, 11, 0.35);
   max-width: 380px;
   flex-direction: column;
@@ -290,13 +291,18 @@ select:focus-visible {
   letter-spacing: 0.02em;
 }
 
-.toast-undo-btn:hover {
+.toast-undo-btn:hover:not(:disabled) {
   background: rgba(245, 158, 11, 0.32);
   transform: scale(1.04);
 }
 
-.toast-undo-btn:active {
+.toast-undo-btn:active:not(:disabled) {
   transform: scale(0.97);
+}
+
+.toast-undo-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 /* 倒计时进度条 */

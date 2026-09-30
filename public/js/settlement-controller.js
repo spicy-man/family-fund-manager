@@ -10,6 +10,7 @@
     const { open: openModal, close: closeModal } = modal;
     const { runOnce: submitOnce } = submission;
     let pendingSettlement = null;
+    let previewVersion = 0;
 
     btnReverseSettlement.addEventListener('click', async () => {
       if (!confirm('确定撤销最近一次有效业绩结算吗？系统会保留原结算并追加冲销记录，相关账期将重新开放。')) return;
@@ -27,14 +28,18 @@
 
     const settlementPayload = () => ({ gpMember: settleGp.value, date: settleDate.value, remark: settleRemark.value.trim() });
     const invalidateSettlementPreview = () => {
+      previewVersion++;
       pendingSettlement = null;
       closeModal(settlementPreviewModal);
     };
     [settleGp, settleDate, settleRemark].forEach(element => element.addEventListener('input', invalidateSettlementPreview));
     btnPreviewSettlement.addEventListener('click', async () => {
+      invalidateSettlementPreview();
+      const version = previewVersion;
+      const payload = Object.freeze(settlementPayload());
       try {
-        pendingSettlement = settlementPayload();
-        const preview = await Api.previewSettlement(pendingSettlement);
+        const preview = await Api.previewSettlement(payload);
+        if (version !== previewVersion) return;
         const formatRate = value => `${(Number(value) * 100).toFixed(2).replace(/\.00$/, '')}%`;
         const annualRateLabel = formatRate(preview.event.annualRate);
         const feeRateLabel = formatRate(preview.event.feeRate);
@@ -67,26 +72,29 @@
               <td class="privacy-sensitive"><strong class="${item.excess > 0 ? 'text-green' : ''}">$${formatMoney(item.excess)}</strong><div class="settlement-fee-detail">${feeRateLabel}报酬 $${formatMoney(item.fee)} · ${item.feeShares.toFixed(6)}份</div></td>
             </tr>${lotRows}`;
         }).join('');
-        const gpName = getMembers().find(member => member.id === pendingSettlement.gpMember)?.name || '主GP';
-        settlementPreviewSubtitle.textContent = `${pendingSettlement.date} · 采用 ${preview.valuationDate} 估值 · ${annualRateLabel} 门槛 / ${feeRateLabel} 报酬 · GP：${gpName}`;
+        const gpName = getMembers().find(member => member.id === payload.gpMember)?.name || '主GP';
+        settlementPreviewSubtitle.textContent = `${payload.date} · 采用 ${preview.valuationDate} 估值 · ${annualRateLabel} 门槛 / ${feeRateLabel} 报酬 · GP：${gpName}`;
         settlementPreviewSummary.innerHTML = [
           ['结算单位净值', preview.navPerShare.toFixed(4)],
           ['参与LP', `${preview.breakdown.length} 人`],
           ['合计业绩报酬', `$${formatMoney(preview.totalFee)}`]
         ].map(([label, value]) => `<div class="info-alert" style="display:block;margin:0"><div style="font-size:.7rem;color:var(--color-text-muted)">${label}</div><strong class="privacy-sensitive" style="display:block;font-size:1.15rem;margin-top:4px">${value}</strong></div>`).join('');
         settlementPreviewBody.innerHTML = rows || '<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--color-text-muted)">结算日没有持有LP份额的成员</td></tr>';
+        pendingSettlement = payload;
         openModal(settlementPreviewModal, btnPreviewSettlement);
       } catch (error) {
+        if (version !== previewVersion) return;
         invalidateSettlementPreview();
         showToast(error.message, 'error');
       }
     });
     btnConfirmSettlement.addEventListener('click', async () => {
       if (!pendingSettlement) return;
+      const payload = pendingSettlement;
       btnConfirmSettlement.disabled = true;
       await submitOnce(formSettlement, async () => {
         try {
-          await Api.confirmSettlement(pendingSettlement);
+          await Api.confirmSettlement(payload);
           closeModal(settlementPreviewModal);
           showSubmissionSuccess('业绩结算已确认并锁账');
           invalidateSettlementPreview();

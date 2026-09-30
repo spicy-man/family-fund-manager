@@ -459,6 +459,28 @@ try {
   }
   assert.strictEqual(cacheReadErrors, 1);
 
+  // Cached market facts must survive ledger cleanup without being duplicated
+  // into ordinary writes, multi-file snapshots or their automatic backups.
+  const marketDataDir = path.join(testRoot, 'data-market-isolation');
+  const marketBackupDir = path.join(testRoot, 'backups-market-isolation');
+  const marketStorage = loadStorage(marketDataDir, marketBackupDir);
+  const marketDb = marketStorage.readDb();
+  marketStorage.writeMarketHistory({ version: 1, tickers: {
+    VOO: { prices: { '2026-03-02': 500 }, fetchedFrom: '2026-03-02', fetchedThrough: '2026-03-02' }
+  } });
+  const historyBytes = fs.readFileSync(marketStorage.MARKET_HISTORY_FILE, 'utf8');
+  fs.writeFileSync(marketStorage.DB_FILE, JSON.stringify({ ...marketDb, marketHistory: { stale: true } }));
+  marketStorage.clearDbCache();
+  assert.strictEqual(marketStorage.readDb().marketHistory, undefined, 'startup removes stale embedded market data');
+  assert.strictEqual(fs.readFileSync(marketStorage.MARKET_HISTORY_FILE, 'utf8'), historyBytes);
+  marketStorage.writeDb({ ...marketDb, marketHistory: marketStorage.readMarketHistory() });
+  marketStorage.writeSnapshot({ ...marketDb, marketHistory: marketStorage.readMarketHistory() }, marketStorage.readConfig(), { version: 1, records: [] });
+  assert.strictEqual(JSON.parse(fs.readFileSync(marketStorage.DB_FILE, 'utf8')).marketHistory, undefined);
+  for (const name of fs.readdirSync(marketBackupDir).filter(name => name.endsWith('.zip'))) {
+    assert.strictEqual(JSON.parse(new AdmZip(path.join(marketBackupDir, name)).readAsText('data/db.json')).marketHistory, undefined);
+  }
+  assert.strictEqual(fs.readFileSync(marketStorage.MARKET_HISTORY_FILE, 'utf8'), historyBytes);
+
   console.log('Storage, index-cache recovery, backup ordering and snapshot rollback assertions passed.');
 } finally {
   if (originalDataDir === undefined) delete process.env.FUND_DATA_DIR;

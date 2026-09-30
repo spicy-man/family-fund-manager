@@ -37,8 +37,8 @@
       if (!file) return;
       try {
         btnConfirmImport.setAttribute('disabled', 'true');
-        await api.importBackup(file);
-        showToast('ZIP 快照恢复成功！账目和系统配置均已覆盖。', 'success');
+        const result = await api.importBackup(file);
+        showToast(result.message || 'ZIP 快照恢复成功！账目和系统配置均已覆盖。', result.warnings?.length ? 'warning' : 'success');
         modal.close(backupModal);
         fileImport.value = '';
         fileNameLabel.textContent = '未选择任何文件';
