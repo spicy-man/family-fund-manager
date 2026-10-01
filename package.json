@@ -1,6 +1,6 @@
 {
   "name": "family-fund-manager",
-  "version": "3.16.3",
+  "version": "3.16.4",
   "description": "Family Fund Management System",
   "main": "server.js",
   "scripts": {

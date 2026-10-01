@@ -497,7 +497,16 @@ function startServer({ port = PORT, host = '127.0.0.1' } = {}) {
 }
 
 if (require.main === module) {
-  startServer();
+  const server = startServer();
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\
+❌ [启动失败] 端口 ${PORT} 已被占用！`);
+      console.error(`💡 请检查是否已经运行了系统实例，或关闭占用 ${PORT} 端口的程序后重试。\
+`);
+      process.exit(1);
+    }
+  });
 }
 
 module.exports = { app, calculateStateFromDb, ensureIndexCache, startServer };
