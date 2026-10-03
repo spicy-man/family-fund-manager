@@ -1,4 +1,5 @@
 const express = require('express');
+const { MAX_BACKUP_BYTES, readBackupEntry, normalizeImportedEvent } = require('../lib/backup-import');
 const AdmZip = require('adm-zip');
 const {
   DEFAULT_ANNUAL_RATE,
@@ -14,7 +15,7 @@ const { normalizeCustomBenchmark } = require('../lib/custom-benchmark');
 
 function registerBackupRoutes(app, deps, utils, tickerUtils) {
   const { readDb, readSettlements, readConfig, writeSnapshot, writeCnhRate = () => {},
-    writeIndexCache = () => {}, ensureIndexCache, isValidDate } = deps;
+    writeIndexCache = () => {}, ensureIndexCache, isValidDate, normalizeRemark } = deps;
   const { toFiniteNumber, findLedgerIssue, rejectLedgerIssue, rejectFutureSettlementDate } = utils;
   const { queueTickerRefresh } = tickerUtils;
   const rejectImport = message => { throw new InputError(message); };
@@ -74,27 +75,27 @@ app.post('/api/backup/import', express.raw({
     if (!dbEntry || !configEntry || dbEntry.isDirectory || configEntry.isDirectory) {
       rejectImport('ZIP 中必须包含 data/db.json 和 data/config.json。');
     }
-    const totalUncompressedSize = Number(dbEntry.header.size) + Number(configEntry.header.size) +
-      (settlementsEntry ? Number(settlementsEntry.header.size) : 0);
-    if (!Number.isFinite(totalUncompressedSize) || totalUncompressedSize > 10 * 1024 * 1024) {
-      rejectImport('ZIP 内的数据文件过大（最大 10MB）。');
-    }
-
+    const entries = [dbEntry, configEntry, ...(settlementsEntry ? [settlementsEntry] : [])];
+    let remaining = MAX_BACKUP_BYTES;
+    const buffers = entries.map(entry => {
+      const data = readBackupEntry(entry, remaining);
+      remaining -= data.length;
+      return data;
+    });
     let backupDb;
     let backupConfig;
     let backupSettlements = { version: 1, records: [] };
     try {
-      backupDb = JSON.parse(dbEntry.getData().toString('utf8'));
-      backupConfig = JSON.parse(configEntry.getData().toString('utf8'));
-      if (settlementsEntry && !settlementsEntry.isDirectory) {
-        backupSettlements = JSON.parse(settlementsEntry.getData().toString('utf8'));
-      }
+      backupDb = JSON.parse(buffers[0].toString('utf8'));
+      backupConfig = JSON.parse(buffers[1].toString('utf8'));
+      if (settlementsEntry) backupSettlements = JSON.parse(buffers[2].toString('utf8'));
     } catch (_) {
       rejectImport('ZIP 中的 JSON 数据损坏或无法解析。');
     }
 
-    const { events, members, cnhRate, indexCache, benchmarkClosePolicy, performanceFee,
+    const { members, cnhRate, indexCache, benchmarkClosePolicy, performanceFee,
       lastEventSequence: importedDbHighWater } = backupDb || {};
+    let events = backupDb?.events;
     if (!Array.isArray(events)) {
       rejectImport('导入的数据格式不正确，缺少 events 数组');
     }
@@ -102,7 +103,7 @@ app.post('/api/backup/import', express.raw({
       backupSettlements = {
         version: 1,
         records: events.filter(event =>
-          event.type === 'performance_settlement' || event.type === 'performance_settlement_reversal')
+          event?.type === 'performance_settlement' || event?.type === 'performance_settlement_reversal')
       };
     }
 
@@ -180,6 +181,12 @@ app.post('/api/backup/import', express.raw({
       }
     }
 
+    events = events.map(event => normalizeImportedEvent(event, memberIds, normalizeRemark, isValidDate));
+    if (!settlementsEntry) {
+      backupSettlements.records = events.filter(event =>
+        event.type === 'performance_settlement' || event.type === 'performance_settlement_reversal');
+    }
+
     let importedCnhRate = currentDb.cnhRate;
     if (cnhRate !== undefined) {
       importedCnhRate = toFiniteNumber(cnhRate);
@@ -229,9 +236,18 @@ app.post('/api/backup/import', express.raw({
          (!Number.isSafeInteger(backupSettlements.lastEventSequence) || backupSettlements.lastEventSequence < 0))) {
       rejectImport('备份中的独立结算账本格式无效。');
     }
-    const settlementIds = new Set();
+    if (events.length + (settlementsEntry ? backupSettlements.records.length : 0) > 10000) {
+      rejectImport('导入事件数量超限（最大 10000 条）');
+    }
+    // Embedded records were already normalized above. Keep their references
+    // shared with events so legacy sequence migration retains interleaving.
+    if (settlementsEntry) {
+      backupSettlements.records = backupSettlements.records.map(record =>
+        normalizeImportedEvent(record, memberIds, normalizeRemark, isValidDate));
+    }
+    const settlementIds = new Set(db.events.map(event => event.id));
     for (const record of backupSettlements.records) {
-      if (!record || typeof record.id !== 'string' || settlementIds.has(record.id) ||
+      if (!record || typeof record.id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(record.id) || settlementIds.has(record.id) ||
           !['performance_settlement', 'performance_settlement_reversal'].includes(record.type) ||
           !isValidDate(record.date) || !Number.isFinite(record.createdAt) ||
           (record.sequenceNumber !== undefined && !hasSequenceNumber(record))) {

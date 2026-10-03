@@ -136,16 +136,14 @@ backups/   自动快照
 
 | 领域分类 | 文档 | 说明 |
 |:---|:---|:---|
-| **⚖️ 财务与治理** | [基金管理准则.md](./docs/finance/基金管理准则.md) | 10 项核心治理契约、巴菲特 BPL 哲学渊源与计算案例 |
-| | [财务逻辑与治理规则审查备忘录.md](./docs/finance/财务逻辑与治理规则审查备忘录.md) | GP/LP 核心治理规则确权、免检边界与审查结论 |
-| | [收益率计算与退出机制分析.md](./docs/finance/收益率计算与退出机制分析.md) | 累计现金回报率 vs 在管本金收益率深度剖析 |
+| **⚖️ 财务与治理** | [基金管理准则.md](./docs/finance/基金管理准则.md) | 10 项治理准则、计算案例及治理确认与审查附录 |
+| | [收益率计算与退出机制分析.md](./docs/finance/收益率计算与退出机制分析.md) | 现行收益率口径与退出本金规则，附历史方案讨论 |
 | **🏛 技术与架构** | [ARCHITECTURE.md](./docs/technical/ARCHITECTURE.md) | 整体分层架构、事件溯源计算、事务写入与数据流向 |
-| | [CODE_REVIEW.md](./docs/technical/CODE_REVIEW.md) | 代码审查报告与架构综合评分 |
-| | [TECHNICAL_DEBT.md](./docs/technical/TECHNICAL_DEBT.md) | 已知技术债务与重构追踪 |
+| | [CODE_REVIEW.md](./docs/technical/CODE_REVIEW.md) | 当前问题与销项总表、按日期归档的审查记录 |
 | | [数据迁移说明.md](./数据迁移说明.md) | 旧账本与冷数据迁移恢复操作指南（根目录） |
 | **📋 项目与规范** | [CHANGELOG.md](./CHANGELOG.md) | 完整的版本发布历史与技术特性演进（根目录） |
 | | [COMMIT_GUIDE.md](./COMMIT_GUIDE.md) | Git 提交与版本发布规范指南（根目录） |
-| | [TASKS.md](./docs/project/TASKS.md) | 系统开发任务规划与排期进度 |
+| | [TASKS.md](./docs/project/TASKS.md) | 系统改进任务、技术债及完成验证记录 |
 
 ## 常见问题
 

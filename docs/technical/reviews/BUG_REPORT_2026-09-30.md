@@ -1,5 +1,7 @@
 # 🐛 家庭基金账目管理系统 - 待修复缺陷与审查清单 (Bug Report)
 
+> **归档说明**：历史缺陷记录：本轮 #1–#10 已修复，复现正文保留修复前状态。 [返回审查总表](../CODE_REVIEW.md)。
+
 > **记录时间**：2026-09-30  
 > **适用版本**：v3.16.2  
 > **状态概览**：原始审查及复现记录保留如下；#1–#10 均已修复。#3 的正常流程触发条件仍以文末限定为准。
@@ -35,7 +37,7 @@
 ### 1. 【UI 布局错位】流水表格筛选无结果时 `colspan` 少算一列
 
 * **严重级别**：次要 (UI / DOM 布局)
-* **涉及文件**：[`public/js/ledger-renderer.js`](../../public/js/ledger-renderer.js) 第 184 行
+* **涉及文件**：[`public/js/ledger-renderer.js`](../../../public/js/ledger-renderer.js) 第 184 行
 * **缺陷描述**：
   流水明细主表实际包含 **8 列**：
   1. 时间
@@ -64,7 +66,7 @@
 ### 2. 【功能缺失】流水类型下拉筛选框遗漏“内部转让 (Transfer)”与“结算冲销”
 
 * **严重级别**：中等 (功能缺失 / 操作盲区)
-* **涉及文件**：[`public/index.html`](../../public/index.html) 第 668-675 行
+* **涉及文件**：[`public/index.html`](../../../public/index.html) 第 668-675 行
 * **缺陷描述**：
   系统在操作面板提供四大业务操作（出入金、净值重估、内部转让、业绩结算），底层渲染器 `ledger-renderer.js` 也完整支持 `transfer`（内部转让）与 `performance_settlement_reversal`（结算冲销）的徽章与明细渲染。但在流水类型过滤下拉框 `<select id="filter-type">` 中：
   ```html
@@ -89,7 +91,7 @@
 ### 3. 【权限与业务规则漏洞】编辑事件接口 `PUT /api/event/:id` 遗漏 LP 身份校验
 
 * **严重级别**：严重 (业务契约与完整性穿透)
-* **涉及文件**：[`routes/transactions.js`](../../routes/transactions.js) 第 317-322 行 及 第 380-391 行
+* **涉及文件**：[`routes/transactions.js`](../../../routes/transactions.js) 第 317-322 行 及 第 380-391 行
 * **缺陷描述**：
   在新增出入金与内部转让时，系统强制要求参与者具备 LP 身份：
   - `POST /api/transaction`：`if (memberObj.roles?.lp === false) throw new InputError('只有具有LP身份的成员可以登记出入金。');`
@@ -131,8 +133,8 @@
 
 * **严重级别**：中等 (数据转换与容错缺陷)
 * **涉及文件**：
-  - 前端：[`public/js/transaction-controller.js`](../../public/js/transaction-controller.js) 第 183 行
-  - 后端：[`routes/transactions.js`](../../routes/transactions.js) 第 44-51 行、第 330-344 行
+  - 前端：[`public/js/transaction-controller.js`](../../../public/js/transaction-controller.js) 第 183 行
+  - 后端：[`routes/transactions.js`](../../../routes/transactions.js) 第 44-51 行、第 330-344 行
 * **缺陷描述**：
   在“编辑账目”对话框中，人民币金额输入框未加 `required`，设计上支持用户清空后让系统按汇率自动重算。
   - 前端逻辑：`payload.cnhAmount = parseFloat(editCnhAmount.value);`。当输入框为空时，`parseFloat("")` 返回 `NaN`，在 `JSON.stringify` 时被序列化为 `null` 发送。
@@ -157,7 +159,7 @@
 ### 5. 【交互容错隐患】删除流水 3 秒撤销通知卡片的全局点击交互优化
 
 * **严重级别**：轻微 (交互体验 / 防误触)
-* **涉及文件**：[`public/js/app.js`](../../public/js/app.js) 第 760-820 行、[`public/css/overlays.css`](../../public/css/overlays.css)
+* **涉及文件**：[`public/js/app.js`](../../../public/js/app.js) 第 760-820 行、[`public/css/overlays.css`](../../../public/css/overlays.css)
 * **缺陷描述**：
   v3.16.2 版本为解决操作面板被 Toast 遮挡问题，给 `.toast` 添加了 `pointer-events: auto; cursor: pointer;` 并支持点击即刻关闭。
   但在流水删除时，Toast 内部包含了一个 `<button class="toast-undo-btn">↩ 撤销</button>`。若用户本意想点击撤销按钮，但点击位置稍有偏差落在卡片其他区域，卡片样式让其产生“点击即关闭”的心理预期；同时若 3 秒计时刚好结束、异步请求已发出时，再次点击撤销已无法挽回。
