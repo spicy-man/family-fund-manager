@@ -1,6 +1,7 @@
 {
   "name": "family-fund-manager",
-  "version": "3.18.0",
+  "version": "3.18.1",
+  "license": "MIT",
   "description": "Family Fund Management System",
   "main": "server.js",
   "scripts": {

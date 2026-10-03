@@ -130,6 +130,31 @@ data/      本地数据与可重建缓存
 backups/   自动快照
 ```
 
+## 许可证
+
+本项目的原创代码采用 [MIT License](./LICENSE)，允许使用、修改、商用与再发布，使用或分发时须保留版权声明和许可证文本。软件按现状提供，不提供任何保证。
+
+第三方组件与字体继续适用各自的许可证，详见下方开源致谢及对应许可证文件。
+
+## 开源致谢
+
+本项目建立在以下开源项目之上，感谢各位作者与维护者的贡献。
+
+其中，按钮、导航与 tooltip 的液态玻璃效果来自 **[Hyalite](https://github.com/VII-Cae/hyalite--liquid-glass) v0.5.0**，由 **VII-Cae（VII）** 创作。Hyalite 通过透镜映射、SVG 位移滤镜与 `backdrop-filter` 实现背景折射；本项目在此基础上接入业务界面，并提供 tooltip 实时调参面板。仓库保留了上游源码中的版权声明与 [MIT 许可证全文](./public/vendor/hyalite/0.5.0/LICENSE)。
+
+| 开源项目 | 在本项目中的用途 | 许可证 |
+| --- | --- | --- |
+| [Hyalite](https://github.com/VII-Cae/hyalite--liquid-glass) | 液态玻璃折射与边缘光照 | MIT |
+| [Chart.js](https://github.com/chartjs/Chart.js) | 净值、业绩走势与成员资产占比图表 | MIT |
+| [SortableJS](https://github.com/SortableJS/Sortable) | 拖拽排序 | MIT |
+| [Decimal.js](https://github.com/MikeMcl/decimal.js) | 高精度财务计算 | MIT |
+| [Express](https://github.com/expressjs/express) | 本地 Web 服务与 API | MIT |
+| [ADM-ZIP](https://github.com/cthackers/adm-zip) | ZIP 备份与恢复 | MIT |
+| [Inter](https://github.com/rsms/inter) / [Fontsource](https://fontsource.org/fonts/inter) | 界面正文字体，本地提供可变字体文件 | SIL OFL 1.1 |
+| [Outfit](https://github.com/Outfitio/Outfit-Fonts) / [Fontsource](https://fontsource.org/fonts/outfit) | 标题与数字字体，本地提供可变字体文件 | SIL OFL 1.1 |
+
+第三方组件与字体保留各自的版权及许可证，相关文本随其源码或安装包提供。上述许可证仅对应各项第三方内容，不代表本项目原创代码的授权协议。
+
 ## 项目文档
 
 系统全部架构设计、业务治理、财务分析与开发规范文档归档于 [`docs/`](./docs/README.md) 目录中心；核心变更日志与操作说明位于根目录：
