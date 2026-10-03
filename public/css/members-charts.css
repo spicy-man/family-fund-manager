@@ -55,28 +55,18 @@
 }
 
 #members-section .member-view {
-  display: grid;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translateY(8px);
-  transition: opacity 0.2s ease, transform 0.24s ease, visibility 0s linear 0.24s;
+  display: none;
 }
 
 #members-section .member-view.active {
+  display: grid;
   position: relative;
   z-index: 1;
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transform: translateY(0);
-  transition-delay: 0.05s, 0.05s, 0s;
 }
 
 .member-views-stage {
   position: relative;
   overflow: visible;
-  transition: height 0.26s ease;
 }
 
 /* 成员详情浮层需要越过 glass-panel 和视图舞台边界。 */
@@ -87,12 +77,6 @@
 
 #ledger-section {
   z-index: 1;
-}
-
-#members-section .member-view:not(.active) {
-  position: absolute;
-  inset: 0;
-  width: 100%;
 }
 
 /* 成员占比归属家庭成员资产面板，避免与趋势图混在同一功能区。 */

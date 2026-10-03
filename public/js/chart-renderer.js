@@ -2,6 +2,76 @@
  * 图表与趋势统计渲染器。Chart.js 实例由调用方持有，避免模块私有状态。
  */
 window.FundChartRenderer = {
+  allocationLabelsPlugin: {
+    id: 'allocationLabels',
+    beforeLayout(chart) {
+      // Keep the legend out of the leader labels' way on narrow panels.
+      const position = chart.width < 560 ? 'bottom' : 'right';
+      chart.options.plugins.legend.position = position;
+      if (chart.legend) chart.legend.position = position;
+    },
+    afterDatasetsDraw(chart, _args, options) {
+      if (options.empty) return;
+      const values = chart.data.datasets[0].data;
+      const total = values.reduce((sum, value) => sum + Number(value), 0);
+      if (!(total > 0)) return;
+      const { ctx, chartArea } = chart;
+      const sides = [[], []];
+      chart.getDatasetMeta(0).data.forEach((arc, index) => {
+        if (!(values[index] > 0) || !chart.getDataVisibility(index)) return;
+        const { x, y, startAngle, endAngle, outerRadius } = arc.getProps(
+          ['x', 'y', 'startAngle', 'endAngle', 'outerRadius'], true
+        );
+        if (!(outerRadius > 0)) return;
+        const angle = (startAngle + endAngle) / 2;
+        const direction = Math.cos(angle) >= 0 ? 1 : -1;
+        sides[direction === 1 ? 1 : 0].push({
+          x: x + Math.cos(angle) * outerRadius,
+          y: y + Math.sin(angle) * outerRadius,
+          elbowX: x + direction * (outerRadius + 12),
+          labelY: y + Math.sin(angle) * (outerRadius + 14),
+          direction,
+          text: `${(values[index] / total * 100).toFixed(2)}%`
+        });
+      });
+      ctx.save();
+      ctx.font = '600 12px Inter, sans-serif';
+      ctx.fillStyle = chart.options.plugins.legend.labels.color;
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = 1;
+      ctx.textBaseline = 'middle';
+      const top = chartArea.top + 6;
+      const bottom = chartArea.bottom - 6;
+      sides.forEach(labels => {
+        labels.sort((a, b) => a.labelY - b.labelY);
+        const gap = Math.min(20, (bottom - top) / Math.max(1, labels.length - 1));
+        // Separate nearby small slices, then pull the group back inside the canvas.
+        labels.forEach((label, index) => {
+          label.labelY = Math.max(top, label.labelY, index ? labels[index - 1].labelY + gap : top);
+        });
+        for (let index = labels.length - 1; index >= 0; index--) {
+          labels[index].labelY = Math.min(labels[index].labelY,
+            index === labels.length - 1 ? bottom : labels[index + 1].labelY - gap);
+        }
+        labels.forEach(label => {
+          const textWidth = ctx.measureText(label.text).width;
+          const rightEdge = chart.legend?.position === 'right' ? chart.legend.left - 8 : chart.width - 8;
+          const endX = label.direction === 1
+            ? Math.min(label.elbowX + 14, rightEdge - textWidth - 4)
+            : Math.max(label.elbowX - 14, textWidth + 12);
+          ctx.beginPath();
+          ctx.moveTo(label.x, label.y);
+          ctx.lineTo(label.elbowX, label.labelY);
+          ctx.lineTo(endX, label.labelY);
+          ctx.stroke();
+          ctx.textAlign = label.direction === 1 ? 'left' : 'right';
+          ctx.fillText(label.text, endX + label.direction * 4, label.labelY);
+        });
+      });
+      ctx.restore();
+    }
+  },
+
   datasetOpacityPlugin: {
     id: 'trendDatasetOpacity',
     beforeDatasetDraw(chart, args) {
@@ -540,6 +610,7 @@ window.FundChartRenderer = {
       if (!element) {
         element = document.createElement('div');
         element.className = 'glass-tooltip chart-external-tooltip';
+        element.setAttribute('role', 'tooltip');
         container.appendChild(element);
       }
       element.classList.add('glass-tooltip');
@@ -549,11 +620,6 @@ window.FundChartRenderer = {
       }
 
       element.replaceChildren();
-      const backdrop = document.createElement('div');
-      backdrop.className = 'glass-tooltip-backdrop glass-tooltip-chart-backdrop';
-      backdrop.setAttribute('aria-hidden', 'true');
-      element.appendChild(backdrop);
-
       const title = document.createElement('div');
       title.className = 'chart-external-tooltip-title';
       title.textContent = tooltip.title?.[0] || '';
@@ -607,14 +673,6 @@ window.FundChartRenderer = {
         containerHeight: container.clientHeight,
         inset
       });
-      const halfHeight = Math.ceil(element.offsetHeight / 2);
-      const tooltipTop = top - halfHeight;
-      // Canvas is often composited separately, so backdrop-filter alone cannot reliably blur it.
-      // Sample the chart once per render and use it as the tooltip's blurred backdrop instead.
-      if (!chart.$glassTooltipBackdrop) chart.$glassTooltipBackdrop = chart.canvas.toDataURL();
-      element.style.setProperty('--tooltip-chart-image', `url("${chart.$glassTooltipBackdrop}")`);
-      element.style.setProperty('--tooltip-chart-size', `${container.clientWidth}px ${container.clientHeight}px`);
-      element.style.setProperty('--tooltip-chart-position', `${-left + 28}px ${-tooltipTop + 28}px`);
       element.style.left = `${left}px`;
       element.style.top = `${top}px`;
       element.dataset.placement = placement;
@@ -638,7 +696,6 @@ window.FundChartRenderer = {
       Object.assign(nextNav.options.plugins.tooltip, tooltipTheme);
       nextNav.options.plugins.tooltip.enabled = false;
       nextNav.options.plugins.tooltip.external = externalTooltip;
-      nextNav.$glassTooltipBackdrop = null;
       nextNav.update();
     } else {
       nextNav = new Chart(navCtx, {
@@ -759,9 +816,27 @@ window.FundChartRenderer = {
       Object.assign(nextAllocation.data, { labels: members.map(member => member.name) });
       Object.assign(nextAllocation.data.datasets[0], { data: empty ? members.map(() => 1) : values, backgroundColor: colors });
       Object.assign(nextAllocation.options.plugins.tooltip, tooltipTheme, { enabled: false, external: externalTooltip });
-      nextAllocation.update();
+      nextAllocation.options.plugins.allocationLabels = { empty };
+      nextAllocation.options.animation = false;
+      nextAllocation.update('none');
     } else {
-      nextAllocation = new Chart(shareCanvas.getContext('2d'), { type: 'doughnut', data: { labels: members.map(member => member.name), datasets: [{ data: empty ? members.map(() => 1) : values, backgroundColor: colors, borderWidth: 3, hoverOffset: 10 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'right', labels: { color: 'rgba(255,255,255,.7)', font: { size: 11, weight: '500' } } }, tooltip: { ...tooltipTheme, enabled: false, external: externalTooltip } } } });
+      nextAllocation = new Chart(shareCanvas.getContext('2d'), {
+        type: 'doughnut',
+        plugins: [window.FundChartRenderer.allocationLabelsPlugin],
+        data: {
+          labels: members.map(member => member.name),
+          datasets: [{ data: empty ? members.map(() => 1) : values, backgroundColor: colors, borderWidth: 3, hoverOffset: 10 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: false, cutout: '70%',
+          layout: { padding: { left: 64, right: 64, top: 18, bottom: 18 } },
+          plugins: {
+            allocationLabels: { empty },
+            legend: { position: 'right', labels: { color: dark ? 'rgba(255,255,255,.7)' : 'rgba(31,41,55,.7)', font: { size: 11, weight: '500' } } },
+            tooltip: { ...tooltipTheme, enabled: false, external: externalTooltip }
+          }
+        }
+      });
     }
     return {
       navTrendChart: nextNav,

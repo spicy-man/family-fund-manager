@@ -10,7 +10,6 @@
       btnTabSettle, formTransaction, formValuation, formTransfer, formSettlement,
       inputCnhRate, tfRate
     } = elements;
-    let activeMemberView = 'assets';
 
     modal.bindAccessible(backupModal, btnCloseModal);
     modal.bindAccessible(principlesModal, btnClosePrinciplesModal);
@@ -48,24 +47,19 @@
 
     const memberViewsStage = document.querySelector('.member-views-stage');
     const memberAllocationSummary = document.querySelector('.member-allocation-summary');
+    const memberViewTransition = window.FundOperationPanel.create({
+      panel: memberViewsStage,
+      tabs: memberViewTabs,
+      forms: [membersGridContainer, memberAllocationSummary].filter(Boolean),
+      segmentedControl
+    });
     document.querySelectorAll('[data-member-view]').forEach(button => {
       button.addEventListener('click', event => {
-        const nextView = event.currentTarget.dataset.memberView;
-        if (nextView === activeMemberView) return;
-        const currentHeight = memberViewsStage?.offsetHeight || 0;
-        if (memberViewsStage) memberViewsStage.style.height = `${currentHeight}px`;
-        activeMemberView = nextView;
-        segmentedControl.activate(memberViewTabs, event.currentTarget);
-        membersGridContainer.classList.toggle('active', activeMemberView === 'assets');
-        memberAllocationSummary?.classList.toggle('active', activeMemberView === 'allocation');
-        const targetHeight = memberViewsStage?.scrollHeight || currentHeight;
-        requestAnimationFrame(() => {
-          if (memberViewsStage) memberViewsStage.style.height = `${targetHeight}px`;
-          if (activeMemberView === 'allocation') getAllocationChart()?.resize();
-        });
-        window.setTimeout(() => {
-          if (memberViewsStage) memberViewsStage.style.height = '';
-        }, 280);
+        const showAllocation = event.currentTarget.dataset.memberView === 'allocation';
+        memberViewTransition.switchTo(event.currentTarget,
+          showAllocation ? memberAllocationSummary : membersGridContainer, () => {
+            if (showAllocation) getAllocationChart()?.resize();
+          });
       });
     });
 

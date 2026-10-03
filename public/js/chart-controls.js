@@ -37,7 +37,6 @@
         getNavTrendChart().options.scales['y-assets'].display = true;
         getNavTrendChart().update('none');
       }
-      getNavTrendChart().$glassTooltipBackdrop = null;
       chartRenderer.animateDatasetVisibility(getNavTrendChart(), datasetIndex, visible, {
         duration: visible ? 320 : 240,
         onComplete: () => {

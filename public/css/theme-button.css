@@ -1,0 +1,66 @@
+/* 操作按钮统一复用账目录入效果；导航只在选中时显示此表面。
+ * 页面样式仅负责布局，不再重复定义描边、圆角或交互效果。
+ */
+:root,
+body,
+.theme-button {
+  --button-raised-bg: var(--color-primary);
+  --button-shadow-rgb: var(--color-primary-rgb);
+  --button-contact-shadow-rgb: 12, 36, 64;
+  --button-raised-shadow: 0 4px 8px -4px rgba(var(--button-contact-shadow-rgb), 0.20), 0 10px 20px -9px rgba(var(--button-shadow-rgb), 0.32);
+  --button-raised-shadow-hover: 0 6px 12px -4px rgba(var(--button-contact-shadow-rgb), 0.22), 0 14px 24px -10px rgba(var(--button-shadow-rgb), 0.38);
+  --button-raised-shadow-pressed: inset 0 1px 3px rgba(0, 0, 0, 0.12), 0 2px 4px -2px rgba(var(--button-shadow-rgb), 0.24);
+  --button-glass-rim: inset 0 0 0 0.5px rgba(255, 255, 255, 0.17), inset -0.7px -0.7px 0 0.5px rgba(255, 255, 255, 0.13), inset 0 0 0 1.5px rgba(0, 0, 0, 0.04), inset 0 0 6px 2px rgba(255, 255, 255, 0.02);
+}
+
+.btn.theme-button {
+  min-height: 38px;
+  padding: 9px 14px;
+  font-size: 0.78rem;
+}
+
+/* 中性操作只切换颜色，描边、阴影几何和交互仍由共用规则负责。 */
+.theme-button--neutral {
+  --theme-button-background: var(--color-panel-bg);
+  --theme-button-text: var(--color-text-main);
+  --button-shadow-rgb: 72, 82, 96;
+  --button-contact-shadow-rgb: 72, 82, 96;
+}
+
+:is(.theme-button:not(.sidebar-nav-item), .theme-button.sidebar-nav-item.active) {
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--theme-button-background, var(--button-raised-bg));
+  color: var(--theme-button-text, #fff);
+  backdrop-filter: var(--hyalite, blur(3px));
+  -webkit-backdrop-filter: var(--hyalite, blur(3px));
+  box-shadow: var(--hyalite-edge, var(--button-glass-rim)), var(--button-raised-shadow);
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 240ms ease, background-color 240ms ease, opacity 240ms ease;
+}
+
+:is(.theme-button:not(.sidebar-nav-item), .theme-button.sidebar-nav-item.active):hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: none;
+  box-shadow: var(--hyalite-edge, var(--button-glass-rim)), var(--button-raised-shadow-hover);
+}
+
+:is(.theme-button:not(.sidebar-nav-item), .theme-button.sidebar-nav-item.active):active:not(:disabled) {
+  transform: scale(0.985) !important;
+  filter: none;
+  box-shadow: var(--hyalite-edge, var(--button-glass-rim)), var(--button-raised-shadow-pressed);
+}
+
+:is(.theme-button:not(.sidebar-nav-item), .theme-button.sidebar-nav-item.active):focus-visible {
+  outline: 3px solid rgba(var(--color-primary-rgb), 0.22);
+  outline-offset: 2px;
+}
+
+.theme-button:disabled {
+  transform: none !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  opacity: 0.55;
+  cursor: not-allowed;
+}

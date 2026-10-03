@@ -11,66 +11,24 @@
   overflow: hidden;
   padding: 16px !important;
 }
-/* Reusable glass tooltip: consumers only provide a position and sampled backdrop. */
+/* Hyalite 0.5.0 bends the live backdrop; text stays above the glass. */
 .glass-tooltip {
-  --glass-tooltip-surface: rgba(247, 250, 255, 0.46);
-  --glass-tooltip-sample-surface: rgba(241, 246, 253, 0.84);
-  --glass-tooltip-overlay:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.34), rgba(226, 237, 252, 0.2)),
-    radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.3), transparent 56%);
-  --glass-tooltip-border: rgba(255, 255, 255, 0.52);
-  --glass-tooltip-shadow:
-    0 20px 44px rgba(41, 59, 85, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.72);
-  isolation: isolate;
+  --glass-tooltip-border: rgba(255, 255, 255, 0.32);
+  --glass-tooltip-shadow: 0 20px 44px rgba(41, 59, 85, 0.18);
   overflow: hidden;
   border: 1px solid var(--glass-tooltip-border);
   border-radius: 18px;
-  background: var(--glass-tooltip-surface);
-  box-shadow: var(--glass-tooltip-shadow);
-  backdrop-filter: blur(28px) saturate(115%);
-  -webkit-backdrop-filter: blur(28px) saturate(115%);
+  background: transparent;
+  box-shadow: var(--hyalite-edge, inset 0 1px 0 rgba(255, 255, 255, 0.55)), var(--glass-tooltip-shadow);
+  backdrop-filter: var(--hyalite, blur(var(--tooltip-glass-blur, 12px)));
+  -webkit-backdrop-filter: var(--hyalite, blur(var(--tooltip-glass-blur, 12px)));
   color: var(--color-text-main);
   pointer-events: none;
   transition: opacity 0.12s ease;
 }
 
-.glass-tooltip::after {
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  content: '';
-  background: var(--glass-tooltip-overlay);
-}
-
-.glass-tooltip-backdrop {
-  position: absolute;
-  z-index: -2;
-  pointer-events: none;
-  transform: scale(1.14);
-  transform-origin: center;
-  filter: blur(24px) saturate(110%);
-  opacity: 1;
-}
-
-.glass-tooltip-backdrop > .glass-tooltip-backdrop-surface {
-  background: var(--glass-tooltip-sample-surface);
-}
-
-.glass-tooltip-chart-backdrop {
-  inset: -28px;
-  background-color: var(--glass-tooltip-sample-surface);
-  background-image: var(--tooltip-chart-image);
-  background-position: var(--tooltip-chart-position);
-  background-repeat: no-repeat;
-  background-size: var(--tooltip-chart-size);
-}
-
 /* Chart.js consumers share the glass component and only add chart layout. */
 .chart-external-tooltip {
-  --tooltip-chart-image: none;
-  --tooltip-chart-size: auto;
-  --tooltip-chart-position: 0 0;
   position: absolute;
   z-index: 8;
   min-width: 176px;
@@ -159,31 +117,15 @@
   position: relative;
 }
 
-.ticker-tooltip-backdrop .ticker-ath-cards {
-  overflow: visible;
-  border-color: transparent;
-  box-shadow: none;
-}
-
 body.theme-dark .glass-tooltip {
-  --glass-tooltip-surface: rgba(18, 24, 37, 0.42);
-  --glass-tooltip-sample-surface: rgba(16, 22, 34, 0.84);
-  --glass-tooltip-overlay: linear-gradient(135deg, rgba(20, 27, 42, 0.36), rgba(37, 48, 70, 0.18));
   --glass-tooltip-border: rgba(255, 255, 255, 0.16);
-  --glass-tooltip-shadow:
-    0 18px 40px rgba(0, 0, 0, 0.42),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  --glass-tooltip-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
 }
 
 @media (prefers-color-scheme: dark) {
   body:not(.theme-light) .glass-tooltip {
-    --glass-tooltip-surface: rgba(18, 24, 37, 0.42);
-    --glass-tooltip-sample-surface: rgba(16, 22, 34, 0.84);
-    --glass-tooltip-overlay: linear-gradient(135deg, rgba(20, 27, 42, 0.36), rgba(37, 48, 70, 0.18));
     --glass-tooltip-border: rgba(255, 255, 255, 0.16);
-    --glass-tooltip-shadow:
-      0 18px 40px rgba(0, 0, 0, 0.42),
-      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    --glass-tooltip-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
   }
 }
 
@@ -434,3 +376,77 @@ body.theme-dark .glass-tooltip {
   font-size: 0.76rem;
   text-align: center;
 }
+
+/* Compact tooltip playground. Opaque panel lets the sample bend its own backdrop. */
+.glass-tuning-panel {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2000;
+  width: min(320px, calc(100vw - 36px));
+  border: 1px solid var(--color-panel-border);
+  border-radius: 16px;
+  background: var(--color-bg);
+  color: var(--color-text-main);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  font-size: 12px;
+}
+.glass-tuning-panel:not([open]) { width: auto; }
+.glass-tuning-panel > summary {
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.glass-tuning-body {
+  max-height: min(70vh, 650px);
+  padding: 0 16px 16px;
+  overflow: auto;
+}
+.glass-tuning-body > p {
+  margin: 0 0 12px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+.glass-tuning-preview {
+  display: grid;
+  place-items: center;
+  height: 110px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  background:
+    repeating-linear-gradient(135deg, transparent 0 14px, rgba(255,255,255,.35) 14px 22px),
+    linear-gradient(100deg, #417be5, #65d6bc 48%, #ffc86c);
+}
+.glass-tuning-sample {
+  display: grid;
+  gap: 10px;
+  padding: 15px 18px;
+  color: #14233c;
+}
+.glass-tuning-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  margin: 12px 0;
+}
+.glass-tuning-row output { font-variant-numeric: tabular-nums; }
+.glass-tuning-row input {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 18px;
+  margin: 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+.glass-tuning-shape { display: grid; gap: 8px; }
+.glass-tuning-shape select,
+.glass-tuning-actions button {
+  padding: 8px;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-text-main);
+  font: inherit;
+}
+.glass-tuning-actions { display: flex; gap: 8px; margin-top: 14px; }
+.glass-tuning-actions button { flex: 1; cursor: pointer; }

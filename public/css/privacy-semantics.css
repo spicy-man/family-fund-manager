@@ -94,21 +94,10 @@ body.theme-dark {
   border-color: var(--color-panel-border) !important;
 }
 
-.btn-magenta {
-  background: var(--grad-cyan);
-  color: #fff;
-  border-color: transparent;
-}
-
 .badge-green {
   background: rgba(var(--color-primary-rgb), 0.08);
   color: var(--color-primary);
   border-color: rgba(var(--color-primary-rgb), 0.18);
-}
-
-.btn-magenta,
-.btn-magenta:hover {
-  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.18);
 }
 
 .text-cyan {

@@ -185,15 +185,6 @@ function bindTickerTooltips(container, data, formatMonthDay) {
   const renderTooltip = item => {
     tooltip.replaceChildren();
 
-    const backdrop = document.createElement('div');
-    backdrop.className = 'glass-tooltip-backdrop ticker-tooltip-backdrop';
-    backdrop.setAttribute('aria-hidden', 'true');
-    const tableCopy = container.cloneNode(true);
-    tableCopy.removeAttribute('id');
-    tableCopy.classList.add('glass-tooltip-backdrop-surface');
-    backdrop.appendChild(tableCopy);
-    tooltip.appendChild(backdrop);
-
     const title = document.createElement('div');
     title.className = 'chart-external-tooltip-title';
     const titleTicker = document.createElement('span');
@@ -246,12 +237,7 @@ function bindTickerTooltips(container, data, formatMonthDay) {
     tooltip.style.top = `${top}px`;
     tooltip.style.opacity = '1';
 
-    const tooltipBounds = tooltip.getBoundingClientRect();
-    const containerBounds = container.getBoundingClientRect();
-    const backdrop = tooltip.querySelector('.ticker-tooltip-backdrop');
-    backdrop.style.left = `${containerBounds.left - tooltipBounds.left}px`;
-    backdrop.style.top = `${containerBounds.top - tooltipBounds.top}px`;
-    backdrop.style.width = `${containerBounds.width}px`;
+
   };
 
   const showTooltip = (item, event) => {

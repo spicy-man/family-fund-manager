@@ -19,13 +19,17 @@
       segmentedControl.activate(tabs, activeButton);
       forms.forEach(form => form.classList.toggle('active', form === activeForm));
       onActivate?.();
+      // Build the newly visible buttons' lenses before their first painted frame.
+      window.FundGlassButtons?.refresh(activeForm);
 
       const targetHeight = panel.getBoundingClientRect().height;
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
       activeForm.animate([
-        { opacity: 0, transform: 'translateY(8px) scale(0.985)' },
-        { opacity: 1, transform: 'translateY(0) scale(1)' }
+        // Opacity on a backdrop-filter ancestor changes its backdrop root and
+        // makes the glass switch colour when the fade finishes.
+        { transform: 'translateY(8px)' },
+        { transform: 'translateY(0)' }
       ], { duration: 340, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' });
 
       if (Math.abs(targetHeight - currentHeight) < 1) return;

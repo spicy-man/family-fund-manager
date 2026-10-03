@@ -76,6 +76,22 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .sidebar-nav::before,
+  .sidebar-nav-item,
+  .btn {
+    transition: none !important;
+  }
+
+  .sidebar-nav:has(.sidebar-nav-item.active:hover)::before {
+    transform: translateY(var(--active-top, 0px));
+  }
+
+  .sidebar-nav-item.active:hover,
+  .btn:hover,
+  .btn:active {
+    transform: none !important;
+  }
+
   .app-sidebar,
   .app-header,
   #dashboard-home,

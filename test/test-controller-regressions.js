@@ -223,7 +223,52 @@ function navigationScrollTest() {
   assert(writes > selectedWrites, 'resize must refresh indicator geometry even for the same section');
 }
 
+function operationGlassSwitchTest() {
+  const calls = [];
+  let reducedMotion = false;
+  function form(active) {
+    return {
+      active,
+      classList: {
+        contains: () => active,
+        toggle(_name, value) { active = value; }
+      },
+      animate(frames) {
+        calls.push('animate');
+        assert(frames.every(frame => !('opacity' in frame)), 'form fades must not change the glass backdrop root');
+        assert(frames.every(frame => !frame.transform.includes('scale')), 'glass forms must slide without scaling their lenses');
+      }
+    };
+  }
+  const oldForm = form(true), nextForm = form(false);
+  const panel = {
+    style: { removeProperty() {} },
+    getBoundingClientRect: () => ({ height: 400 })
+  };
+  const context = { window: {
+    clearTimeout() {},
+    matchMedia: () => ({ matches: reducedMotion }),
+    FundGlassButtons: { refresh(target) {
+      assert.strictEqual(target, nextForm);
+      assert(target.classList.contains('active'), 'lens refresh needs visible form geometry');
+      calls.push('refresh');
+    } }
+  } };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../public/js/operation-panel.js'), 'utf8'), context);
+  const control = context.window.FundOperationPanel.create({
+    panel, tabs: [], forms: [oldForm, nextForm], segmentedControl: { activate() {} }
+  });
+  const button = { classList: { contains: () => false } };
+  control.switchTo(button, nextForm);
+  assert.deepStrictEqual(calls, ['refresh', 'animate'], 'lens must be built before the entrance animation');
+  calls.length = 0;
+  reducedMotion = true;
+  control.switchTo(button, nextForm);
+  assert.deepStrictEqual(calls, ['refresh'], 'reduced motion still needs a prepared lens');
+}
+
 (async () => {
+  operationGlassSwitchTest();
   navigationScrollTest();
   await settlementTests(); await transactionTests(); await restoreWarningTest(); await deleteUndoTests();
   console.log('Settlement race, historical FX and restore warning controller regressions passed.');

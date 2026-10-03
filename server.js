@@ -54,6 +54,10 @@ const IMMUTABLE_ASSET_OPTIONS = {
 };
 const vendorAssets = [
   {
+    url: '/vendor/hyalite/0.5.0/hyalite.js',
+    file: path.join(__dirname, 'public', 'vendor', 'hyalite', '0.5.0', 'hyalite.js')
+  },
+  {
     url: `/vendor/chart.js/${DEPENDENCIES['chart.js']}/chart.umd.min.js`,
     file: path.join(path.dirname(require.resolve('chart.js')), 'chart.umd.min.js')
   },

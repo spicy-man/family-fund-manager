@@ -160,6 +160,42 @@ const trendLegendLabels = rendered.navTrendChart.options.plugins.legend.labels.g
 assert.strictEqual(trendLegendLabels[0].fillStyle, '#5a57cc');
 assert.strictEqual(trendLegendLabels[0].strokeStyle, '#5a57cc');
 assert.strictEqual(rendered.navTrendChart.options.animation.duration, 380);
+assert.strictEqual(rendered.memberAllocationChart.options.animation, false,
+  'allocation chart must render at its final size when first revealed');
+assert(rendered.memberAllocationChart.config.plugins.includes(window.FundChartRenderer.allocationLabelsPlugin));
+
+// Verify percentages, small-slice separation and the empty-data placeholder.
+const allocationLabels = [];
+const allocationDrawing = {
+  width: 400,
+  chartArea: { top: 18, bottom: 220 },
+  legend: { position: 'bottom' },
+  options: { plugins: { legend: { labels: { color: '#334155' } } } },
+  data: { datasets: [{ data: [98, 1, 1, 0] }] },
+  getDataVisibility: () => true,
+  getDatasetMeta: () => ({ data: [0, 1, 2, 3].map(index => ({
+    getProps: () => ({ x: 200, y: 120, startAngle: index * .01,
+      endAngle: (index + 1) * .01, outerRadius: 90 })
+  })) }),
+  ctx: {
+    save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, stroke() {},
+    measureText: () => ({ width: 48 }),
+    fillText(text, x, y) { allocationLabels.push({ text, x, y }); }
+  }
+};
+window.FundChartRenderer.allocationLabelsPlugin.afterDatasetsDraw(allocationDrawing, {}, { empty: false });
+assert.deepStrictEqual(allocationLabels.map(label => label.text), ['98.00%', '1.00%', '1.00%']);
+assert(allocationLabels.every(label => label.x + 48 <= allocationDrawing.width));
+assert(allocationLabels[1].y - allocationLabels[0].y >= 20);
+assert(allocationLabels[2].y - allocationLabels[1].y >= 20);
+allocationLabels.length = 0;
+allocationDrawing.getDataVisibility = index => index !== 0;
+window.FundChartRenderer.allocationLabelsPlugin.afterDatasetsDraw(allocationDrawing, {}, { empty: false });
+assert.deepStrictEqual(allocationLabels.map(label => label.text), ['1.00%', '1.00%'],
+  'hiding a member must not change the remaining members\' shares of total assets');
+allocationLabels.length = 0;
+window.FundChartRenderer.allocationLabelsPlugin.afterDatasetsDraw(allocationDrawing, {}, { empty: true });
+assert.strictEqual(allocationLabels.length, 0, 'placeholder slices must not show invented percentages');
 assert(rendered.navTrendChart.config.plugins.includes(window.FundChartRenderer.datasetOpacityPlugin));
 assert.strictEqual(typeof rendered.renderTrendStats, 'function');
 assert.strictEqual(rendered.navTrendChart.options.plugins.legend.display, false);
@@ -214,8 +250,9 @@ rendered.navTrendChart.options.plugins.tooltip.external({
   }
 });
 assert.match(mountedTooltip.className, /\bglass-tooltip\b/);
-assert.match(mountedTooltip.children[0].className, /\bglass-tooltip-backdrop\b/);
-assert.match(mountedTooltip.children[0].className, /\bglass-tooltip-chart-backdrop\b/);
+assert.match(mountedTooltip.children[0].className, /\bchart-external-tooltip-title\b/);
+assert(!mountedTooltip.children.some(child => /glass-tooltip-backdrop/.test(child.className)),
+  'glass must refract the live chart without a copied backdrop');
 
 assert.strictEqual(rendered.filteredHistory.length, 2);
 assert.match(stats.innerHTML, /单位净值/);
