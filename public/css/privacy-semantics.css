@@ -406,6 +406,20 @@ body.theme-light .header-meta .cnh-rate-config {
   }
 }
 
+/* Persistent surfaces keep their gradients and borders without resampling the
+   moving page beneath them. Transient dialogs and tooltips retain their blur. */
+body .app-sidebar,
+body .surface-primary,
+body .metrics-grid,
+body .member-card,
+body .chart-controls-dock,
+body .segmented-control,
+body .ticker-ath-cards,
+body .ledger-section .table-container {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 /* Keep the welcome header compact while preserving the toolbar control height. */
 .app-header.surface-primary {
   padding: 12px 20px;

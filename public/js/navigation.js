@@ -7,20 +7,26 @@
     let frame = null;
     let targetId = null;
     let settleTimer = null;
+    let activeId = null;
 
-    const setActive = sectionId => {
+    const setActive = (sectionId, refresh = false) => {
+      if (activeId === sectionId && !refresh) return;
+      const activeLink = links.find(link => link.hash === `#${sectionId}`);
+      const navigation = activeLink?.closest('.sidebar-nav');
+      // Read geometry before changing classes, and only when selection changes.
+      const top = activeLink?.offsetTop;
+      const height = activeLink?.offsetHeight;
       links.forEach(link => {
         const active = link.hash === `#${sectionId}`;
         link.classList.toggle('active', active);
         if (active) link.setAttribute('aria-current', 'page');
         else link.removeAttribute('aria-current');
       });
-      const activeLink = links.find(link => link.hash === `#${sectionId}`);
-      const navigation = activeLink?.closest('.sidebar-nav');
       if (navigation && activeLink) {
-        navigation.style.setProperty('--active-top', `${activeLink.offsetTop}px`);
-        navigation.style.setProperty('--active-height', `${activeLink.offsetHeight}px`);
+        navigation.style.setProperty('--active-top', `${top}px`);
+        navigation.style.setProperty('--active-height', `${height}px`);
       }
+      activeId = sectionId;
     };
 
     const sync = () => {
@@ -74,7 +80,10 @@
         }, 160);
       }
     }, { passive: true });
-    window.addEventListener('resize', sync);
+    window.addEventListener('resize', () => {
+      sync();
+      if (activeId) setActive(activeId, true);
+    });
     sync();
   }
 

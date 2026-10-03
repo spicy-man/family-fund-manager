@@ -53,12 +53,12 @@ window.FundMemberRenderer = {
             <div class="member-sub-info" style="display:flex;justify-content:space-between;font-size:0.68rem;padding-top:4px;border-top:1px dashed var(--color-card-divider);color:var(--color-text-muted);"><span>入金 <span class="privacy-sensitive">$${formatMoney(account.totalDeposit)}</span></span><span>出金 <span class="privacy-sensitive">$${formatMoney(account.totalWithdraw)}</span></span></div>
             <div class="member-sub-info" style="display:flex;justify-content:space-between;font-size:0.65rem;padding-top:2px;color:var(--color-text-muted);opacity:0.85;"><span>CNH入金 <span class="privacy-sensitive">¥${formatMoney(account.cnhDeposit)}</span></span></div>
           </div>
-          <div class="member-hover-details privacy-sensitive" aria-hidden="true">
+          <div class="member-hover-details privacy-sensitive">
             <div class="member-hover-details__header"><strong>${displayName}</strong><span>${roleBadges}</span></div>
             <div>LP：${(account.lpShares || 0).toFixed(4)}份 / $${formatMoney(account.lpCurrentValue || 0)}</div>
             <div>GP报酬：${(account.gpCarryShares || 0).toFixed(4)}份 / $${formatMoney(account.gpCarryValue || 0)}</div>
             ${member.roles?.lp !== false ? `<div>门槛台账：${lpLedger.length}批 / $${formatMoney(totalHurdle)}</div>` : ''}
-            ${lpLedger.length ? `<div class="member-hover-details__ledger">${ledgerRows}</div>` : ''}
+            ${lpLedger.length ? `<div class="member-hover-details__ledger" tabindex="0" role="region" aria-label="${displayName}的资金批次详情">${ledgerRows}</div>` : ''}
           </div>
         </div>`;
     }).join('');

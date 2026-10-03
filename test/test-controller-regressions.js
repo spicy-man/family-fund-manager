@@ -182,7 +182,49 @@ async function deleteUndoTests() {
   assert.match(started.notices[0], /删除失败/);
 }
 
+function navigationScrollTest() {
+  const listeners = {}, frames = [];
+  let writes = 0, geometryReads = 0;
+  const navigation = { style: { setProperty() { writes++; } } };
+  const sections = ['dashboard-home', 'trends-section'].map((id, index) => ({
+    id, getBoundingClientRect: () => ({ top: index * 600 - window.scrollY })
+  }));
+  const links = sections.map((section, index) => ({
+    hash: `#${section.id}`,
+    get offsetTop() { geometryReads++; return index * 50; },
+    get offsetHeight() { geometryReads++; return 44; },
+    closest: () => navigation,
+    classList: { toggle() { writes++; } },
+    setAttribute() { writes++; }, removeAttribute() { writes++; },
+    addEventListener() {}
+  }));
+  const window = {
+    scrollY: 0, innerHeight: 1000,
+    addEventListener(type, handler) { listeners[type] = handler; }
+  };
+  const context = { window, document: {
+    querySelectorAll: () => links,
+    querySelector: hash => sections.find(section => `#${section.id}` === hash)
+  }, requestAnimationFrame: callback => { frames.push(callback); return frames.length; } };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../public/js/navigation.js'), 'utf8'), context);
+  window.FundNavigation.init();
+  const initialWrites = writes, initialReads = geometryReads;
+  for (let i = 0; i < 20; i++) {
+    window.scrollY = 100 + i;
+    listeners.scroll(); frames.shift()();
+  }
+  assert.strictEqual(writes, initialWrites, 'scrolling within one section must not rewrite navigation');
+  assert.strictEqual(geometryReads, initialReads, 'unchanged selection must not read link layout');
+  window.scrollY = 650;
+  listeners.scroll(); frames.shift()();
+  assert(writes > initialWrites, 'crossing a section must update selection');
+  const selectedWrites = writes;
+  listeners.resize();
+  assert(writes > selectedWrites, 'resize must refresh indicator geometry even for the same section');
+}
+
 (async () => {
+  navigationScrollTest();
   await settlementTests(); await transactionTests(); await restoreWarningTest(); await deleteUndoTests();
   console.log('Settlement race, historical FX and restore warning controller regressions passed.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

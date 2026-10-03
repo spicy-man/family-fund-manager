@@ -31,7 +31,7 @@
       </svg>
       <span>
         <strong>家庭财富账本</strong>
-        <small>WEALTH LEDGER <b class="sidebar-version">v3.17.1</b></small>
+        <small>WEALTH LEDGER <b class="sidebar-version">v3.17.2</b></small>
       </span>
     </a>
 
@@ -114,7 +114,7 @@
         <div class="logo-text">
           <h1>家庭基金账目管理系统</h1>
           <span class="sub-logo">Family Private Wealth &amp; NAV Ledger &nbsp;<span
-              class="version-badge">v3.17.1</span></span>
+              class="version-badge">v3.17.2</span></span>
         </div>
       </div>
       <div class="header-actions">
@@ -1037,7 +1037,7 @@
   <!-- 业绩结算预览模态框 -->
   <div class="modal-overlay" id="settlement-preview-modal" role="dialog" aria-modal="true"
     aria-labelledby="settlement-preview-title" aria-hidden="true">
-    <div class="modal-content glass-panel premium-border" style="width:min(1120px, calc(100vw - 32px));" tabindex="-1">
+    <div class="modal-content glass-panel premium-border" style="width:min(1280px, calc(100vw - 32px));" tabindex="-1">
       <div class="modal-header">
         <div>
           <h3 id="settlement-preview-title">业绩结算预览</h3>
@@ -1064,7 +1064,7 @@
       <div class="modal-body">
         <div id="settlement-preview-summary" class="settlement-summary-grid"></div>
         <div class="table-container">
-          <table class="ledger-table settlement-preview-table">
+          <table class="settlement-preview-table">
             <thead>
               <tr>
                 <th>LP / 资金批次</th>
@@ -1076,6 +1076,7 @@
                 <th>当前价值</th>
                 <th>本期门槛</th>
                 <th>超门槛差额</th>
+                <th id="settlement-preview-fee-heading">业绩报酬</th>
               </tr>
             </thead>
             <tbody id="settlement-preview-body"></tbody>

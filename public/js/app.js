@@ -160,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const settlementPreviewSubtitle = document.getElementById('settlement-preview-subtitle');
   const settlementPreviewSummary = document.getElementById('settlement-preview-summary');
   const settlementPreviewBody = document.getElementById('settlement-preview-body');
+  const settlementPreviewFeeHeading = document.getElementById('settlement-preview-fee-heading');
 
   // Fund Governance Principles Modal
   const principlesModal = document.getElementById('principles-modal');
@@ -342,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
       elements: {
         btnReverseSettlement, settleGp, settleDate, settleRemark,
         settlementPreviewModal, btnPreviewSettlement, settlementPreviewSubtitle,
-        settlementPreviewSummary, settlementPreviewBody, btnConfirmSettlement,
+        settlementPreviewSummary, settlementPreviewBody, settlementPreviewFeeHeading, btnConfirmSettlement,
         formSettlement
       },
       api: Api,

@@ -3,7 +3,7 @@
     const {
       btnReverseSettlement, settleGp, settleDate, settleRemark,
       settlementPreviewModal, btnPreviewSettlement, settlementPreviewSubtitle,
-      settlementPreviewSummary, settlementPreviewBody, btnConfirmSettlement,
+      settlementPreviewSummary, settlementPreviewBody, settlementPreviewFeeHeading, btnConfirmSettlement,
       formSettlement
     } = elements;
     const Api = api;
@@ -43,6 +43,7 @@
         const formatRate = value => `${(Number(value) * 100).toFixed(2).replace(/\.00$/, '')}%`;
         const annualRateLabel = formatRate(preview.event.annualRate);
         const feeRateLabel = formatRate(preview.event.feeRate);
+        if (settlementPreviewFeeHeading) settlementPreviewFeeHeading.textContent = `${feeRateLabel} 业绩报酬`;
         const rows = preview.breakdown.map(item => {
           const name = getMembers().find(member => member.id === item.member)?.name || item.member;
           const lotRows = (item.lots || []).map((lot, index) => {
@@ -52,8 +53,8 @@
                 ? '上次结算基准'
                 : '现金入金';
             return `
-            <tr>
-              <td><span style="color:var(--color-text-muted)">↳ 批次 ${index + 1} · ${sourceLabel}</span></td>
+            <tr class="settlement-lot-row">
+              <td><span class="settlement-lot-label">↳ 批次 ${index + 1} · ${sourceLabel}</span></td>
               <td>${escapeHtml(lot.startDate)}</td>
               <td class="privacy-sensitive">$${formatMoney(lot.basis)}</td>
               <td class="privacy-sensitive">${lot.entryNav.toFixed(4)}</td>
@@ -62,14 +63,16 @@
               <td class="privacy-sensitive">$${formatMoney(lot.currentValue)}</td>
               <td class="privacy-sensitive">$${formatMoney(lot.hurdle)}</td>
               <td class="privacy-sensitive ${lot.aboveHurdle >= 0 ? 'text-green' : 'text-magenta'}">${lot.aboveHurdle >= 0 ? '+' : '-'}$${formatMoney(Math.abs(lot.aboveHurdle))}</td>
+              <td class="privacy-sensitive">${Number.isFinite(lot.fee) ? `$${formatMoney(lot.fee)}` : '—'}</td>
             </tr>`;
           }).join('');
           return `
-            <tr style="background:rgba(80,130,255,.08)">
-              <td colspan="6"><strong>${escapeHtml(name)}</strong><span style="margin-left:10px;color:var(--color-text-muted)">${item.lots?.length || 0}笔资金批次 · 结算后 ${item.sharesAfter.toFixed(6)}份</span></td>
+            <tr class="settlement-member-row">
+              <td colspan="6"><strong>${escapeHtml(name)}</strong><span class="settlement-member-meta">${item.lots?.length || 0}笔资金批次 · 结算后 ${item.sharesAfter.toFixed(6)}份</span></td>
               <td class="privacy-sensitive"><strong>$${formatMoney(item.valueBefore)}</strong></td>
               <td class="privacy-sensitive"><strong>$${formatMoney(item.hurdle)}</strong></td>
-              <td class="privacy-sensitive"><strong class="${item.excess > 0 ? 'text-green' : ''}">$${formatMoney(item.excess)}</strong><div class="settlement-fee-detail">${feeRateLabel}报酬 $${formatMoney(item.fee)} · ${item.feeShares.toFixed(6)}份</div></td>
+              <td class="privacy-sensitive"><strong class="${item.excess > 0 ? 'text-green' : ''}">$${formatMoney(item.excess)}</strong></td>
+              <td class="privacy-sensitive"><strong>$${formatMoney(item.fee)}</strong><div class="settlement-fee-detail">扣除 ${item.feeShares.toFixed(6)}份</div></td>
             </tr>${lotRows}`;
         }).join('');
         const gpName = getMembers().find(member => member.id === payload.gpMember)?.name || '主GP';
@@ -79,7 +82,7 @@
           ['参与LP', `${preview.breakdown.length} 人`],
           ['合计业绩报酬', `$${formatMoney(preview.totalFee)}`]
         ].map(([label, value]) => `<div class="info-alert" style="display:block;margin:0"><div style="font-size:.7rem;color:var(--color-text-muted)">${label}</div><strong class="privacy-sensitive" style="display:block;font-size:1.15rem;margin-top:4px">${value}</strong></div>`).join('');
-        settlementPreviewBody.innerHTML = rows || '<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--color-text-muted)">结算日没有持有LP份额的成员</td></tr>';
+        settlementPreviewBody.innerHTML = rows || '<tr><td colspan="10" class="settlement-empty">结算日没有持有LP份额的成员</td></tr>';
         pendingSettlement = payload;
         openModal(settlementPreviewModal, btnPreviewSettlement);
       } catch (error) {

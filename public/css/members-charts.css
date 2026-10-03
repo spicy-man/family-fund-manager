@@ -251,6 +251,16 @@
   transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s;
 }
 
+/* 连接卡片与浮层的悬停区域，鼠标移入列表滚动时不会关闭。 */
+.member-hover-details::before {
+  position: absolute;
+  top: -9px;
+  left: 0;
+  right: 0;
+  height: 9px;
+  content: '';
+}
+
 body.theme-dark .member-hover-details,
 body:not(.theme-light) .member-hover-details {
   background: rgba(20, 24, 38, 0.96);
@@ -282,9 +292,22 @@ body:not(.theme-light) .member-hover-details {
 }
 
 .member-hover-details__ledger {
-  max-height: 180px;
+  max-height: min(420px, 50vh);
   margin-top: 6px;
-  overflow: auto;
+  padding-right: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-text-muted) transparent;
+}
+
+.member-hover-details__ledger::-webkit-scrollbar {
+  width: 6px;
+}
+
+.member-hover-details__ledger::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: var(--color-text-muted);
 }
 
 /* 图表区块 */
