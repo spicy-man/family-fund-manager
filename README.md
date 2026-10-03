@@ -58,6 +58,19 @@ $env:PORT=3001; npm start
 PORT=3001 npm start
 ```
 
+### 行情与汇率的网络代理
+
+外部行情与汇率请求优先使用 `HTTPS_PROXY` / `ALL_PROXY` 环境变量（也支持小写变量及 curl 的 `NO_PROXY` 规则）。Windows 未设置这些变量时，会自动读取当前用户已启用的系统代理，例如 Clash 的“系统代理”模式；关闭系统代理或未配置代理时直接联网，不需要安装 Clash，也不预设代理端口。系统代理配置每 30 秒重新读取一次。
+
+可通过 `FUND_NETWORK_PROXY` 指定代理地址，或设为 `direct` 强制直连。此设置优先于环境变量与 Windows 系统代理，仅影响本系统的外部行情和汇率请求。例如在 PowerShell 中：
+
+```powershell
+$env:FUND_NETWORK_PROXY='direct'
+npm start
+```
+
+Windows 自动读取支持手动系统代理及其绕过列表，不解析 PAC 自动配置脚本。macOS / Linux 如需应用代理，请配置上述环境变量。
+
 ## 基本使用顺序
 
 1. 在“家庭成员管理”中添加成员，并指定一位主 GP。
