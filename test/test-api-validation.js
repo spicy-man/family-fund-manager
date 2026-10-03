@@ -676,6 +676,50 @@ async function request(handler, body, params = {}) {
   assert.strictEqual(roundedOverdraw.status, 400);
   assert.strictEqual(roundedOverdrawApi.getCalculations() - calculationsBefore, 1, 'rejected withdrawal must replay once');
 
+  // Review #6: preserving an actual historical CNH payment must work with
+  // sparse API edits and the browser's complete unchanged monetary payload.
+  for (const fullExit of [false, true]) {
+    const seedApi = makeApi(undefined, disposalDb);
+    const created = await request(seedApi.routes['post:/api/transfer'], disposalBody('transfer', fullExit ? 2000 : 500));
+    assert.strictEqual(created.status, 200);
+    const fixture = seedApi.getDb();
+    const original = fixture.events.find(event => event.id === created.body.data.id);
+    original.cnhAmount = original.amount * 7.35; // Imported/manual actual payment differs from stated rate.
+    for (const [legacyRate, legacyGross] of [[false, false], [true, false], ...(fullExit ? [[false, true], [true, true]] : [])]) {
+      const legacyFixture = clone(fixture);
+      const baseline = legacyFixture.events.find(event => event.id === original.id);
+      if (legacyRate) delete baseline.cnhRate;
+      if (legacyGross) delete baseline.requestedGrossAmount;
+      const rate = baseline.cnhRate ?? baseline.cnhAmount / baseline.amount;
+      for (const payload of [
+        { remark: 'new note' },
+        { remark: 'new note', amount: String(baseline.requestedGrossAmount ?? baseline.amount), cnhRate: String(rate),
+          fromMember: baseline.fromMember, toMember: baseline.toMember, date: baseline.date }
+      ]) {
+        const editApi = makeApi(undefined, legacyFixture);
+        const beforeState = calculateStateFromDb(editApi.getDb());
+        for (let repeat = 0; repeat < 3; repeat++) {
+          const edited = await request(editApi.routes['put:/api/event/:id'], payload, { id: baseline.id });
+          assert.strictEqual(edited.status, 200);
+          assert.strictEqual(edited.body.data.cnhAmount, baseline.cnhAmount, 'notes must preserve exact historical CNH');
+          assert.strictEqual(edited.body.data.amount, baseline.amount);
+          assert.strictEqual(edited.body.data.fullExit, baseline.fullExit);
+          assert.strictEqual(edited.body.data.requestedGrossAmount, baseline.requestedGrossAmount);
+          const afterState = calculateStateFromDb(editApi.getDb());
+          assert.deepStrictEqual(afterState.members, beforeState.members, 'editing notes must preserve member balances');
+          assert.deepStrictEqual(afterState.summary, beforeState.summary);
+        }
+      }
+      for (const payload of [{ amount: 400 }, { cnhRate: 8 }]) {
+        const editApi = makeApi(undefined, legacyFixture);
+        const edited = await request(editApi.routes['put:/api/event/:id'], payload, { id: baseline.id });
+        assert.strictEqual(edited.status, 200);
+        assert(Math.abs(edited.body.data.cnhAmount - edited.body.data.amount * (payload.cnhRate ?? rate)) < 1e-8,
+          'changed money must recompute CNH, including full-exit scaling');
+      }
+    }
+  }
+
   console.log('API validation regression tests passed.');
 })().catch(error => {
   console.error(error);

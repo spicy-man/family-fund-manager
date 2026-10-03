@@ -882,7 +882,10 @@ document.addEventListener('DOMContentLoaded', () => {
       editAmount.value = e.fullExit && e.requestedGrossAmount !== undefined
         ? e.requestedGrossAmount
         : e.amount;
-      editCnhRate.value = e.cnhRate || appState.summary.cnhRate || 7.2000;
+      editCnhRate.value = e.cnhRate ||
+        (e.amount > 0 && Number.isFinite(e.cnhAmount)
+          ? e.cnhAmount / e.amount
+          : (appState.summary.cnhRate || 7.2000));
     }
 
     formController.prepareEdit(e);

@@ -291,10 +291,25 @@ app.put('/api/event/:id', (req, res, next) => {
     const previousAmount = event.amount;
     const previousRequestedGrossAmount = event.requestedGrossAmount;
     const previousCnhAmount = event.cnhAmount;
+    const previousTransferAmount = wasFullExit
+      ? (previousRequestedGrossAmount ?? previousAmount)
+      : previousAmount;
+    const previousTransferRate = event.cnhRate ||
+      (previousAmount > 0 && Number.isFinite(previousCnhAmount)
+        ? previousCnhAmount / previousAmount
+        : (db.cnhRate || 7.2));
+    const retainLegacyFullTransfer = event.type === 'transfer' && wasFullExit &&
+      previousRequestedGrossAmount === undefined &&
+      (req.body?.amount === undefined || toFiniteNumber(req.body.amount) === previousAmount);
+    let transferMoneyChanged = false;
     if (event.type === 'withdraw' || event.type === 'transfer') {
       delete event.fullExit;
       delete event.requestedGrossAmount;
-      if (wasFullExit && req.body?.amount === undefined && previousRequestedGrossAmount !== undefined) {
+      if (retainLegacyFullTransfer) event.fullExit = true;
+      if (wasFullExit && previousRequestedGrossAmount !== undefined && (
+        req.body?.amount === undefined ||
+        (event.type === 'transfer' && toFiniteNumber(req.body.amount) === previousRequestedGrossAmount)
+      )) {
         event.amount = previousRequestedGrossAmount;
         if (previousAmount > 0 && previousCnhAmount !== undefined) {
           event.cnhAmount = previousCnhAmount * previousRequestedGrossAmount / previousAmount;
@@ -407,6 +422,7 @@ app.put('/api/event/:id', (req, res, next) => {
         if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
           throw new InputError('转让金额必须大于 0');
         }
+        transferMoneyChanged ||= parsedAmount !== previousTransferAmount;
         event.amount = parsedAmount;
       }
 
@@ -415,11 +431,15 @@ app.put('/api/event/:id', (req, res, next) => {
         if (!Number.isFinite(parsedRate) || parsedRate <= 0) {
           throw new InputError('受让汇率必须大于 0');
         }
+        transferMoneyChanged ||= parsedRate !== previousTransferRate;
         event.cnhRate = parsedRate;
       }
 
-      // 重新计算 cnhAmount
-      event.cnhAmount = event.amount * (event.cnhRate || db.cnhRate || 7.2);
+      // Preserve historical cash amounts when the editor resubmits unchanged
+      // monetary fields, including a full exit's original gross request.
+      if (transferMoneyChanged) {
+        event.cnhAmount = event.amount * (event.cnhRate || previousTransferRate);
+      }
 
       if (date !== undefined) {
         if (!isValidDate(date)) throw new InputError('日期必须是有效的 YYYY-MM-DD。');
@@ -453,9 +473,14 @@ app.put('/api/event/:id', (req, res, next) => {
     if (ledgerIssue) rejectLedgerIssue(ledgerIssue);
 
     if (event.fullExit === true) {
-      event.requestedGrossAmount = event.amount;
+      if (!retainLegacyFullTransfer) event.requestedGrossAmount = event.amount;
       event.amount = computedEvent._actualAmount;
       event.cnhAmount = computedEvent._cnhAmountComputed;
+    }
+
+    if (event.type === 'transfer' && !transferMoneyChanged &&
+        event.amount === previousAmount && previousCnhAmount !== undefined) {
+      event.cnhAmount = previousCnhAmount;
     }
 
     writeDb(db);

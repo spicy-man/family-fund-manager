@@ -14,12 +14,18 @@ const pkg = require(path.join(root, 'package.json'));
 const lock = require(path.join(root, 'package-lock.json'));
 const { startServer } = require('../server');
 
-function request(server, pathname) {
+function request(server, pathname, { method = 'GET', headers = {}, body } = {}) {
   return new Promise((resolve, reject) => {
-    const req = http.get({
+    const payload = body === undefined ? undefined : Buffer.from(typeof body === 'string' ? body : JSON.stringify(body));
+    const requestHeaders = { Host: `127.0.0.1:${server.address().port}`,
+      ...(payload ? { 'Content-Type': 'application/json', 'Content-Length': payload.length } : {}), ...headers };
+    const req = http.request({
       host: '127.0.0.1',
       port: server.address().port,
-      path: pathname
+      path: pathname,
+      method,
+      headers: Object.entries(requestHeaders).flatMap(([name, value]) =>
+        (Array.isArray(value) ? value : [value]).flatMap(item => [name, String(item)]))
     }, res => {
       const chunks = [];
       res.on('data', chunk => chunks.push(chunk));
@@ -30,6 +36,7 @@ function request(server, pathname) {
       }));
     });
     req.on('error', reject);
+    req.end(payload);
   });
 }
 
@@ -150,6 +157,64 @@ function extractCssReferences(css) {
     const api = await request(server, '/api/state');
     assert.strictEqual(api.status, 200);
     assert.strictEqual(api.headers['content-security-policy'], page.headers['content-security-policy']);
+
+    const port = server.address().port;
+    const before = await request(server, '/api/backup/export');
+    const hostileHeaders = [
+      { Host: `attacker.example:${port}` },
+      { Host: `localhost.attacker.example:${port}` },
+      { Host: `127.1:${port}` },
+      { Host: `2130706433:${port}` },
+      { Host: `localhost.:${port}` },
+      { Host: `localhost:${port + 1}` },
+      { Host: 'localhost' },
+      { Host: [`localhost:${port}`, `attacker.example:${port}`] },
+      { Origin: 'http://attacker.example' },
+      { Origin: 'null' },
+      { Origin: `http://127.0.0.1:${port}/` },
+      { Origin: `http://user@127.0.0.1:${port}` },
+      { Origin: `https://127.0.0.1:${port}` },
+      { Origin: `http://127.0.0.1:${port + 1}` },
+      { Origin: `http://localhost:${port}` },
+      { Origin: [`http://127.0.0.1:${port}`, 'http://attacker.example'] },
+      { 'Sec-Fetch-Site': 'cross-site' },
+      { 'Sec-Fetch-Site': 'same-site' },
+      { 'Sec-Fetch-Site': ['same-origin', 'cross-site'] },
+      { Host: `attacker.example:${port}`, Origin: `http://attacker.example:${port}`, 'Sec-Fetch-Site': 'same-origin' },
+      { 'X-Forwarded-Host': `localhost:${port}`, Host: `attacker.example:${port}` }
+    ];
+    for (const headers of hostileHeaders) {
+      for (const [pathname, method, body] of [
+        ['/', 'GET'], ['/js/app.js', 'GET'], ['/api/state', 'GET'],
+        ['/api/members', 'POST', { name: 'must not be saved' }],
+        ['/api/members/me', 'PUT', { name: 'must not be changed' }],
+        ['/api/members/mother', 'DELETE'],
+        ['/api/backup/import', 'POST', 'invalid backup']
+      ]) {
+        const rejected = await request(server, pathname, { method, headers, body });
+        assert.strictEqual(rejected.status, 403, `${method} ${pathname} must reject ${JSON.stringify(headers)}`);
+        const error = JSON.parse(rejected.body);
+        assert.strictEqual(error.code, 'FORBIDDEN');
+        assert(!error.message.includes(root), 'errors must not expose filesystem paths');
+      }
+    }
+    for (const host of ['localhost', '127.0.0.1', '[::1]']) {
+      const headers = { Host: `${host}:${port}`, Origin: `http://${host}:${port}`, 'Sec-Fetch-Site': 'same-origin' };
+      assert.strictEqual((await request(server, '/api/state', { headers })).status, 200);
+      // Validation is reached for trusted writes; the source guard does not reject them.
+      assert.strictEqual((await request(server, '/api/members', { method: 'POST', headers, body: { name: '' } })).status, 400);
+    }
+    assert.strictEqual((await request(server, '/', { headers: { 'Sec-Fetch-Site': 'none' } })).status, 200);
+    const after = await request(server, '/api/backup/export');
+    const AdmZip = require('adm-zip');
+    for (const name of ['data/db.json', 'data/config.json', 'data/settlements.json']) {
+      assert.strictEqual(new AdmZip(after.body).readAsText(name), new AdmZip(before.body).readAsText(name),
+        `untrusted requests must leave ${name} unchanged`);
+    }
+    assert.strictEqual((await request(server, '/api/members', { method: 'POST', body: { name: 'trusted CLI' } })).status, 200);
+    assert.strictEqual((await request(server, '/api/members', {
+      method: 'POST', headers: { Origin: `http://127.0.0.1:${port}`, 'Sec-Fetch-Site': 'same-origin' }, body: { name: 'trusted browser' }
+    })).status, 200);
   } finally {
     await new Promise(resolve => server.close(resolve));
     fs.rmSync(dataDir, { recursive: true, force: true });

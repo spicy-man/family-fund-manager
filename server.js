@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const { randomUUID } = require('crypto');
 const storage = require('./lib/storage');
+const { localRequestPolicy } = require('./lib/local-request-policy');
 const { mergeSettlementLedger, migrateSettlementLedger } = require('./lib/settlement-ledger');
 const { maxSequenceNumber, migrateEventSequences } = require('./lib/event-order');
 const {
@@ -43,6 +44,8 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   next();
 });
+
+app.use(localRequestPolicy);
 
 const IMMUTABLE_ASSET_OPTIONS = {
   immutable: true,
@@ -460,7 +463,7 @@ registerApiRoutes(app, {
 });
 
 app.use('/api', (req, _res, next) => next(new NotFoundError('未找到该 API 接口。')));
-app.use('/api', apiErrorHandler);
+app.use(apiErrorHandler);
 // 从第三方公开汇率接口获取最新 USD/CNH 汇率
 function startServer({ port = PORT, host = '127.0.0.1' } = {}) {
   const server = app.listen(port, host, () => {
