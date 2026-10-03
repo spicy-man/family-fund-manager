@@ -2,6 +2,8 @@ const assert = require('assert');
 const { randomUUID } = require('crypto');
 const { calculateStateFromDb } = require('../lib/calculator');
 const { registerApiRoutes } = require('../routes/api');
+const AdmZip = require('adm-zip');
+const { mergeSettlementLedger } = require('../lib/settlement-ledger');
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -53,6 +55,8 @@ function makeApi(now = () => new Date(), initialDb = null, overrides = {}) {
     normalizeRemark: value => value || '',
     normalizeMemberName: value => value,
     fetchTickerAthData: async () => ({}),
+    readTickerCache: () => ({ tickers: {} }),
+    writeTickerCache: () => {},
     randomUUID,
     now,
     ...overrides
@@ -85,6 +89,193 @@ async function request(handler, body, params = {}) {
   const confirmSettlement = api.routes['post:/api/performance-settlement'];
   const reverseSettlement = api.routes['post:/api/performance-settlement/reverse-latest'];
   const updateEvent = api.routes['put:/api/event/:id'];
+
+  const disposalDb = {
+    cnhRate: 7.2,
+    members: [
+      { id: 'a', name: 'Alice', roles: { lp: true, gp: false } },
+      { id: 'b', name: 'Bob', roles: { lp: true, gp: true } },
+      { id: 'c', name: 'Carol', roles: { lp: true, gp: false } }
+    ],
+    performanceFee: { gpMemberId: 'b', annualRate: 0.06, feeRate: 0.25 },
+    events: [
+      { id: 'net-d', type: 'deposit', member: 'a', amount: 1000, date: '2025-01-05', createdAt: 1 },
+      { id: 'other-d', type: 'deposit', member: 'c', amount: 1000, date: '2025-01-05', createdAt: 2 },
+      { id: 'net-v', type: 'valuation', totalNAV: 4000, date: '2026-01-02', createdAt: 3 }
+    ]
+  };
+  const disposalBody = (type, amount) => type === 'withdraw'
+    ? { member: 'a', type, amount, date: '2026-01-04' }
+    : { fromMember: 'a', toMember: 'c', amount, cnhRate: 7.2, date: '2026-01-04' };
+  const disposalRoute = type => `post:/api/${type === 'withdraw' ? 'transaction' : 'transfer'}`;
+  for (const type of ['withdraw', 'transfer']) {
+    for (const amount of [1800, 1950]) {
+      const netApi = makeApi(undefined, disposalDb);
+      const result = await request(netApi.routes[disposalRoute(type)], disposalBody(type, amount));
+      assert.strictEqual(result.status, 400, `${type} above LP net value must be rejected`);
+      assert.strictEqual(result.body.code, 'INPUT_ERROR');
+      assert.strictEqual(netApi.getWrites(), 0);
+      assert.deepStrictEqual(netApi.getDb(), disposalDb);
+    }
+    for (const amount of [1500, 2000]) {
+      const netApi = makeApi(undefined, disposalDb);
+      const result = await request(netApi.routes[disposalRoute(type)], disposalBody(type, amount));
+      assert.strictEqual(result.status, 200, `${type} must preserve valid partial and gross full exits`);
+      const state = calculateStateFromDb(netApi.getDb(), { verifyLotSummaries: true });
+      assert(state.members.a.shares >= 0);
+      assert(Math.abs(state.members.a.shares - state.members.a.lpShares - state.members.a.gpCarryShares) < 1e-4);
+      if (amount === 2000) {
+        assert.strictEqual(result.body.data.fullExit, true);
+        assert(result.body.data.amount < 2000);
+        assert.strictEqual(state.members.a.shares, 0);
+      } else {
+        const beforeEdit = netApi.getDb();
+        const writesBeforeEdit = netApi.getWrites();
+        const edit = await request(netApi.routes['put:/api/event/:id'], { amount: 1800 }, { id: result.body.data.id });
+        assert.strictEqual(edit.status, 400, 'editing into the overdraw interval must fail');
+        assert.strictEqual(netApi.getWrites(), writesBeforeEdit);
+        assert.deepStrictEqual(netApi.getDb(), beforeEdit);
+      }
+    }
+
+    // A historical NAV edit or deletion must revalidate downstream net cash,
+    // even when the outgoing member later deposits enough to hide a deficit.
+    const cascadeDb = clone(disposalDb);
+    cascadeDb.events.push(
+      { id: 'higher-v', type: 'valuation', totalNAV: 6000, date: '2026-01-02', createdAt: 4 },
+      { id: 'cascade-out', type, ...disposalBody(type, 1800), createdAt: 5,
+        performanceFee: { gpMember: 'b', annualRate: 0.06, feeRate: 0.25, disposalVersion: 2 } },
+      { id: 'later-d', type: 'deposit', member: 'a', amount: 1000, date: '2026-01-11', createdAt: 6 }
+    );
+    for (const method of ['put', 'delete']) {
+      const cascadeApi = makeApi(undefined, cascadeDb);
+      const result = await request(cascadeApi.routes[`${method}:/api/event/:id`],
+        method === 'put' ? { totalNAV: 4000 } : {}, { id: 'higher-v' });
+      assert.strictEqual(result.status, 400, 'historical mutations must reject an underfunded net disposal');
+      assert.strictEqual(cascadeApi.getWrites(), 0);
+      assert.deepStrictEqual(cascadeApi.getDb(), cascadeDb);
+    }
+
+    const importedDb = clone(disposalDb);
+    importedDb.events.push({ id: 'import-out', type, ...disposalBody(type, 1800), createdAt: 4,
+      performanceFee: { gpMember: 'b', annualRate: 0.06, feeRate: 0.25, disposalVersion: 2 } });
+    const zip = new AdmZip();
+    zip.addFile('data/db.json', Buffer.from(JSON.stringify(importedDb)));
+    zip.addFile('data/config.json', Buffer.from(JSON.stringify({ tickers: [{ ticker: 'VOO' }] })));
+    let snapshotWrites = 0;
+    const importApi = makeApi(undefined, disposalDb, { writeSnapshot: () => { snapshotWrites++; } });
+    const imported = await request(importApi.routes['post:/api/backup/import'], zip.toBuffer());
+    assert.strictEqual(imported.status, 400, 'backup import must reject an underfunded net disposal');
+    assert.strictEqual(snapshotWrites, 0);
+    assert.deepStrictEqual(importApi.getDb(), disposalDb);
+  }
+
+  const mixedGpDb = clone(disposalDb);
+  mixedGpDb.events = [
+    { id: 'gp-d', type: 'deposit', member: 'b', amount: 100, date: '2025-01-05', createdAt: 1 },
+    { id: 'gp-v1', type: 'valuation', totalNAV: 120, date: '2026-01-02', createdAt: 2 },
+    { id: 'gp-s', type: 'performance_settlement', date: '2026-01-02', gpMember: 'b',
+      lpMembers: ['a', 'b', 'c'], annualRate: 0.06, feeRate: 0.25, algorithmVersion: 3, createdAt: 3 },
+    { id: 'gp-v2', type: 'valuation', totalNAV: 140, date: '2026-01-02', createdAt: 4 }
+  ];
+  for (const type of ['withdraw', 'transfer']) {
+    for (const [amount, status] of [[133, 200], [136, 400]]) {
+      const mixedApi = makeApi(undefined, mixedGpDb);
+      const body = disposalBody(type, amount);
+      if (type === 'withdraw') body.member = 'b';
+      else body.fromMember = 'b';
+      const result = await request(mixedApi.routes[disposalRoute(type)], body);
+      assert.strictEqual(result.status, status, 'only existing GP carry may fund cash above LP net value');
+      if (status === 400) assert.strictEqual(mixedApi.getWrites(), 0);
+      else assert.strictEqual(calculateStateFromDb(mixedApi.getDb()).members.b.currentValue, 7);
+    }
+  }
+
+  const settlementDateDb = clone(disposalDb);
+  // Check both routes around Beijing midnight, when the UTC date still
+  // belongs to the previous day. Settlement days need not be trading days.
+  for (const route of ['post:/api/performance-settlement/preview', 'post:/api/performance-settlement']) {
+    for (const [instant, date, status] of [
+      ['2026-01-03T15:59:59Z', '2026-01-04', 400],
+      ['2026-01-03T16:00:00Z', '2026-01-04', 200],
+      ['2026-01-03T16:00:00Z', '2026-01-05', 400],
+      ['2026-01-03T16:00:00Z', '2030-12-31', 400]
+    ]) {
+      const dateApi = makeApi(() => new Date(instant), settlementDateDb);
+      const result = await request(dateApi.routes[route], { date });
+      assert.strictEqual(result.status, status, `${route}: ${date} at ${instant}`);
+      if (status === 400) {
+        assert.match(result.body.message, /不能晚于今天/);
+        assert.strictEqual(dateApi.getWrites(), 0);
+        assert.strictEqual(dateApi.getCalculations(), 0, 'future dates must fail before replay');
+        assert.deepStrictEqual(dateApi.getDb(), settlementDateDb);
+      }
+    }
+  }
+
+  // Both backup formats must share the live settlement date limit. A future
+  // settlement which was already reversed is audit history, not an active lock.
+  for (const separateLedger of [false, true]) {
+    for (const [instant, date, reversed, status] of [
+      ['2026-01-03T15:59:59Z', '2026-01-04', false, 400],
+      ['2026-01-03T16:00:00Z', '2026-01-04', false, 200],
+      ['2026-01-03T16:00:00Z', '2026-01-03', false, 200],
+      ['2026-01-03T16:00:00Z', '2030-12-31', false, 400],
+      ['2026-01-03T16:00:00Z', '2030-12-31', true, 200]
+    ]) {
+      const baseDb = clone(settlementDateDb);
+      baseDb.events.forEach((event, index) => { event.sequenceNumber = index + 1; });
+      const settlement = {
+        id: 'import-settle', type: 'performance_settlement', date,
+        gpMember: 'b', lpMembers: ['a', 'b', 'c'], annualRate: 0.06, feeRate: 0.25,
+        algorithmVersion: 3, createdAt: 4, sequenceNumber: 4
+      };
+      const computed = calculateStateFromDb({ ...clone(baseDb), events: [...clone(baseDb.events), clone(settlement)] }).events.at(-1);
+      settlement.snapshot = {
+        breakdown: computed._breakdown, totalFee: computed._totalFee,
+        feeShares: computed._feeShares, navPerShare: computed._navAtTx
+      };
+      const records = [settlement];
+      if (reversed) records.push({
+        id: 'import-reversal', type: 'performance_settlement_reversal',
+        settlementId: settlement.id, settlementDate: date, date: '2026-01-04',
+        createdAt: 5, sequenceNumber: 5
+      });
+      const zip = new AdmZip();
+      zip.addFile('data/db.json', Buffer.from(JSON.stringify({
+        ...baseDb, events: separateLedger ? baseDb.events : [...baseDb.events, ...records]
+      })));
+      zip.addFile('data/config.json', Buffer.from(JSON.stringify({ tickers: [{ ticker: 'VOO' }] })));
+      if (separateLedger) zip.addFile('data/settlements.json', Buffer.from(JSON.stringify({ version: 1, records })));
+      let saved = null;
+      let snapshotWrites = 0;
+      let cacheWrites = 0;
+      const restoreApi = makeApi(() => new Date(instant), settlementDateDb, {
+        writeSnapshot: (db, config, ledger) => { snapshotWrites++; saved = mergeSettlementLedger(db, ledger); },
+        writeCnhRate: () => { cacheWrites++; },
+        writeIndexCache: () => { cacheWrites++; }
+      });
+      const restored = await request(restoreApi.routes['post:/api/backup/import'], zip.toBuffer());
+      assert.strictEqual(restored.status, status, `backup ${separateLedger ? 'separate' : 'embedded'}: ${date}, reversed=${reversed}, at ${instant}`);
+      if (status === 400) {
+        assert.match(restored.body.message, /不能晚于今天/);
+        assert.strictEqual(snapshotWrites, 0);
+        assert.strictEqual(cacheWrites, 0);
+        assert.deepStrictEqual(restoreApi.getDb(), settlementDateDb);
+      } else {
+        assert.strictEqual(snapshotWrites, 1);
+        const lockedDates = saved.events.filter(event => event.type === 'performance_settlement').map(event => event.date);
+        assert.deepStrictEqual(lockedDates, reversed ? [] : [date]);
+        if (reversed) {
+          const afterRestore = makeApi(() => new Date(instant), saved);
+          const deposit = await request(afterRestore.routes['post:/api/transaction'], {
+            member: 'a', type: 'deposit', amount: 100, date: '2026-01-04'
+          });
+          assert.strictEqual(deposit.status, 200, 'reversed future history must not lock current operations');
+        }
+      }
+    }
+  }
 
   // Exercise the conditional LP guard without startup migration normalizing
   // roles. A rejected reassignment must leave the persisted ledger unchanged.

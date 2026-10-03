@@ -7,7 +7,7 @@ const {
   isValidPerformanceFeeRates,
   isValidDisposalFeeSnapshot
 } = require('../lib/performance-fee-policy');
-const { mergeSettlementLedger, migrateSettlementLedger } = require('../lib/settlement-ledger');
+const { mergeSettlementLedger, migrateSettlementLedger, activeSettlementRecords } = require('../lib/settlement-ledger');
 const { hasSequenceNumber, maxSequenceNumber, migrateEventSequences } = require('../lib/event-order');
 const { InputError, handleApiError } = require('../lib/api-errors');
 const { normalizeCustomBenchmark } = require('../lib/custom-benchmark');
@@ -15,7 +15,7 @@ const { normalizeCustomBenchmark } = require('../lib/custom-benchmark');
 function registerBackupRoutes(app, deps, utils, tickerUtils) {
   const { readDb, readSettlements, readConfig, writeSnapshot, writeCnhRate = () => {},
     writeIndexCache = () => {}, ensureIndexCache, isValidDate } = deps;
-  const { toFiniteNumber, findLedgerIssue, rejectLedgerIssue } = utils;
+  const { toFiniteNumber, findLedgerIssue, rejectLedgerIssue, rejectFutureSettlementDate } = utils;
   const { queueTickerRefresh } = tickerUtils;
   const rejectImport = message => { throw new InputError(message); };
 
@@ -246,6 +246,11 @@ app.post('/api/backup/import', express.raw({
         rejectImport('独立结算账本包含无效的冲销引用。');
       }
       settlementIds.add(record.id);
+    }
+    // Restores must enforce the same date limit as new settlements. Reversed
+    // records remain audit history and do not lock or affect the active ledger.
+    for (const record of activeSettlementRecords(backupSettlements.records)) {
+      if (record.type === 'performance_settlement') rejectFutureSettlementDate(record.date);
     }
     let settlementMigration;
     try {

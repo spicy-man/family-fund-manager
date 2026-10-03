@@ -623,4 +623,43 @@ for (const field of ['shares', 'currentValue', 'totalWithdraw', 'lpShares', 'gpC
 assert(changedCurrentRateState.members.lp.lpLedger[0].hurdle < snapshottedRateState.members.lp.lpLedger[0].hurdle,
   'the prospective member hurdle must reflect the current configured annual rate');
 
+// Display replay caps underfunded net disposals; write routes reject the
+// requested/actual mismatch. No recipient or CNH flow may receive the excess.
+for (const type of ['withdraw', 'transfer']) {
+  for (const amount of [1800, 1950]) {
+    const state = calculateStateFromDb({
+      cnhRate: 7.2,
+      members: [{ id: 'lp', name: 'LP' }, { id: 'buyer', name: 'Buyer' }, { id: 'gp', name: 'GP' }],
+      events: [
+        event('cap-d', 'deposit', '2025-01-05', 1, { member: 'lp', amount: 1000 }),
+        event('cap-other', 'deposit', '2025-01-05', 2, { member: 'buyer', amount: 1000 }),
+        event('cap-v', 'valuation', '2026-01-02', 3, { totalNAV: 4000 }),
+        event('cap-out', type, '2026-01-04', 4, {
+          ...(type === 'withdraw' ? { member: 'lp' } : { fromMember: 'lp', toMember: 'buyer', cnhRate: 7.2 }),
+          amount, cnhAmount: amount * 7.2,
+          performanceFee: { gpMember: 'gp', annualRate: 0.06, feeRate: 0.25, disposalVersion: 2 }
+        })
+      ]
+    }, { verifyLotSummaries: true, validateMemberBalances: true });
+    const disposal = state.events.at(-1);
+    assert.strictEqual(state.members.lp.shares, 0);
+    assert.strictEqual(state.members.lp.lpShares, 0);
+    assert.strictEqual(state.members.lp.gpCarryShares, 0);
+    assert(disposal._actualAmount < amount);
+    approximately(disposal._actualAmount + disposal._performanceFee, 2000);
+    approximately(disposal._cnhAmountComputed, disposal._actualAmount * 7.2);
+    if (type === 'transfer') approximately(state.members.buyer.lpShares, 1000 + disposal._actualAmount / 2);
+  }
+}
+
+// Validation checks every event, so a later deposit cannot conceal a
+// negative historical position in an otherwise positive final state.
+assert.throws(() => calculateStateFromDb({
+  members: [{ id: 'lp', name: 'LP' }],
+  events: [
+    event('bad-d', 'deposit', '2025-01-05', 1, { member: 'lp', amount: -100 }),
+    event('repair-d', 'deposit', '2025-01-12', 2, { member: 'lp', amount: 200 })
+  ]
+}, { validateMemberBalances: true }), error => error.code === 'INPUT_ERROR' && /份额为负/.test(error.message));
+
 console.log('Performance settlement hurdle, HWM and lot-transfer assertions passed.');

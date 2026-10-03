@@ -164,6 +164,44 @@ async function startExternalFailureServer() {
     });
     assert.deepStrictEqual(exportedSettlements, { version: 1, records: [] });
 
+    // A valid future settlement snapshot must not bypass the live date guard
+    // through either backup format, and rejection must preserve every core file.
+    const futureDb = {
+      ...exportedDb,
+      performanceFee: { gpMemberId: 'me', annualRate: 0.06, feeRate: 0.25 },
+      members: exportedDb.members.map(member => ({ ...member, roles: { lp: true, gp: member.id === 'me' } }))
+    };
+    const futureSettlement = {
+      id: 'future_import_s', type: 'performance_settlement', date: '2030-12-31',
+      gpMember: 'me', lpMembers: futureDb.members.map(member => member.id),
+      annualRate: 0.06, feeRate: 0.25, algorithmVersion: 3, createdAt: Date.now(), sequenceNumber: 4
+    };
+    const futureComputed = calculateStateFromDb(JSON.parse(JSON.stringify({
+      ...futureDb, events: [...futureDb.events, futureSettlement]
+    }))).events.at(-1);
+    futureSettlement.snapshot = {
+      breakdown: futureComputed._breakdown, totalFee: futureComputed._totalFee,
+      feeShares: futureComputed._feeShares, navPerShare: futureComputed._navAtTx
+    };
+    const coreFiles = ['db.json', 'config.json', 'settlements.json'];
+    const beforeFutureImport = coreFiles.map(file => fs.readFileSync(path.join(dataDir, file)));
+    for (const separateLedger of [false, true]) {
+      const futureBackup = new AdmZip();
+      futureBackup.addFile('data/db.json', Buffer.from(JSON.stringify({
+        ...futureDb, events: separateLedger ? futureDb.events : [...futureDb.events, futureSettlement]
+      })));
+      futureBackup.addFile('data/config.json', Buffer.from(JSON.stringify(exportedConfig)));
+      if (separateLedger) futureBackup.addFile('data/settlements.json', Buffer.from(JSON.stringify({
+        version: 1, records: [futureSettlement]
+      })));
+      const futureImport = await requestBuffer(server, 'POST', '/api/backup/import', futureBackup.toBuffer());
+      assert.strictEqual(futureImport.status, 400);
+      assert.match(JSON.parse(futureImport.body).message, /不能晚于今天/);
+      coreFiles.forEach((file, index) => assert.deepStrictEqual(
+        fs.readFileSync(path.join(dataDir, file)), beforeFutureImport[index], 'rejected import must not replace core files'
+      ));
+    }
+
     const invalidDisposalVersionBackup = new AdmZip();
     invalidDisposalVersionBackup.addFile('data/db.json', Buffer.from(JSON.stringify({
       ...exportedDb,
@@ -204,6 +242,10 @@ async function startExternalFailureServer() {
       events: exportedDb.events.map((event, index) => index === exportedDb.events.length - 1
         ? {
             ...event,
+            // Adding a fee snapshot lowers the LP net cash limit. Keep this
+            // fixture a valid partial exit rather than an overdraw near gross NAV.
+            amount: 60,
+            cnhAmount: 432,
             performanceFee: { gpMember: 'me', annualRate: 0.07, feeRate: 0.2, disposalVersion: 2 }
           }
         : event)

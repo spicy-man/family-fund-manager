@@ -7,12 +7,13 @@ function registerSettlementRoutes(app, deps, utils) {
   const { readDb, readSettlements, writeSettlements, calculateStateFromDb,
     isValidDate, normalizeRemark, randomUUID, now: getNow } = deps;
   const { findLedgerIssue, rejectLedgerIssue, latestSettlementDate,
-    peekEventSequence, commitEventSequence } = utils;
+    peekEventSequence, commitEventSequence, rejectFutureSettlementDate } = utils;
 
 function buildSettlementPreview(db, body) {
   const gpMember = db.performanceFee?.gpMemberId;
   const { date } = body;
   if (!isValidDate(date)) throw new InputError('结算日期必须是有效的 YYYY-MM-DD。');
+  rejectFutureSettlementDate(date);
   const settledThrough = latestSettlementDate(db);
   if (settledThrough && date <= settledThrough) {
     throw new InputError(`业绩结算已完成至 ${settledThrough}，新结算日期必须晚于该日期。`);

@@ -58,6 +58,15 @@ function registerApiRoutes(app, deps) {
     return date <= latest ? null : `美东时间04:05后才开放当日估值；当前最晚可选择 ${latest}。`;
   }
 
+  function rejectFutureSettlementDate(date) {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(getNow());
+    const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    const today = `${values.year}-${values.month}-${values.day}`;
+    if (date > today) throw new InputError(`结算日期不能晚于今天（北京时间 ${today}）。`);
+  }
+
   // The calculator caps underfunded replay events for display safety. Before
   // persisting a mutation, reject any ledger where requested and settled amounts
   // would differ instead.
@@ -65,6 +74,7 @@ function registerApiRoutes(app, deps) {
     const validationDb = JSON.parse(JSON.stringify(db));
     return calculateStateFromDb(validationDb, {
       includeDisposalLotDetails: false,
+      validateMemberBalances: true,
       ...options
     });
   }
@@ -137,6 +147,7 @@ function registerApiRoutes(app, deps) {
     BALANCE_TOLERANCE, toFiniteNumber, isSundayDate, latestValuationDate,
     validateValuationDate, calculateLedgerState, findLedgerIssue,
     rejectLedgerIssue, latestSettlementDate, rejectLockedPeriod,
+    rejectFutureSettlementDate,
     peekEventSequence, commitEventSequence
   };
 
