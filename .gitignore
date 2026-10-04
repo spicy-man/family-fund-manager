@@ -51,6 +51,7 @@ coverage/
 .tsbuildinfo
 build/
 dist/
+dist-demo/
 out/
 
 # --- 环境配置文件 (Sensitive Environment Variables) ---

@@ -1,5 +1,7 @@
 # 家庭基金账目管理系统
 
+[**在线预览 · 只读 Demo**](https://spicy-man.github.io/family-fund-manager/) · [源码](https://github.com/spicy-man/family-fund-manager)
+
 面向家庭和小型合伙基金的本地账本。系统按时间重放入金、出金、估值、成员转让和业绩结算事件，计算基金净值、成员份额及 LP/GP 权益。
 
 默认仅监听 `127.0.0.1`，数据保存在本机。页面与 API 只接受本机地址和实际监听端口，请通过 `http://localhost:端口` 或 `http://127.0.0.1:端口` 访问；拒绝外部 Origin、跨站请求和异常 Host。无 Origin 的本机命令行请求仍可使用。项目没有登录和远程访问功能，不要直接暴露到公网。
@@ -57,6 +59,23 @@ $env:PORT=3001; npm start
 # macOS / Linux
 PORT=3001 npm start
 ```
+
+### GitHub Pages 在线预览
+
+在线预览复用上述只读 Demo，所有数据均来自项目内的演示账本与固化行情快照，不读取本地 `data/` 或 `backups/`。行情不会在网页里实时更新；更新样例快照后重新发布即可。
+
+本地构建：
+
+```bash
+npm ci
+npm run demo:build
+```
+
+输出目录为 `dist-demo/`（已加入 Git 忽略规则），可通过任意静态 HTTP 服务预览。正式本地程序仍使用 `npm start`。
+
+首次部署时，在仓库 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**。此后推送到 `main`，或手动运行 **Deploy read-only Demo to GitHub Pages** 工作流，会先运行完整测试，再构建并发布预览。发布包包含页面、字体、第三方许可证和六份演示 JSON，不包含服务端、正式账本或备份。
+
+访问地址：<https://spicy-man.github.io/family-fund-manager/>。源码仓库的 **About → Website** 可填写同一地址。
 
 ### 行情与汇率的网络代理
 

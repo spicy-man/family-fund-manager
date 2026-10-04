@@ -1,6 +1,7 @@
 (function () {
-  const enabled = window.location.pathname === '/demo';
-  window.FundDemoMode = { enabled };
+  const staticDemo = Boolean(document.querySelector('meta[name="fund-static-demo"]'));
+  const enabled = staticDemo || window.location.pathname === '/demo';
+  window.FundDemoMode = { enabled, staticDemo };
   if (!enabled) return;
 
   const blockedSelectors = [
@@ -35,6 +36,11 @@
       '<a class="demo-banner-exit" href="/">返回正式账本</a>'
     ].join('');
     document.body.prepend(banner);
+    if (staticDemo) {
+      const link = banner.querySelector('.demo-banner-exit');
+      link.href = 'https://github.com/spicy-man/family-fund-manager';
+      link.textContent = '查看 GitHub 源码';
+    }
 
     const operationPanel = document.querySelector('.operations-panel');
     if (operationPanel) {
