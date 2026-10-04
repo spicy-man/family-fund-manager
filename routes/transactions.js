@@ -22,7 +22,9 @@ app.post('/api/transaction', (req, res, next) => {
   try {
     const { member, type, amount, cnhAmount, date, remark } = req.body;
     const db = readDb();
-    if (date) rejectLockedPeriod(db, date);
+    if (!date) throw new InputError('日期不能为空');
+    if (!isValidDate(date)) throw new InputError('日期必须是有效的 YYYY-MM-DD。');
+    rejectLockedPeriod(db, date);
 
     const memberObj = db.members.find(m => m.id === member);
     if (!memberObj) {
@@ -50,13 +52,6 @@ app.post('/api/transaction', (req, res, next) => {
       parsedCnhAmount = parsedAmount * (db.cnhRate || 7.2);
     }
 
-    if (!date) {
-      throw new InputError('日期不能为空');
-    }
-
-    if (!isValidDate(date)) {
-      throw new InputError('日期必须是有效的 YYYY-MM-DD。');
-    }
     if (!isSundayDate(date)) {
       throw new InputError('出入金仅在周日办理，交易日期必须为周日。');
     }
@@ -163,7 +158,9 @@ app.post('/api/transfer', (req, res, next) => {
   try {
     const { fromMember, toMember, amount, cnhRate, date, remark } = req.body;
     const db = readDb();
-    if (date) rejectLockedPeriod(db, date);
+    if (!date) throw new InputError('日期不能为空');
+    if (!isValidDate(date)) throw new InputError('日期必须是有效的 YYYY-MM-DD。');
+    rejectLockedPeriod(db, date);
 
     if (fromMember === toMember) {
       throw new InputError('出让方与受让方不能为同一成员');
@@ -188,13 +185,6 @@ app.post('/api/transfer', (req, res, next) => {
       throw new InputError('受让汇率必须大于 0');
     }
 
-    if (!date) {
-      throw new InputError('日期不能为空');
-    }
-
-    if (!isValidDate(date)) {
-      throw new InputError('日期必须是有效的 YYYY-MM-DD。');
-    }
     if (!isSundayDate(date)) {
       throw new InputError('内部份额转让仅在周日办理，划转日期必须为周日。');
     }

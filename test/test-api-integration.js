@@ -80,9 +80,27 @@ async function startExternalFailureServer() {
 }
 
 (async () => {
-  const server = startServer({ port: 0 });
+  const browserUrls = [];
+  const server = startServer({ port: 0, openBrowser: true,
+    launchBrowser: url => {
+      assert.strictEqual(server.listening, true, 'browser must wait for a successful listen');
+      browserUrls.push(url);
+    }
+  });
+  assert.strictEqual(browserUrls.length, 0, 'starting the server must not open the browser early');
   await new Promise(resolve => server.once('listening', resolve));
   try {
+    assert.deepStrictEqual(browserUrls, [`http://localhost:${server.address().port}`]);
+    const firstPage = await requestBuffer(server, 'GET', '/');
+    assert.strictEqual(firstPage.status, 200, 'the first page request after browser launch must succeed');
+    assert(firstPage.body.toString().includes('<!DOCTYPE html>'));
+    const failedLaunches = [];
+    const occupied = startServer({ port: server.address().port, openBrowser: true,
+      launchBrowser: url => failedLaunches.push(url) });
+    const bindError = await new Promise(resolve => occupied.once('error', resolve));
+    assert.strictEqual(bindError.code, 'EADDRINUSE');
+    assert.deepStrictEqual(failedLaunches, [], 'a failed server must not open a browser');
+
     let response = await request(server, 'GET', '/api/state');
     assert.strictEqual(response.status, 200);
     assert.strictEqual(response.body.data.summary.totalNAV, 0);

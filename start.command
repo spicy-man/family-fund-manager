@@ -32,11 +32,7 @@ if [ ! -d "node_modules" ]; then
     echo
 fi
 
-# 3. 异步延时 2 秒打开网页（确保 Node.js 服务已完成初始化并成功绑定端口）
-echo "[提示] 正在浏览器中为您打开系统网页..."
-(sleep 2 && open "http://localhost:3000") &
-
-# 4. 启动 Node.js 服务器
+# 3. 启动服务，成功监听后由服务打开浏览器，避免固定延时导致首次连接失败
 echo "[提示] 正在启动后端服务..."
 echo
-npm start
+npm start -- --open-browser

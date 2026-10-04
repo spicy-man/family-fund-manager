@@ -44,7 +44,8 @@ function harness({ platform = 'win32', env = {}, output = registry('0x1', '127.0
   const clash = harness();
   assert.deepStrictEqual(await clash.fetch(url), { transport: 'curl' });
   assert(!clash.calls.some(call => call.bin === 'https'), 'configured proxy must skip the direct request');
-  assert(clash.calls[1].args.includes('http://127.0.0.1:7890'));
+  assert(!clash.calls[1].args.includes('--proxy'));
+  assert.strictEqual(clash.calls[1].options.env.https_proxy, 'http://127.0.0.1:7890');
   await clash.fetch(url);
   assert.strictEqual(clash.calls.filter(call => call.bin === 'reg.exe').length, 1);
   clash.advance();
@@ -66,7 +67,28 @@ function harness({ platform = 'win32', env = {}, output = registry('0x1', '127.0
   const custom = harness({ env: { FUND_NETWORK_PROXY: 'http://localhost:9999' } });
   await custom.fetch(url);
   assert.strictEqual(custom.calls[0].bin, 'curl.exe');
-  assert(custom.calls[0].args.includes('http://localhost:9999'));
+  assert(!custom.calls[0].args.includes('http://localhost:9999'));
+  assert.strictEqual(custom.calls[0].options.env.https_proxy, 'http://localhost:9999');
+
+  const credentialEnv = { FUND_NETWORK_PROXY: 'socks5h://alice:secret@localhost:1080',
+    https_proxy: 'http://wrong:8000', HTTPS_PROXY: 'http://wrong:9000',
+    ALL_PROXY: 'http://wrong:7000', NO_PROXY: '.example.com' };
+  const credentials = harness({ env: credentialEnv });
+  await credentials.fetch(url);
+  const proxyCall = credentials.calls[0];
+  assert(!JSON.stringify(proxyCall.args).includes('secret'));
+  assert(!proxyCall.args.includes('--proxy'));
+  assert.strictEqual(proxyCall.options.env.https_proxy, credentialEnv.FUND_NETWORK_PROXY);
+  assert.strictEqual(proxyCall.options.env.HTTPS_PROXY, credentialEnv.FUND_NETWORK_PROXY);
+  assert.strictEqual(proxyCall.options.env.http_proxy, credentialEnv.FUND_NETWORK_PROXY);
+  assert.strictEqual(proxyCall.options.env.ALL_PROXY, credentialEnv.FUND_NETWORK_PROXY);
+  assert.strictEqual(proxyCall.options.env.FUND_NETWORK_PROXY, undefined);
+  assert.strictEqual(proxyCall.options.env.NO_PROXY, '.example.com');
+  assert.strictEqual(credentialEnv.https_proxy, 'http://wrong:8000', 'parent env must remain unchanged');
+  const credentialFailure = harness({ env: credentialEnv,
+    curlError: { code: 7, message: 'secret', cmd: 'secret' } });
+  await assert.rejects(credentialFailure.fetch(url), error => /curl 7/.test(error.message) &&
+    !JSON.stringify(error).includes('secret') && !error.message.includes('secret'));
 
   const environment = harness({ env: { HTTPS_PROXY: 'http://proxy:8000', NO_PROXY: '.example.com' } });
   await environment.fetch(url);
@@ -166,6 +188,31 @@ function harness({ platform = 'win32', env = {}, output = registry('0x1', '127.0
   } finally {
     server.closeIdleConnections?.();
     await new Promise(resolve => server.close(resolve));
+  }
+
+  // Real curl must still apply an explicit authenticated proxy after moving
+  // its URL to the environment. The mock tests above verify secret-free argv.
+  let proxyRequests = 0;
+  const localProxy = http.createServer((req, res) => {
+    proxyRequests++;
+    assert.strictEqual(req.url, 'http://fund-proxy-test.invalid/data');
+    assert.strictEqual(req.headers['proxy-authorization'],
+      'Basic ' + Buffer.from('regression:fake-password').toString('base64'));
+    res.end('{"proxied":true}');
+  });
+  await new Promise((resolve, reject) => {
+    localProxy.once('error', reject);
+    localProxy.listen(0, '127.0.0.1', resolve);
+  });
+  try {
+    const liveProxyFetch = createJsonFetcher({ env: { ...process.env,
+      FUND_NETWORK_PROXY: `http://regression:fake-password@127.0.0.1:${localProxy.address().port}`,
+      no_proxy: '', NO_PROXY: '' } });
+    assert.deepStrictEqual(await liveProxyFetch('http://fund-proxy-test.invalid/data'), { proxied: true });
+    assert.strictEqual(proxyRequests, 1);
+  } finally {
+    localProxy.closeIdleConnections?.();
+    await new Promise(resolve => localProxy.close(resolve));
   }
   console.log('External JSON proxy selection and transport assertions passed.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

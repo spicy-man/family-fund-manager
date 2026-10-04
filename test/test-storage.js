@@ -299,6 +299,7 @@ try {
       { version: 1, records: [{ id: 'crash-s', type: 'performance_settlement', date: '2028-01-01', createdAt: 1 }] }
     );
   `;
+  crashStorage.releaseDataDirectoryLock();
   const crashed = spawnSync(process.execPath, ['-e', crashScript], {
     env: {
       ...process.env,
@@ -403,6 +404,7 @@ try {
     ...legacyIndexCache
   });
 
+  legacyStorage.releaseDataDirectoryLock();
   legacyStorage = loadStorage(legacyDataDir, legacyBackupDir);
   const migratedDb = legacyStorage.readDb();
   assert.strictEqual(Object.prototype.hasOwnProperty.call(migratedDb, 'indexCache'), false);

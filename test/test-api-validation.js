@@ -80,6 +80,59 @@ async function request(handler, body, params = {}) {
 }
 
 (async () => {
+  // Invalid dates must be input failures even when the ledger is locked.
+  const lockedFixture = makeApi().getDb();
+  lockedFixture.events.push({ id: 'locked', type: 'performance_settlement', date: '2026-09-30' });
+  const lockedApi = makeApi(undefined, lockedFixture, {
+    isValidDate: date => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+      !Number.isNaN(Date.parse(`${date}T00:00:00Z`)) &&
+      new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date
+  });
+  for (const [route, payload] of [
+    ['post:/api/transaction', { member: 'a', type: 'deposit', amount: 100 }],
+    ['post:/api/transfer', { fromMember: 'a', toMember: 'b', amount: 10, cnhRate: 7.2 }]
+  ]) {
+    for (const date of [123, true, {}, [], ['2026-01-04'], '2026-02-30', '2026-01', '', null]) {
+      const result = await request(lockedApi.routes[route], { ...payload, date });
+      assert.strictEqual(result.status, 400);
+      assert.strictEqual(result.body.code, 'INPUT_ERROR');
+      assert.match(result.body.message, /日期/);
+    }
+    const validLocked = await request(lockedApi.routes[route], { ...payload, date: '2026-01-04' });
+    assert.strictEqual(validLocked.status, 409);
+    assert.strictEqual(validLocked.body.code, 'BUSINESS_CONFLICT');
+  }
+  assert.strictEqual(lockedApi.getWrites(), 0);
+  assert.strictEqual(lockedApi.getCalculations(), 0);
+  assert.deepStrictEqual(lockedApi.getDb(), lockedFixture);
+
+  // Calculation business failures must reach the API with an actionable reason.
+  const invalidRateDb = makeApi().getDb();
+  invalidRateDb.performanceFee.annualRate = 2;
+  const zeroNavDb = makeApi().getDb();
+  zeroNavDb.events.push({ id: 'zero', type: 'valuation', totalNAV: 0, date: '2026-01-12' });
+  for (const [fixture, message] of [[invalidRateDb, /业绩报酬配置/], [zeroNavDb, /净值为 0/]]) {
+    const failedApi = makeApi(undefined, fixture);
+    const result = await request(failedApi.routes['post:/api/transaction'],
+      { member: 'a', type: 'deposit', amount: 10, date: '2026-01-18' });
+    assert.strictEqual(result.status, 400);
+    assert.strictEqual(result.body.code, 'INPUT_ERROR');
+    assert.match(result.body.message, message);
+    assert.strictEqual(failedApi.getWrites(), 0);
+    assert.deepStrictEqual(failedApi.getDb(), fixture);
+  }
+  const brokenStateDb = makeApi().getDb();
+  brokenStateDb.events.push(
+    { id: 'zero-state', type: 'valuation', totalNAV: 0, date: '2026-01-12' },
+    { id: 'after-zero-state', type: 'deposit', member: 'a', amount: 10, date: '2026-01-18' }
+  );
+  const brokenStateApi = makeApi(undefined, brokenStateDb);
+  const brokenState = await request(brokenStateApi.routes['get:/api/state'], {});
+  assert.strictEqual(brokenState.status, 400);
+  assert.strictEqual(brokenState.body.code, 'INPUT_ERROR');
+  assert.match(brokenState.body.message, /净值为 0/);
+  assert.strictEqual(brokenStateApi.getWrites(), 0);
+
   const api = makeApi();
   const transaction = api.routes['post:/api/transaction'];
   const transfer = api.routes['post:/api/transfer'];

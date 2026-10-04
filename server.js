@@ -469,7 +469,13 @@ registerApiRoutes(app, {
 app.use('/api', (req, _res, next) => next(new NotFoundError('未找到该 API 接口。')));
 app.use(apiErrorHandler);
 // 从第三方公开汇率接口获取最新 USD/CNH 汇率
-function startServer({ port = PORT, host = '127.0.0.1' } = {}) {
+function startServer({ port = PORT, host = '127.0.0.1', openBrowser = false,
+  launchBrowser = url => {
+    require('child_process').execFile('/usr/bin/open', [url], error => {
+      if (error) console.error('[浏览器打开失败] 请手动访问：', url);
+    });
+  }
+} = {}) {
   const server = app.listen(port, host, () => {
   console.log(`====================================================`);
   console.log(`🚀 家庭基金账目管理系统已在本地成功启动！`);
@@ -499,12 +505,27 @@ function startServer({ port = PORT, host = '127.0.0.1' } = {}) {
   } catch (err) {
     console.error('[Yahoo Sync Startup Error]:', err);
   }
+  if (openBrowser) {
+    launchBrowser(`http://localhost:${server.address().port}`);
+  }
   });
   return server;
 }
 
 if (require.main === module) {
-  const server = startServer();
+  const server = startServer({ openBrowser: process.argv.includes('--open-browser') });
+  let shuttingDown = false;
+  const shutdown = () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    // Stop accepting HTTP work first. Keep ownership through pending requests
+    // and background work; the synchronous exit hook releases it only as this
+    // process terminates, so no surviving callback can write after release.
+    server.close(() => process.exit(0));
+    server.closeIdleConnections?.();
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       console.error(`\
@@ -513,6 +534,8 @@ if (require.main === module) {
 `);
       process.exit(1);
     }
+    console.error('[启动失败] 无法监听本机服务：', err.code || err.message);
+    process.exit(1);
   });
 }
 
