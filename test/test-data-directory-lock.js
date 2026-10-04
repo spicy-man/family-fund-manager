@@ -39,6 +39,48 @@ const readScript = `const storage = require(${JSON.stringify(storageModule)}); s
     assert(!fs.existsSync(path.join(dataDir, LOCK_NAME)), 'normal exit releases directory');
     assert.strictEqual(run(dataDir, readScript).status, 0, 'next process can acquire after release');
 
+    // Closing a Windows terminal forcibly kills Node without its exit hook.
+    const forcedDir = path.join(root, 'forced-exit');
+    const lockModule = require.resolve('../lib/data-directory-lock');
+    const holdScript = `const { acquireDataDirectoryLock } = require(${JSON.stringify(lockModule)});
+      acquireDataDirectoryLock(process.env.FUND_DATA_DIR);
+      process.send('ready'); process.on('message', () => process.exit(0));`;
+    const forced = spawn(process.execPath, ['-e', holdScript], {
+      ...options(forcedDir), stdio: ['ignore', 'pipe', 'pipe', 'ipc']
+    });
+    children.push(forced);
+    await once(forced, 'message');
+    const forcedExited = once(forced, 'exit');
+    forced.kill('SIGKILL');
+    await forcedExited;
+    const forcedLock = path.join(forcedDir, LOCK_NAME);
+    assert(fs.existsSync(forcedLock), 'forced exit leaves a lease for recovery');
+    const contenderScript = `try {
+      const { acquireDataDirectoryLock } = require(${JSON.stringify(lockModule)});
+      acquireDataDirectoryLock(process.env.FUND_DATA_DIR);
+      process.send('acquired'); process.on('message', () => process.exit(0));
+    } catch (error) {
+      if (error.code !== 'FUND_DATA_DIRECTORY_LOCKED') throw error;
+      process.send('denied', () => process.exit(0));
+    }`;
+    const contenders = Array.from({ length: 4 }, () => {
+      const child = spawn(process.execPath, ['-e', contenderScript], {
+        ...options(forcedDir), stdio: ['ignore', 'pipe', 'pipe', 'ipc']
+      });
+      children.push(child);
+      return child;
+    });
+    const results = await Promise.all(contenders.map(child => once(child, 'message')));
+    assert.strictEqual(results.filter(([result]) => result === 'acquired').length, 1,
+      'concurrent recovery grants exactly one lease');
+    const winner = contenders[results.findIndex(([result]) => result === 'acquired')];
+    const winnerExited = once(winner, 'exit');
+    winner.send('exit');
+    await winnerExited;
+    assert(!fs.existsSync(forcedLock), 'recovered lease releases normally');
+    assert(!fs.existsSync(`${forcedLock}.recovery`), 'recovery guard releases');
+    assert.strictEqual(run(forcedDir, readScript).status, 0, 'restart after forced exit succeeds');
+
     const serverDir = path.join(root, 'cli-server');
     const serverModule = require.resolve('../server');
     const preload = path.join(root, 'signal-preload.js');
