@@ -53,9 +53,6 @@
     height: auto;
   }
 
-  .members-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 720px) {
@@ -103,18 +100,6 @@
     max-width: calc(100% - 24px);
     max-height: calc(100vh - 24px);
     overflow-y: auto;
-  }
-}
-
-@media (max-width: 720px) {
-  .members-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 480px) {
-  .members-grid {
-    grid-template-columns: 1fr;
   }
 }
 

@@ -38,9 +38,9 @@ window.FundMemberRenderer = {
         <div class="member-card" style="${dimmed}" tabindex="0">
           <div class="member-avatar" style="background:${avatarColor.background};color:${avatarColor.color};">${avatar}</div>
           <div class="member-details">
-            <div class="member-header" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px;">
-              <span class="member-name" title="${displayName}" style="font-weight:700;font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px;">${displayName}</span>
-              <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;line-height:1.15;">
+            <div class="member-header">
+              <span class="member-name" title="${displayName}">${displayName}</span>
+              <div class="member-returns">
                 <span class="member-roi ${usdClass} privacy-sensitive" style="font-size:0.85rem;font-weight:700;">${account.profitRate >= 0 ? '+' : ''}${account.profitRate.toFixed(2)}% <small>USD</small></span>
                 <span class="member-roi ${cnhClass} privacy-sensitive" title="CNH收益率，含汇率变动影响" style="font-size:0.75rem;font-weight:600;margin-top:1px;">${account.cnhProfitRate >= 0 ? '+' : ''}${account.cnhProfitRate.toFixed(2)}% <small>CNH·含汇率</small></span>
               </div>

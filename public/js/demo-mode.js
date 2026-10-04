@@ -70,10 +70,26 @@
         try { await window.FundDemoSandbox.reset(); window.location.reload(); }
         catch (error) { alert(error.message); }
       });
-      banner.insertBefore(reset, banner.querySelector('.demo-banner-exit'));
+      const actions = document.createElement('div');
+      actions.className = 'demo-banner-actions';
+      actions.append(reset, banner.querySelector('.demo-banner-exit'));
+      banner.appendChild(actions);
+      const tickerHint = document.createElement('p');
+      tickerHint.className = 'demo-ticker-note';
+      tickerHint.id = 'demo-ticker-unavailable';
+      tickerHint.textContent = '体验版不可操作';
+      document.querySelector('#ticker-ath-container .panel-header')?.after(tickerHint);
+      for (const id of ['btn-refresh-tickers', 'btn-config-tickers']) {
+        const button = document.getElementById(id);
+        if (!button) continue;
+        button.disabled = true;
+        button.setAttribute('aria-disabled', 'true');
+        button.setAttribute('aria-describedby', tickerHint.id);
+        button.title = '体验版不可操作';
+      }
       if (operationPanel) {
         operationPanel.querySelector('.panel-badge').textContent = '沙盒体验';
-        operationPanel.querySelector('.demo-panel-note').textContent = '可以录入、修改、结算和恢复备份。行情及汇率使用离线快照，支持 AAPL、GOOGL、VGT，刷新行情会重新载入快照。';
+        operationPanel.querySelector('.demo-panel-note').textContent = '可以录入、修改、结算和恢复备份。行情及汇率使用离线快照，对标组合支持 AAPL、GOOGL、VGT；标的追踪的刷新和配置在体验版不可操作。';
       }
       document.querySelector('#backup-modal a[download]')?.addEventListener('click', async event => {
         event.preventDefault();
