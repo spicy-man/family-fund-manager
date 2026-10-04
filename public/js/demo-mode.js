@@ -89,7 +89,7 @@
       }
       if (operationPanel) {
         operationPanel.querySelector('.panel-badge').textContent = '沙盒体验';
-        operationPanel.querySelector('.demo-panel-note').textContent = '可以录入、修改、结算和恢复备份。行情及汇率使用离线快照，对标组合支持 AAPL、GOOGL、VGT；标的追踪的刷新和配置在体验版不可操作。';
+        operationPanel.querySelector('.demo-panel-note')?.remove();
       }
       document.querySelector('#backup-modal a[download]')?.addEventListener('click', async event => {
         event.preventDefault();

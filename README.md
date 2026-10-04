@@ -168,7 +168,7 @@ backups/   自动快照
 
 本项目建立在以下开源项目之上，感谢各位作者与维护者的贡献。
 
-其中，按钮、导航与 tooltip 的液态玻璃效果来自 **[Hyalite](https://github.com/VII-Cae/hyalite--liquid-glass) v0.5.0**，由 **VII-Cae（VII）** 创作。Hyalite 通过透镜映射、SVG 位移滤镜与 `backdrop-filter` 实现背景折射；本项目在此基础上接入业务界面，并提供 tooltip 实时调参面板。仓库保留了上游源码中的版权声明与 [MIT 许可证全文](./public/vendor/hyalite/0.5.0/LICENSE)。
+其中，按钮、导航与 tooltip 的液态玻璃效果来自 **[Hyalite](https://github.com/VII-Cae/hyalite--liquid-glass) v0.5.0**，由 **VII-Cae（VII）** 创作。Hyalite 通过透镜映射、SVG 位移滤镜与 `backdrop-filter` 实现背景折射；本项目在此基础上接入业务界面，将按钮、导航与 tooltip 的玻璃厚度固定为 20。仓库保留了上游源码中的版权声明与 [MIT 许可证全文](./public/vendor/hyalite/0.5.0/LICENSE)。
 
 | 开源项目 | 在本项目中的用途 | 许可证 |
 | --- | --- | --- |

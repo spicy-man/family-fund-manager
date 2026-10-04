@@ -44,7 +44,7 @@
 .members-grid {
   display: grid;
   /* 桌面端最多四列，剩余空间由每张卡片均分。 */
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(max(min(100%, 260px), calc((100% - 48px) / 4)), 1fr));
   gap: 16px;
 }
 
