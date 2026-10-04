@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 自动切换到当前脚本所在的目录
-cd "$(dirname "$0")"
+cd "$(dirname "$0")" || exit 1
 
 echo "=================================================="
 echo "      正在准备启动家庭基金账目管理系统..."
@@ -35,4 +35,4 @@ fi
 # 3. 启动服务，成功监听后由服务打开浏览器，避免固定延时导致首次连接失败
 echo "[提示] 正在启动后端服务..."
 echo
-npm start -- --open-browser
+exec node scripts/launch.js --open-browser

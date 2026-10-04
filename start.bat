@@ -37,14 +37,10 @@ if not exist "package.json" goto NO_PACKAGE
 if not exist "node_modules" goto INSTALL_DEPS
 
 :RUN
-:: 3. Open browser smoothly in background
-echo ⏳ [System] Preparing web interface (http://localhost:3000)...
-start /b "" cmd /c "ping 127.0.0.1 -n 3 >nul & start http://localhost:3000"
-
-:: 4. Start backend server
-echo ⏳ [System] Starting server, press Ctrl+C to stop...
+:: 3. Tie the server lifetime to this console; open browser after listening.
+echo [System] Starting server. Close this window or press Ctrl+C to stop.
 echo.
-node server.js
+node scripts\launch.js --open-browser
 if errorlevel 1 goto EXIT_WITH_PAUSE
 goto CLEANUP
 

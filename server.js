@@ -1,3 +1,16 @@
+const launcherChild = require.main === module && process.argv.includes('--launcher-child');
+const exitWithoutLauncher = () => process.exit(0);
+if (launcherChild) {
+  // Install before loading storage: losing the console during initialization
+  // must not leave an unattended server or a lease on the shared directory.
+  if (!process.connected) process.exit(0);
+  process.once('disconnect', exitWithoutLauncher);
+  for (const stream of [process.stdout, process.stderr]) {
+    stream.on('error', error => {
+      if (error.code !== 'EPIPE') throw error;
+    });
+  }
+}
 const express = require('express');
 const path = require('path');
 const { randomUUID } = require('crypto');
@@ -471,7 +484,10 @@ app.use(apiErrorHandler);
 // 从第三方公开汇率接口获取最新 USD/CNH 汇率
 function startServer({ port = PORT, host = '127.0.0.1', openBrowser = false,
   launchBrowser = url => {
-    require('child_process').execFile('/usr/bin/open', [url], error => {
+    const command = process.platform === 'win32' ? 'rundll32.exe' :
+      process.platform === 'darwin' ? '/usr/bin/open' : 'xdg-open';
+    const args = process.platform === 'win32' ? ['url.dll,FileProtocolHandler', url] : [url];
+    require('./lib/runtime-children').runFile(command, args, { windowsHide: true }, error => {
       if (error) console.error('[浏览器打开失败] 请手动访问：', url);
     });
   }
@@ -518,6 +534,9 @@ if (require.main === module) {
   const shutdown = () => {
     if (shuttingDown) return;
     shuttingDown = true;
+    // Pending HTTP clients cannot keep a closed launcher alive indefinitely.
+    const shutdownTimer = setTimeout(() => process.exit(0), 5000);
+    shutdownTimer.unref();
     // Stop accepting HTTP work first. Keep ownership through pending requests
     // and background work; the synchronous exit hook releases it only as this
     // process terminates, so no surviving callback can write after release.
@@ -526,6 +545,12 @@ if (require.main === module) {
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+  process.on('SIGHUP', shutdown);
+  if (launcherChild) {
+    process.removeListener('disconnect', exitWithoutLauncher);
+    process.once('disconnect', shutdown);
+    if (!process.connected) shutdown();
+  }
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       console.error(`\
