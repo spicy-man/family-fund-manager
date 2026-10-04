@@ -65,7 +65,7 @@ const Api = {
   async addTransfer(data) { return jsonRequest('/api/transfer', 'POST', data); },
   async previewSettlement(data) { return (await jsonRequest('/api/performance-settlement/preview', 'POST', data)).data; },
   async confirmSettlement(data) { return jsonRequest('/api/performance-settlement', 'POST', data); },
-  async reverseLatestSettlement(remark) { return jsonRequest('/api/performance-settlement/reverse-latest', 'POST', { remark }); },
+  async reverseLatestSettlement(settlementId, remark) { return jsonRequest('/api/performance-settlement/reverse-latest', 'POST', { settlementId, remark }); },
   async getTickerAth() {
     return requestApi('/api/ticker-ath', { cache: 'no-store' });
   },

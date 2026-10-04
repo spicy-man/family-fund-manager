@@ -10,8 +10,8 @@ function element() {
     setCustomValidity() {}, reportValidity() {}
   };
 }
-function load(file, document = {}) {
-  const context = { window: {}, document };
+function load(file, document = {}, globals = {}) {
+  const context = { window: {}, document, ...globals };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../public/js', file), 'utf8'), context);
   return context.window;
 }
@@ -43,7 +43,7 @@ async function settlementTests() {
   });
   elements.settleGp.value = 'gp';
   const preview = fee => ({ event: { annualRate: .06, feeRate: .25 }, breakdown: [],
-    valuationDate: '2026-03-02', navPerShare: 1.2, totalFee: fee });
+    valuationDate: '2026-03-02', navPerShare: 1.2, totalFee: fee, previewToken: 'token-' + fee });
   const start = date => {
     elements.settleDate.value = date;
     elements.settleDate.handlers.input();
@@ -60,6 +60,7 @@ async function settlementTests() {
   assert.strictEqual(opened, 1, 'stale success must not reopen the modal');
   await elements.btnConfirmSettlement.handlers.click();
   assert.strictEqual(confirmations[0].date, '2026-03-04');
+  assert.strictEqual(confirmations[0].previewToken, 'token-20', 'confirm must carry the reviewed preview token');
 
   const invalidated = start('2026-03-05');
   elements.settleRemark.value = 'changed'; elements.settleRemark.handlers.input();
@@ -75,6 +76,41 @@ async function settlementTests() {
   assert.strictEqual(errors.length, 0, 'stale failure must not clear a newer successful preview');
   await elements.btnConfirmSettlement.handlers.click();
   assert.strictEqual(confirmations[1].date, '2026-03-07');
+}
+
+async function targetedReversalTests() {
+  const names = ['btnReverseSettlement', 'settleGp', 'settleDate', 'settleRemark',
+    'settlementPreviewModal', 'btnPreviewSettlement', 'settlementPreviewSubtitle',
+    'settlementPreviewSummary', 'settlementPreviewBody', 'btnConfirmSettlement', 'formSettlement'];
+  const elements = Object.fromEntries(names.map(name => [name, element()]));
+  let state = { events: [
+    { id: 's1', type: 'performance_settlement', date: '2026-02-01', sequenceNumber: 1 },
+    { id: 's2', type: 'performance_settlement', date: '2026-03-01', sequenceNumber: 2 }
+  ] };
+  const calls = [], prompts = [], errors = [], pending = deferred();
+  const controller = load('settlement-controller.js', {}, { confirm: message => {
+    prompts.push(message);
+    // A state refresh after the confirmation dialog must not retarget the action.
+    state = { events: [{ id: 's3', type: 'performance_settlement', date: '2026-04-01' }] };
+    return true;
+  } }).FundSettlementController;
+  controller.init({ elements, api: { reverseLatestSettlement(id, remark) {
+    calls.push({ id, remark }); return pending.promise;
+  } }, modal: { open() {}, close() {} }, submission: { runOnce: async (_form, fn) => fn() },
+    getState: () => state, getMembers: () => [], loadAllData: async () => {},
+    showToast: message => errors.push(message), showSubmissionSuccess() {}, escapeHtml: value => value,
+    formatMoney: value => value.toFixed(2)
+  });
+  const first = elements.btnReverseSettlement.handlers.click();
+  await elements.btnReverseSettlement.handlers.click();
+  assert.strictEqual(calls.length, 1, 'a pending reversal blocks a duplicate click');
+  assert.strictEqual(calls[0].id, 's2');
+  assert(prompts[0].includes('2026-03-01'));
+  pending.resolve({ message: 'reversed' }); await first;
+  assert.strictEqual(elements.btnReverseSettlement.disabled, false);
+  state = { events: [] };
+  await elements.btnReverseSettlement.handlers.click();
+  assert.strictEqual(calls.length, 1, 'an empty ledger must not submit an untargeted reversal');
 }
 
 async function transactionTests() {
@@ -270,6 +306,6 @@ function operationGlassSwitchTest() {
 (async () => {
   operationGlassSwitchTest();
   navigationScrollTest();
-  await settlementTests(); await transactionTests(); await restoreWarningTest(); await deleteUndoTests();
+  await settlementTests(); await targetedReversalTests(); await transactionTests(); await restoreWarningTest(); await deleteUndoTests();
   console.log('Settlement race, historical FX and restore warning controller regressions passed.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

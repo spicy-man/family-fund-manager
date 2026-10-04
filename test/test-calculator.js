@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { calculateStateFromDb } = require('../server');
+const { calculateStateFromDb } = require('../lib/calculator');
 
 const db = {
   cnhRate: 7.2,

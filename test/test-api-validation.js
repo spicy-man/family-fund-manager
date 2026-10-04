@@ -5,79 +5,7 @@ const { registerApiRoutes } = require('../routes/api');
 const AdmZip = require('adm-zip');
 const { mergeSettlementLedger } = require('../lib/settlement-ledger');
 
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function makeApi(now = () => new Date(), initialDb = null, overrides = {}) {
-  const routes = {};
-  const app = {};
-  for (const method of ['get', 'post', 'put', 'delete']) {
-    app[method] = (path, ...handlers) => { routes[`${method}:${path}`] = handlers.at(-1); };
-  }
-
-  let writes = 0;
-  let calculations = 0;
-  let settlementLedger = { version: 1, records: [] };
-  const db = initialDb ? clone(initialDb) : {
-    cnhRate: 7.2,
-    members: [
-      { id: 'a', name: 'Alice', roles: { lp: true, gp: false } },
-      { id: 'b', name: 'Bob', roles: { lp: true, gp: true } }
-    ],
-    performanceFee: { gpMemberId: 'b', annualRate: 0.06, feeRate: 0.25 },
-    events: [{ id: 'deposit', type: 'deposit', member: 'a', amount: 100, cnhAmount: 720, date: '2026-01-10', createdAt: 1 }],
-    indexCache: {}
-  };
-  const trackedCalculateState = (...args) => {
-    calculations++;
-    return calculateStateFromDb(...args);
-  };
-  registerApiRoutes(app, {
-    readDb: () => clone(db),
-    writeDb: value => { writes++; Object.assign(db, clone(value)); },
-    readSettlements: () => clone(settlementLedger),
-    writeSettlements: value => {
-      writes++;
-      settlementLedger = clone(value);
-      const reversed = new Set(settlementLedger.records.filter(item => item.type === 'performance_settlement_reversal').map(item => item.settlementId));
-      db.events = db.events.filter(item => item.type !== 'performance_settlement' && item.type !== 'performance_settlement_reversal');
-      db.events.push(...settlementLedger.records.filter(item => item.type === 'performance_settlement' && !reversed.has(item.id)));
-    },
-    getState: () => trackedCalculateState(clone(db)),
-    readConfig: () => ({ tickers: [] }),
-    writeConfig: () => {},
-    writeSnapshot: () => {},
-    ensureIndexCache: async () => {},
-    calculateStateFromDb: trackedCalculateState,
-    fetchCnhRateFromApi: async () => null,
-    isValidDate: date => /^\d{4}-\d{2}-\d{2}$/.test(date),
-    normalizeRemark: value => value || '',
-    normalizeMemberName: value => value,
-    fetchTickerAthData: async () => ({}),
-    readTickerCache: () => ({ tickers: {} }),
-    writeTickerCache: () => {},
-    randomUUID,
-    now,
-    ...overrides
-  });
-  return {
-    routes,
-    getWrites: () => writes,
-    getCalculations: () => calculations,
-    getDb: () => clone(db)
-  };
-}
-
-async function request(handler, body, params = {}) {
-  const result = { status: 200, body: null };
-  const res = {
-    status(code) { result.status = code; return this; },
-    json(payload) { result.body = payload; return this; }
-  };
-  await handler({ body, params }, res);
-  return result;
-}
+const { clone, makeApi, request } = require('./helpers/api-harness');
 
 (async () => {
   // Invalid dates must be input failures even when the ledger is locked.
@@ -255,7 +183,13 @@ async function request(handler, body, params = {}) {
       ['2026-01-03T16:00:00Z', '2030-12-31', 400]
     ]) {
       const dateApi = makeApi(() => new Date(instant), settlementDateDb);
-      const result = await request(dateApi.routes[route], { date });
+      let dateBody = { date };
+      if (status === 200 && route === 'post:/api/performance-settlement') {
+        const validPreview = await request(dateApi.routes['post:/api/performance-settlement/preview'], dateBody);
+        assert.strictEqual(validPreview.status, 200);
+        dateBody.previewToken = validPreview.body.data.previewToken;
+      }
+      const result = await request(dateApi.routes[route], dateBody);
       assert.strictEqual(result.status, status, `${route}: ${date} at ${instant}`);
       if (status === 400) {
         assert.match(result.body.message, /不能晚于今天/);
@@ -467,7 +401,7 @@ async function request(handler, body, params = {}) {
   const preview = await request(previewSettlement, { gpMember: 'b', date: '2026-01-12' });
   assert.strictEqual(preview.status, 200);
   assert(preview.body.data.totalFee > 0);
-  const confirmed = await request(confirmSettlement, { gpMember: 'b', date: '2026-01-12' });
+  const confirmed = await request(confirmSettlement, { gpMember: 'b', date: '2026-01-12', previewToken: preview.body.data.previewToken });
   assert.strictEqual(confirmed.status, 200);
   assert.strictEqual(confirmed.body.data.algorithmVersion, 3);
   const historicalSettlement = await request(previewSettlement, { gpMember: 'b', date: '2026-01-10' });
@@ -485,7 +419,7 @@ async function request(handler, body, params = {}) {
     date: '2026-01-11'
   }, { id: futureMutation.body.data.id });
   assert.strictEqual(lockedDateEdit.status, 409);
-  const reversed = await request(reverseSettlement, { remark: 'test reversal' });
+  const reversed = await request(reverseSettlement, { settlementId: confirmed.body.data.id, remark: 'test reversal' });
   assert.strictEqual(reversed.status, 200);
   const unlockedMutation = await request(transaction, {
     member: 'a', type: 'deposit', amount: 1, date: '2026-01-11'
@@ -496,7 +430,7 @@ async function request(handler, body, params = {}) {
   });
   assert.strictEqual(sameDayPreviewAfterReversal.status, 200);
   const sameDayConfirmedAfterReversal = await request(confirmSettlement, {
-    gpMember: 'b', date: '2026-01-12'
+    gpMember: 'b', date: '2026-01-12', previewToken: sameDayPreviewAfterReversal.body.data.previewToken
   });
   assert.strictEqual(sameDayConfirmedAfterReversal.status, 200);
 
@@ -506,9 +440,10 @@ async function request(handler, body, params = {}) {
   assert.strictEqual((await request(rawSettlementWriteFailureApi.routes['post:/api/valuation'], {
     totalNAV: 120, date: '2026-01-12'
   })).status, 200);
+  const rawFailurePreview = await request(rawSettlementWriteFailureApi.routes['post:/api/performance-settlement/preview'], { date: '2026-01-12' });
   const rawSettlementWriteFailure = await request(
     rawSettlementWriteFailureApi.routes['post:/api/performance-settlement'],
-    { date: '2026-01-12' }
+    { date: '2026-01-12', previewToken: rawFailurePreview.body.data.previewToken }
   );
   assert.strictEqual(rawSettlementWriteFailure.status, 500,
     'an untyped persistence failure must never be downgraded to an input error');

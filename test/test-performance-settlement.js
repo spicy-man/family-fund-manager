@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { calculateStateFromDb } = require('../server');
+const { calculateStateFromDb } = require('../lib/calculator');
 const { CURRENT_SETTLEMENT_VERSION } = require('../lib/performance-settlement');
 
 function event(id, type, date, createdAt, extra = {}) {

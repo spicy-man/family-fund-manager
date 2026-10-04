@@ -1,5 +1,5 @@
 (function () {
-  function init({ elements, api, modal, submission, getMembers, loadAllData, showToast, showSubmissionSuccess, escapeHtml, formatMoney }) {
+  function init({ elements, api, modal, submission, getMembers, getState, loadAllData, showToast, showSubmissionSuccess, escapeHtml, formatMoney }) {
     const {
       btnReverseSettlement, settleGp, settleDate, settleRemark,
       settlementPreviewModal, btnPreviewSettlement, settlementPreviewSubtitle,
@@ -13,10 +13,14 @@
     let previewVersion = 0;
 
     btnReverseSettlement.addEventListener('click', async () => {
-      if (!confirm('确定撤销最近一次有效业绩结算吗？系统会保留原结算并追加冲销记录，相关账期将重新开放。')) return;
+      if (btnReverseSettlement.disabled) return;
+      const latest = (getState()?.events || []).filter(event => event.type === 'performance_settlement')
+        .sort((a, b) => a.date.localeCompare(b.date) || (a.sequenceNumber || 0) - (b.sequenceNumber || 0)).at(-1);
+      if (!latest) { showToast('当前没有可以撤销的有效结算，请刷新页面。', 'error'); return; }
+      if (!confirm('确定撤销 ' + latest.date + ' 的业绩结算吗？系统会保留原结算并追加冲销记录，相关账期将重新开放。')) return;
       btnReverseSettlement.disabled = true;
       try {
-        const result = await Api.reverseLatestSettlement('管理员撤销最近一次业绩结算');
+        const result = await Api.reverseLatestSettlement(latest.id, '管理员撤销最近一次业绩结算');
         showToast(result.message, 'success');
         await loadAllData();
       } catch (error) {
@@ -83,7 +87,7 @@
           ['合计业绩报酬', `$${formatMoney(preview.totalFee)}`]
         ].map(([label, value]) => `<div class="info-alert" style="display:block;margin:0"><div style="font-size:.7rem;color:var(--color-text-muted)">${label}</div><strong class="privacy-sensitive" style="display:block;font-size:1.15rem;margin-top:4px">${value}</strong></div>`).join('');
         settlementPreviewBody.innerHTML = rows || '<tr><td colspan="10" class="settlement-empty">结算日没有持有LP份额的成员</td></tr>';
-        pendingSettlement = payload;
+        pendingSettlement = Object.freeze({ ...payload, previewToken: preview.previewToken });
         openModal(settlementPreviewModal, btnPreviewSettlement);
       } catch (error) {
         if (version !== previewVersion) return;

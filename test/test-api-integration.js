@@ -37,6 +37,20 @@ function request(server, method, pathname, body) {
   });
 }
 
+async function confirmReviewedSettlement(server, body) {
+  const preview = await request(server, 'POST', '/api/performance-settlement/preview', body);
+  assert.strictEqual(preview.status, 200);
+  return request(server, 'POST', '/api/performance-settlement', { ...body, previewToken: preview.body.data.previewToken });
+}
+
+async function reverseDisplayedSettlement(server, body) {
+  const state = await request(server, 'GET', '/api/state');
+  const latest = state.body.data.events.filter(event => event.type === 'performance_settlement')
+    .sort((a, b) => a.date.localeCompare(b.date) || a.sequenceNumber - b.sequenceNumber).at(-1);
+  assert(latest);
+  return request(server, 'POST', '/api/performance-settlement/reverse-latest', { ...body, settlementId: latest.id });
+}
+
 function requestBuffer(server, method, pathname, body, contentType = 'application/zip') {
   return new Promise((resolve, reject) => {
     const headers = body ? { 'Content-Type': contentType, 'Content-Length': body.length } : {};
@@ -416,18 +430,41 @@ async function startExternalFailureServer() {
       totalNAV: 1.2, date: '2026-03-09', remark: 'settlement regression valuation'
     });
     assert.strictEqual(response.status, 200);
-    response = await request(server, 'POST', '/api/performance-settlement', {
-      date: '2026-03-09'
+    const livePayload = { date: '2026-03-09' };
+    const livePreview = await request(server, 'POST', '/api/performance-settlement/preview', livePayload);
+    assert.strictEqual(livePreview.status, 200);
+    const beforeRejectedConfirmation = await requestBuffer(server, 'GET', '/api/backup/export');
+    const missingToken = await request(server, 'POST', '/api/performance-settlement', livePayload);
+    assert.strictEqual(missingToken.status, 409);
+    const afterRejectedConfirmation = await requestBuffer(server, 'GET', '/api/backup/export');
+    const beforeZip = new AdmZip(beforeRejectedConfirmation.body), afterZip = new AdmZip(afterRejectedConfirmation.body);
+    for (const entry of ['data/db.json', 'data/config.json', 'data/settlements.json']) {
+      assert.strictEqual(afterZip.readAsText(entry), beforeZip.readAsText(entry));
+    }
+    const liveEditedValuation = await request(server, 'POST', '/api/valuation', { totalNAV: 2.4, date: '2026-03-09' });
+    assert.strictEqual(liveEditedValuation.status, 200);
+    const staleConfirmation = await request(server, 'POST', '/api/performance-settlement', {
+      ...livePayload, previewToken: livePreview.body.data.previewToken
     });
+    assert.strictEqual(staleConfirmation.status, 409);
+    response = await confirmReviewedSettlement(server, livePayload);
     assert.strictEqual(response.status, 200);
-    response = await request(server, 'POST', '/api/performance-settlement/reverse-latest', {
+    const originalLiveSettlementId = response.body.data.id;
+    response = await reverseDisplayedSettlement(server, {
       remark: 'same-day settlement regression'
     });
     assert.strictEqual(response.status, 200);
-    response = await request(server, 'POST', '/api/performance-settlement', {
-      date: '2026-03-09'
-    });
+    response = await confirmReviewedSettlement(server, { date: '2026-03-09' });
     assert.strictEqual(response.status, 200);
+    const replacementLiveId = response.body.data.id;
+    const beforeRetry = fs.readFileSync(path.join(dataDir, 'settlements.json'), 'utf8');
+    const repeatedReversal = await request(server, 'POST', '/api/performance-settlement/reverse-latest', {
+      settlementId: originalLiveSettlementId
+    });
+    assert.strictEqual(repeatedReversal.status, 200);
+    assert.strictEqual(fs.readFileSync(path.join(dataDir, 'settlements.json'), 'utf8'), beforeRetry);
+    const afterRetryState = await request(server, 'GET', '/api/state');
+    assert(afterRetryState.body.data.events.some(event => event.id === replacementLiveId));
 
     // A pre-split legacy backup can interleave a settlement with ordinary
     // events at the same millisecond. The migration must retain that order.
@@ -496,7 +533,7 @@ async function startExternalFailureServer() {
       ],
       indexCache: legacyBackupIndexCache,
       events: [
-        { id: 'cross_d', type: 'deposit', member: 'me', amount: 100, cnhAmount: 720, date: '2025-01-01', createdAt: 1 },
+        { id: 'preview_settlement', type: 'deposit', member: 'me', amount: 100, cnhAmount: 720, date: '2025-01-01', createdAt: 1 },
         { id: 'cross_v', type: 'valuation', totalNAV: 120, date: '2026-01-01', createdAt: 2 }
       ]
     };
@@ -531,14 +568,16 @@ async function startExternalFailureServer() {
       JSON.parse(fs.readFileSync(path.join(dataDir, 'index-cache.json'), 'utf8')),
       legacyBackupIndexCache
     );
-    response = await request(server, 'POST', '/api/performance-settlement/reverse-latest', {
+    response = await reverseDisplayedSettlement(server, {
       remark: 'cross-version reversal'
     });
     assert.strictEqual(response.status, 200);
-    response = await request(server, 'POST', '/api/performance-settlement', {
+    response = await confirmReviewedSettlement(server, {
       date: '2026-01-01', remark: 'replacement v3 settlement'
     });
     assert.strictEqual(response.status, 200);
+    assert(response.body.data.snapshot.totalFee > 0, 'an imported preview ID collision must still settle the reviewed fee');
+    assert.strictEqual(response.body.data.snapshot.navPerShare, 1.2);
     assert.strictEqual(response.body.data.algorithmVersion, 3);
     const beforeRoundTrip = await request(server, 'GET', '/api/state');
     const crossExport = await requestBuffer(server, 'GET', '/api/backup/export');

@@ -9,15 +9,14 @@ app.post('/api/settings', (req, res, next) => {
   try {
     const { cnhRate, benchmarkClosePolicy } = req.body;
     const db = readDb();
+    let parsedRate;
 
     if (cnhRate !== undefined) {
-      const parsedRate = toFiniteNumber(cnhRate);
+      parsedRate = toFiniteNumber(cnhRate);
       if (!Number.isFinite(parsedRate) || parsedRate <= 0) {
         throw new InputError('汇率参数必须大于 0');
       }
-      writeCnhRate(parsedRate, { source: 'manual' });
-      // Keep this request's in-memory view consistent for its response.
-      db.cnhRate = parsedRate;
+
     }
 
     if (benchmarkClosePolicy !== undefined) {
@@ -27,6 +26,11 @@ app.post('/api/settings', (req, res, next) => {
       db.benchmarkClosePolicy = 'previous';
     }
 
+    // Validate all supplied fields before making any persistent change.
+    if (parsedRate !== undefined) {
+      writeCnhRate(parsedRate, { source: 'manual' });
+      db.cnhRate = parsedRate;
+    }
     if (benchmarkClosePolicy !== undefined) writeDb(db);
     if (benchmarkClosePolicy !== undefined && db.events.length > 0) {
       ensureIndexCache(db.events.map(event => event.date));

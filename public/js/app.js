@@ -350,6 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
       modal: window.FundModal,
       submission: window.FundSubmission,
       getMembers: () => membersList,
+      getState: () => appState,
       loadAllData,
       showToast,
       showSubmissionSuccess,
