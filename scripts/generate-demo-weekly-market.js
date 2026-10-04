@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { fetchYahooPrices, findPreviousClose, fetchTickerAthData } = require('../lib/yahoo');
+const { fetchYahooPrices, createPriceLookup, fetchTickerAthData } = require('../lib/yahoo');
 
 const TICKERS = ['AAPL', 'GOOGL', 'VGT', '^GSPC', '^NDX', 'CNY=X'];
 const START_DATE = '2022-01-07';
@@ -49,8 +49,9 @@ function latestCompletedFriday(now = new Date()) {
     }
   }
 
+  const priceLookups = Object.fromEntries(TICKERS.map(ticker => [ticker, createPriceLookup(maps[ticker])]));
   const snapshot = date => {
-    const closes = Object.fromEntries(TICKERS.map(ticker => [ticker, findPreviousClose(date, maps[ticker])]));
+    const closes = Object.fromEntries(TICKERS.map(ticker => [ticker, priceLookups[ticker](date)]));
     if (Object.values(closes).some(value => !value)) throw new Error(`Missing previous close for ${date}`);
     return {
       date,

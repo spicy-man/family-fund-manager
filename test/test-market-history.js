@@ -5,13 +5,17 @@ const {
   previousWeekday,
   historyRequestStart,
   mergeCustomBenchmarkCaches,
-  materializeBenchmarkCaches
+  materializeBenchmarkCaches,
+  benchmarkDates,
+  createCloseLookup
 } = require('../lib/market-history');
 const {
   normalizeCustomBenchmark,
   customBenchmarkSignature
 } = require('../lib/custom-benchmark');
-const { calculateStateFromDb } = require('../lib/calculator');
+const { calculateStateFromDb, findCustomBenchmarkEntry } = require('../lib/calculator');
+const { performance } = require('perf_hooks');
+const { createPriceLookup } = require('../lib/yahoo');
 
 const benchmark = normalizeCustomBenchmark({
   name: 'Portfolio',
@@ -131,3 +135,108 @@ assert.notStrictEqual(
 );
 
 console.log('Daily market history archival and NAV-date materialization assertions passed.');
+
+// Preserve predecessor boundaries, invalid-price filtering and snapshot lifetime.
+const noisyPrices = { '2026-01-05': 105, '2026-01-01': 101,
+  '2026-01-04': null, '2026-01-03': NaN, '2026-01-02': -1 };
+const closeLookup = createCloseLookup(noisyPrices);
+assert.strictEqual(closeLookup('2026-01-01'), null);
+assert.deepStrictEqual(closeLookup('2026-01-05'), { date: '2026-01-01', price: 101 });
+assert.deepStrictEqual(closeLookup('2026-01-06'), { date: '2026-01-05', price: 105 });
+noisyPrices['2026-01-05'] = 205;
+assert.strictEqual(closeLookup('2026-01-06').price, 105);
+assert.strictEqual(createCloseLookup(noisyPrices)('2026-01-06').price, 205);
+const yahooLookup = createPriceLookup({ '2026-01-05': 105, '2026-01-01': 101 });
+assert.strictEqual(yahooLookup('2026-01-05').price, 101);
+assert.strictEqual(yahooLookup('2026-01-05', 'same_day').price, 105);
+// The exported calculator helper still supports sparse legacy cache callers.
+assert.deepStrictEqual(findCustomBenchmarkEntry('2026-09-01', legacyDualSlotCache, benchmark),
+  legacyDualSlotCache['2026-08-31']);
+assert.deepStrictEqual(findCustomBenchmarkEntry('2026-09-01', legacyDualSlotCache, benchmark2, 1),
+  legacyDualSlotCache['2026-08-31'].secondary);
+assert.strictEqual(findCustomBenchmarkEntry('2026-08-31', legacyDualSlotCache, benchmark2, 1),
+  legacyDualSlotCache['2026-08-31'].secondary);
+
+// A realistic multi-year workload, including both custom benchmark slots.
+const largeHistory = emptyMarketHistory();
+const largeBenchmarks = [
+  normalizeCustomBenchmark({ name: 'Mix', components: [
+    { ticker: 'VGT', weight: 50 }, { ticker: 'BRK-B', weight: 50 }
+  ] }),
+  normalizeCustomBenchmark({ name: 'Other', components: [
+    { ticker: 'AAPL', weight: 40 }, { ticker: 'MSFT', weight: 60 }
+  ] })
+];
+const origin = Date.parse('2012-01-01T00:00:00Z');
+const dateAt = offset => new Date(origin + offset * 86400000).toISOString().slice(0, 10);
+for (const [tickerIndex, ticker] of ['^GSPC', '^NDX', 'VGT', 'BRK-B', 'AAPL', 'MSFT'].entries()) {
+  const prices = {};
+  // Insert in reverse order; weekdays plus missing days exercise predecessors.
+  for (let day = 4999; day >= 0; day--) {
+    if ([0, 6].includes(new Date(origin + day * 86400000).getUTCDay()) || day % 97 === 0) continue;
+    prices[dateAt(day)] = 100 + tickerIndex * 20 + day / 100;
+  }
+  mergeTickerPrices(largeHistory, ticker, prices);
+}
+const largeDates = Array.from({ length: 231 }, (_, index) => dateAt(730 + index * 14));
+function referenceClose(date, prices) {
+  const key = Object.keys(prices).filter(key => key < date && Number.isFinite(prices[key]) && prices[key] > 0)
+    .sort().at(-1);
+  return key ? { date: key, price: prices[key] } : null;
+}
+function referenceMaterialize() {
+  const result = { dates: benchmarkDates(largeDates), indexCache: {}, customBenchmarkCache: {} };
+  for (const date of result.dates) {
+    const spx = referenceClose(date, largeHistory.tickers['^GSPC'].prices);
+    const ndx = referenceClose(date, largeHistory.tickers['^NDX'].prices);
+    if (spx && ndx) result.indexCache[date] = {
+      spx: Number(spx.price.toFixed(2)), ndx: Number(ndx.price.toFixed(2)),
+      spxPriceDate: spx.date, ndxPriceDate: ndx.date, policy: 'previous'
+    };
+    largeBenchmarks.forEach((benchmark, slot) => {
+      const components = {};
+      for (const { ticker } of benchmark.components) {
+        const close = referenceClose(date, largeHistory.tickers[ticker].prices);
+        if (!close) return;
+        components[ticker] = { price: Number(close.price.toFixed(6)), priceDate: close.date };
+      }
+      const entry = { signature: customBenchmarkSignature(benchmark), components };
+      if (slot === 0) result.customBenchmarkCache[date] = entry;
+      else result.customBenchmarkCache[date].secondary = entry;
+    });
+  }
+  return result;
+}
+const referenceStart = performance.now();
+const referenceCaches = referenceMaterialize();
+const referenceMs = performance.now() - referenceStart;
+const lookupStart = performance.now();
+const indexedCaches = materializeBenchmarkCaches(largeDates, largeHistory, largeBenchmarks);
+const lookupMs = performance.now() - lookupStart;
+assert.deepStrictEqual(indexedCaches, referenceCaches);
+const largeDb = {
+  cnhRate: 7.2, members: [{ id: 'lp', name: 'LP' }],
+  customBenchmark: largeBenchmarks[0], customBenchmark2: largeBenchmarks[1],
+  events: largeDates.map((date, index) => index === 0
+    ? { id: 'deposit', type: 'deposit', member: 'lp', amount: 1000, date, sequenceNumber: 1 }
+    : { id: `v-${index}`, type: 'valuation', totalNAV: 1000 + index, date, sequenceNumber: index + 1 })
+};
+const replayStart = performance.now();
+const indexedState = calculateStateFromDb(JSON.parse(JSON.stringify({ ...largeDb, marketHistory: largeHistory })));
+const replayMs = performance.now() - replayStart;
+const referenceState = calculateStateFromDb(JSON.parse(JSON.stringify({
+  ...largeDb, indexCache: referenceCaches.indexCache, customBenchmarkCache: referenceCaches.customBenchmarkCache
+})));
+assert.deepStrictEqual(indexedState, referenceState, 'multi-year prices must preserve every financial and chart output');
+assert(replayMs < 8000, `market-history replay exceeded household budget: ${replayMs}ms`);
+// Query reuse must not enumerate or read the entire source on each lookup.
+let priceReads = 0;
+const observedPrices = Object.fromEntries(Object.keys(largeHistory.tickers.VGT.prices).map(date => [date, 1]));
+for (const date of Object.keys(observedPrices)) Object.defineProperty(observedPrices, date, {
+  enumerable: true, get() { priceReads++; return 1; }
+});
+const observedLookup = createCloseLookup(observedPrices);
+const initialReads = priceReads;
+for (const date of largeDates) observedLookup(date);
+assert.strictEqual(priceReads, initialReads);
+console.log(`Multi-year market lookup: reference ${referenceMs.toFixed(1)}ms, indexed ${lookupMs.toFixed(1)}ms; full replay ${replayMs.toFixed(1)}ms.`);

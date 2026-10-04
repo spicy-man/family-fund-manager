@@ -1,6 +1,7 @@
 const assert = require('assert');
 const { EventEmitter } = require('events');
-const { createJsonFetcher, parseWindowsProxy, bypassesProxy } = require('../lib/http-json');
+const http = require('http');
+const { createJsonFetcher, parseWindowsProxy, bypassesProxy, MAX_JSON_RESPONSE_BYTES } = require('../lib/http-json');
 const url = 'https://query2.finance.yahoo.com/v8/finance/chart/MSFT';
 const registry = (enabled, server, bypass = '') => `ProxyEnable REG_DWORD ${enabled}\nProxyServer REG_SZ ${server}\nProxyOverride REG_SZ ${bypass}`;
 
@@ -81,5 +82,90 @@ function harness({ platform = 'win32', env = {}, output = registry('0x1', '127.0
   const failedProxy = harness({ curlError: { code: 7, message: 'secret credentials' } });
   await assert.rejects(failedProxy.fetch(url), /curl 7/);
   assert(!failedProxy.calls.some(call => call.bin === 'https'), 'a failing configured proxy must not silently fall back to direct');
+
+  function streamHarness(chunks, headers = {}) {
+    let fallbackCalls = 0;
+    let requestDestroyed = false;
+    let responseDestroyed = false;
+    const fetch = createJsonFetcher({ platform: 'linux', env: {},
+      runFile: (_, args, options, callback) => {
+        fallbackCalls++;
+        callback(null, '{}\n200');
+      },
+      get: (_, options, callback) => {
+        const request = new EventEmitter();
+        request.setTimeout = () => {};
+        request.destroy = error => { requestDestroyed = true; request.emit('error', error); };
+        queueMicrotask(() => {
+          const response = new EventEmitter();
+          response.statusCode = 200;
+          response.headers = headers;
+          response.destroy = error => { responseDestroyed = true; response.emit('error', error); };
+          callback(response);
+          for (const chunk of chunks) response.emit('data', chunk);
+          response.emit('end');
+        });
+        return request;
+      }
+    });
+    return { fetch, status: () => ({ fallbackCalls, requestDestroyed, responseDestroyed }) };
+  }
+  const exactBody = Buffer.from(JSON.stringify('a'.repeat(MAX_JSON_RESPONSE_BYTES - 2)));
+  const exact = streamHarness([exactBody.subarray(0, 100), exactBody.subarray(100)]);
+  assert.strictEqual((await exact.fetch(url)).length, MAX_JSON_RESPONSE_BYTES - 2);
+  assert.deepStrictEqual(exact.status(), { fallbackCalls: 0, requestDestroyed: false, responseDestroyed: false });
+  for (const headers of [{}, { 'content-length': '1' }]) {
+    const oversized = streamHarness([exactBody, Buffer.from(' ')], headers);
+    await assert.rejects(oversized.fetch(url), error => error.code === 'EXTERNAL_RESPONSE_TOO_LARGE');
+    assert.deepStrictEqual(oversized.status(), { fallbackCalls: 0, requestDestroyed: true, responseDestroyed: true });
+  }
+  const declaredOversize = streamHarness([], { 'content-length': String(MAX_JSON_RESPONSE_BYTES + 1) });
+  await assert.rejects(declaredOversize.fetch(url), /10MB/);
+  assert.strictEqual(declaredOversize.status().fallbackCalls, 0);
+  const chinese = Buffer.from('{"text":"中文🙂"}');
+  const splitUtf8 = streamHarness([...chinese].map(byte => Buffer.from([byte])));
+  assert.deepStrictEqual(await splitUtf8.fetch(url), { text: '中文🙂' });
+  const multibyteOversize = streamHarness([JSON.stringify('中'.repeat(Math.ceil(MAX_JSON_RESPONSE_BYTES / 3)))]);
+  await assert.rejects(multibyteOversize.fetch(url), /10MB/);
+  for (const [body, expectedSuccess] of [[exactBody.toString(), true], [exactBody.toString() + ' ', false]]) {
+    const proxy = createJsonFetcher({ env: { HTTPS_PROXY: 'http://localhost:9999' },
+      runFile: (_, args, options, callback) => callback(null, body + '\n200') });
+    if (expectedSuccess) assert.strictEqual((await proxy(url)).length, MAX_JSON_RESPONSE_BYTES - 2);
+    else await assert.rejects(proxy(url), /10MB/);
+  }
+  const overflow = harness({ curlError: { code: 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' } });
+  await assert.rejects(overflow.fetch(url), error => error.code === 'EXTERNAL_RESPONSE_TOO_LARGE');
+
+  // Exercise real IncomingMessage/ClientRequest destruction, not only mocks.
+  const server = http.createServer((req, res) => {
+    res.on('error', () => {});
+    if (req.url === '/declared') {
+      res.writeHead(200, { 'Content-Length': MAX_JSON_RESPONSE_BYTES + 1 });
+      return res.end(' ');
+    }
+    if (req.url === '/unicode') return res.end(chinese);
+    res.writeHead(200, { 'Transfer-Encoding': 'chunked' });
+    res.write(exactBody);
+    res.end(req.url === '/oversized' ? ' ' : '');
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  try {
+    let fallbackCalls = 0;
+    const liveFetch = createJsonFetcher({ env: {}, platform: 'linux', get: http.get,
+      runFile: (_, args, options, callback) => { fallbackCalls++; callback(null, '{}\n200'); } });
+    const base = `http://127.0.0.1:${server.address().port}`;
+    assert.strictEqual((await liveFetch(`${base}/exact`)).length, MAX_JSON_RESPONSE_BYTES - 2);
+    assert.deepStrictEqual(await liveFetch(`${base}/unicode`), { text: '中文🙂' });
+    for (const path of ['/oversized', '/declared']) {
+      await assert.rejects(liveFetch(base + path), error => error.code === 'EXTERNAL_RESPONSE_TOO_LARGE');
+    }
+    assert.strictEqual(fallbackCalls, 0);
+  } finally {
+    server.closeIdleConnections?.();
+    await new Promise(resolve => server.close(resolve));
+  }
   console.log('External JSON proxy selection and transport assertions passed.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
