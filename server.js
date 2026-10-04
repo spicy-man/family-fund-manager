@@ -354,7 +354,7 @@ async function syncBenchmarkHistory(dates) {
       benchmark ? benchmark.components.map(component => component.ticker) : [])
   ])];
 
-  console.log(`[Yahoo Sync Worker] Updating daily history for ${requestedTickers.length} benchmark tickers...`);
+  console.log(`⏳ [Yahoo Sync Worker] Updating daily history for ${requestedTickers.length} benchmark tickers...`);
 
   try {
     const history = normalizeMarketHistory(storage.readMarketHistory());
@@ -411,9 +411,9 @@ async function syncBenchmarkHistory(dates) {
       storage.readCustomBenchmarkCache(),
       materialized.customBenchmarkCache
     ));
-    console.log(`[Yahoo Sync Worker] Daily history saved and ${materialized.dates.length} NAV-date snapshots rebuilt.`);
+    console.log(`✅ [Yahoo Sync Worker] Daily history saved and ${materialized.dates.length} NAV-date snapshots rebuilt.`);
   } catch (err) {
-    console.error(`[Yahoo Sync Worker Error]:`, err.message);
+    console.error(`❌ [Yahoo Sync Worker Error]:`, err.message);
   }
 }
 
@@ -503,7 +503,7 @@ function startServer({ port = PORT, host = '127.0.0.1', openBrowser = false,
       ensureIndexCache(dates);
     }
   } catch (err) {
-    console.error('[Yahoo Sync Startup Error]:', err);
+    console.error('❌ [Yahoo Sync Startup Error]:', err);
   }
   if (openBrowser) {
     launchBrowser(`http://localhost:${server.address().port}`);

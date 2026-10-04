@@ -38,36 +38,36 @@ if not exist "node_modules" goto INSTALL_DEPS
 
 :RUN
 :: 3. Open browser smoothly in background
-echo [System] Preparing web interface (http://localhost:3000)...
+echo ⏳ [System] Preparing web interface (http://localhost:3000)...
 start /b "" cmd /c "ping 127.0.0.1 -n 3 >nul & start http://localhost:3000"
 
 :: 4. Start backend server
-echo [System] Starting server, press Ctrl+C to stop...
+echo ⏳ [System] Starting server, press Ctrl+C to stop...
 echo.
 node server.js
 if errorlevel 1 goto EXIT_WITH_PAUSE
 goto CLEANUP
 
 :INSTALL_DEPS
-echo [System] Dependencies not found. Installing, please wait...
+echo ⏳ [System] Dependencies not found. Installing, please wait...
 echo.
 call npm install
 if errorlevel 1 goto INSTALL_FAIL
 echo.
-echo [System] Dependencies installed successfully.
+echo ✅ [System] Dependencies installed successfully.
 echo.
 goto RUN
 
 :NO_NODE
 echo ==================================================
-echo [ERROR] Node.js is not installed!
+echo ❌ [ERROR] Node.js is not installed!
 echo Please download and install Node.js from https://nodejs.org/
 echo ==================================================
 goto EXIT_WITH_PAUSE
 
 :NO_PACKAGE
 echo ==================================================
-echo [ERROR] package.json not found!
+echo ❌ [ERROR] package.json not found!
 echo Please make sure start.bat is in the project root directory.
 echo ==================================================
 goto EXIT_WITH_PAUSE
@@ -75,7 +75,7 @@ goto EXIT_WITH_PAUSE
 :INSTALL_FAIL
 echo.
 echo ==================================================
-echo [ERROR] Failed to install dependencies. Please check network.
+echo ❌ [ERROR] Failed to install dependencies. Please check network.
 echo ==================================================
 goto EXIT_WITH_PAUSE
 
