@@ -25,6 +25,7 @@ const tests = [
   "test/test-api-integration.js",
   "test/test-demo-mode.js",
   "test/test-static-demo.js",
+  "test/test-theme-manager.js",
   "test/test-onboarding.js",
   "test/test-frontend-syntax.js",
   "test/test-controller-regressions.js",

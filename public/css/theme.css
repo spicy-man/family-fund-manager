@@ -4,6 +4,8 @@
  */
 /* --- 默认明亮毛玻璃主题 (Light Mode - Standard) --- */
 :root {
+  /* The application controls its palette; prevent browser auto-dark recolouring. */
+  color-scheme: only light;
   --layout-margin: 20px;
   --layout-gutter: 20px;
   --sidebar-width: 300px;

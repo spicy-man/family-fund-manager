@@ -1,6 +1,6 @@
 (function () {
   function create({ buttons, group, segmentedControl, onApply, onSelect }) {
-    let current = 'system';
+    let current = 'light';
 
     function isDark() {
       return current === 'dark' || (
@@ -9,7 +9,11 @@
     }
 
     function apply(theme) {
-      current = theme;
+      current = ['light', 'dark', 'system'].includes(theme) ? theme : 'light';
+      theme = current;
+      const scheme = isDark() ? 'dark' : 'only light';
+      document.documentElement.style.colorScheme = scheme;
+      document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', scheme);
       document.body.classList.remove('theme-light', 'theme-dark');
       document.body.classList.add(isDark() ? 'theme-dark' : 'theme-light');
       const activeButton = [...buttons].find(button => button.dataset.themeBtn === theme);
@@ -28,7 +32,7 @@
     }
 
     function init() {
-      current = localStorage.getItem('family_fund_theme') || 'system';
+      current = localStorage.getItem('family_fund_theme') || 'light';
       apply(current);
       buttons.forEach(button => {
         button.addEventListener('click', () => set(button.dataset.themeBtn));
