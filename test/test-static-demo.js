@@ -17,6 +17,8 @@ const read = file => fs.readFileSync(path.join(output, file), 'utf8');
     const members = JSON.parse(read('demo-data/members.json')).data;
     assert.strictEqual(members.filter(member => member.primaryGp).length, 1);
     assert(read('index.html').includes('name="fund-static-demo"'));
+    assert(read('index.html').includes('name="fund-demo-sandbox"'));
+    assert(read('index.html').includes('src="js/demo-sandbox.js"'));
     assert(!/href="\/(?:demo|api)/.test(read('index.html')));
     assert(!fs.existsSync(path.join(output, 'data')));
     assert(!fs.existsSync(path.join(output, 'backups')));

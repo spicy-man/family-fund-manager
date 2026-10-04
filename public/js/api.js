@@ -23,6 +23,7 @@ function resolveApiUrl(url) {
 }
 
 async function requestApi(url, options = {}) {
+  if (window.FundDemoMode?.sandbox) return window.FundDemoSandbox.request(url, options);
   if (window.FundDemoMode?.staticDemo && (options.method || 'GET').toUpperCase() !== 'GET') {
     throw new Error('演示模式为只读，此操作不可用。');
   }

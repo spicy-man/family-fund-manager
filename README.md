@@ -1,6 +1,6 @@
 # 家庭基金账目管理系统
 
-[**在线预览 · 只读 Demo**](https://spicy-man.github.io/family-fund-manager/) · [源码](https://github.com/spicy-man/family-fund-manager)
+[**在线预览 · 可操作沙盒**](https://spicy-man.github.io/family-fund-manager/) · [源码](https://github.com/spicy-man/family-fund-manager)
 
 面向家庭和小型合伙基金的本地账本。系统按时间重放入金、出金、估值、成员转让和业绩结算事件，计算基金净值、成员份额及 LP/GP 权益。
 
@@ -62,7 +62,11 @@ PORT=3001 npm start
 
 ### GitHub Pages 在线预览
 
-在线预览复用上述只读 Demo，所有数据均来自项目内的演示账本与固化行情快照，不读取本地 `data/` 或 `backups/`。行情不会在网页里实时更新；更新样例快照后重新发布即可。
+在线预览为可操作沙盒，支持成员管理、入金出金、估值、转让、账目修改删除、结算预览确认与冲销，以及 ZIP 备份导出恢复。成员为 John Titor、Alice Liddell、Sherlock Holmes 等虚构角色。
+
+所有业务规则复用本地完整版，体验数据仅保存在当前标签页的 sessionStorage 中，刷新后仍保留，随浏览器会话保存，不同访客互不影响；顶部“重置样例”可恢复初始账本。数据不会上传到 GitHub，也不读取本地 `data/` 或 `backups/`。请用虚构数据体验。
+
+行情及汇率来自项目内的离线快照，可配置 AAPL、GOOGL、VGT 及其组合权重；刷新重新载入快照，不获取实时行情。其他标的与实时联网同步请使用本地完整版。
 
 本地构建：
 
@@ -73,7 +77,7 @@ npm run demo:build
 
 输出目录为 `dist-demo/`（已加入 Git 忽略规则），可通过任意静态 HTTP 服务预览。正式本地程序仍使用 `npm start`。
 
-首次部署时，在仓库 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**。此后推送到 `main`，或手动运行 **Deploy read-only Demo to GitHub Pages** 工作流，会先运行完整测试，再构建并发布预览。发布包包含页面、字体、第三方许可证和六份演示 JSON，不包含服务端、正式账本或备份。
+首次部署时，在仓库 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**。此后推送到 `main`，或手动运行 **Deploy interactive Demo to GitHub Pages** 工作流，会先运行完整测试，再构建并发布预览。发布包包含页面、浏览器业务沙盒、字体、第三方许可证及演示 JSON，不包含服务端、正式账本或备份。
 
 访问地址：<https://spicy-man.github.io/family-fund-manager/>。源码仓库的 **About → Website** 可填写同一地址。
 

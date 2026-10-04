@@ -5,7 +5,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const welcomeMessages = window.FundDemoMode?.enabled ? [
-    'Explore the Demo'
+    window.FundDemoMode.sandbox ? 'Explore the Sandbox' : 'Explore the Demo'
   ] : [
     'Hello, Investor',
     'Welcome Back, Investor',
@@ -22,7 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (_error) {
     // The greeting can still rotate when browser storage is unavailable.
   }
-  const availableWelcomeMessages = welcomeMessages.filter(message => message !== previousWelcome);
+  const availableWelcomeMessages = welcomeMessages.length === 1 ? welcomeMessages
+    : welcomeMessages.filter(message => message !== previousWelcome);
   const nextWelcome = availableWelcomeMessages[Math.floor(Math.random() * availableWelcomeMessages.length)];
 
   if (welcomeMessage && nextWelcome) {

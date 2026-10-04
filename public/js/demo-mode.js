@@ -1,7 +1,8 @@
 (function () {
   const staticDemo = Boolean(document.querySelector('meta[name="fund-static-demo"]'));
+  const sandbox = Boolean(document.querySelector('meta[name="fund-demo-sandbox"]'));
   const enabled = staticDemo || window.location.pathname === '/demo';
-  window.FundDemoMode = { enabled, staticDemo };
+  window.FundDemoMode = { enabled, staticDemo, sandbox };
   if (!enabled) return;
 
   const blockedSelectors = [
@@ -52,6 +53,39 @@
       note.setAttribute('role', 'note');
       note.textContent = '可切换查看各类录入界面；表单与提交操作在 Demo 中已锁定。';
       operationPanel.querySelector('.panel-header')?.after(note);
+    }
+
+    if (sandbox) {
+      banner.classList.add('is-sandbox');
+      document.body.classList.add('demo-sandbox');
+      banner.querySelector('.demo-banner-copy strong').lastChild.textContent = '可操作沙盒';
+      banner.querySelector('.demo-banner-copy > span').textContent = '体验数据仅保存在当前标签页。';
+      const reset = document.createElement('button');
+      reset.type = 'button';
+      reset.className = 'demo-banner-exit';
+      reset.id = 'btn-reset-demo';
+      reset.textContent = '重置样例';
+      reset.addEventListener('click', async () => {
+        if (!confirm('重置当前标签页的体验数据？所有体验修改都会清除，恢复初始样例账本。')) return;
+        try { await window.FundDemoSandbox.reset(); window.location.reload(); }
+        catch (error) { alert(error.message); }
+      });
+      banner.insertBefore(reset, banner.querySelector('.demo-banner-exit'));
+      if (operationPanel) {
+        operationPanel.querySelector('.panel-badge').textContent = '沙盒体验';
+        operationPanel.querySelector('.demo-panel-note').textContent = '可以录入、修改、结算和恢复备份。行情及汇率使用离线快照，支持 AAPL、GOOGL、VGT，刷新行情会重新载入快照。';
+      }
+      document.querySelector('#backup-modal a[download]')?.addEventListener('click', async event => {
+        event.preventDefault();
+        try {
+          const result = await window.FundDemoSandbox.exportBackup();
+          const url = URL.createObjectURL(new Blob([result.binary], { type: 'application/zip' }));
+          const link = document.createElement('a');
+          link.href = url; link.download = 'family_fund_demo_backup.zip'; link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch (error) { alert(error.message); }
+      });
+      return;
     }
 
     const lockControls = () => {

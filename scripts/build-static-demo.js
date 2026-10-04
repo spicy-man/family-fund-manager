@@ -4,6 +4,8 @@ const { buildDemoLedger } = require('../demo/build-ledger');
 const { calculateStateFromDb } = require('../lib/calculator');
 const weeklyMarket = require('../demo/weekly-market.json');
 const { dependencies } = require('../package.json');
+const { bundleSandbox } = require('./bundle-demo-sandbox');
+const { buildSandboxSeed } = require('../demo/build-sandbox-seed');
 const root = path.resolve(__dirname, '..');
 const defaultOutput = path.join(root, 'dist-demo');
 
@@ -44,6 +46,9 @@ function buildStaticDemo(output = defaultOutput) {
     copy(path.join(directory, 'LICENSE'), `${target}/LICENSE`);
   }
   copy(path.join(root, 'LICENSE'), 'LICENSE');
+  bundleSandbox(output);
+  fs.mkdirSync(path.join(output, 'demo-data'), { recursive: true });
+  fs.writeFileSync(path.join(output, 'demo-data/seed.json'), JSON.stringify(buildSandboxSeed()));
   const db = buildDemoLedger();
   const payloads = {
     'state.json': { success: true, data: calculateStateFromDb(db) },
@@ -63,15 +68,16 @@ function buildStaticDemo(output = defaultOutput) {
   }
   const htmlPath = path.join(output, 'index.html');
   const html = fs.readFileSync(htmlPath, 'utf8')
-    .replace('<head>', '<head>\n  <meta name="fund-static-demo" content="true">')
+    .replace('<head>', '<head>\n  <meta name="fund-static-demo" content="true">\n  <meta name="fund-demo-sandbox" content="true">')
     .replaceAll('href="/demo"', 'href="./"')
-    .replace('href="/api/backup/export"', 'href="#" aria-disabled="true" tabindex="-1"');
+    .replace('href="/api/backup/export"', 'href="#demo-backup-export"')
+    .replace('<script src="js/api.js"></script>', '<script src="js/demo-sandbox.js"></script>\n  <script src="js/api.js"></script>');
   fs.writeFileSync(htmlPath, html);
   fs.writeFileSync(path.join(output, '.nojekyll'), '');
   return { output, payloads };
 }
 if (require.main === module) {
   const { output } = buildStaticDemo();
-  console.log(`Static read-only Demo built: ${output}`);
+  console.log(`Interactive isolated Demo built: ${output}`);
 }
 module.exports = { buildStaticDemo };

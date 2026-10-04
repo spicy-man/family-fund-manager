@@ -114,3 +114,14 @@
   }
 
 }
+
+.demo-banner.is-sandbox {
+  width: min(940px, calc(100vw - 32px));
+  gap: 10px;
+}
+
+@media (max-width: 720px) {
+  .demo-sandbox { --demo-banner-offset: 104px; }
+  .demo-banner.is-sandbox { flex-wrap: wrap; }
+  .demo-banner.is-sandbox .demo-banner-copy { flex: 1 1 100%; }
+}

@@ -1,4 +1,4 @@
-name: Deploy read-only Demo to GitHub Pages
+name: Deploy interactive Demo to GitHub Pages
 
 on:
   push:
