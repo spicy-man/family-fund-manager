@@ -1,0 +1,54 @@
+name: Publish offline Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Validate tag and extract release notes
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node scripts/release-notes.js "$RELEASE_TAG" > "$RUNNER_TEMP/release-notes.md"
+      - run: npm ci
+      - run: npm test
+      - name: Keep only runtime dependencies
+        run: npm prune --omit=dev
+      - name: Build offline ZIP
+        run: bash 一键打包.command --no-pause
+      - name: Preserve package for download if publishing fails
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-release-${{ github.ref_name }}
+          path: family-fund-manager_${{ github.ref_name }}.zip
+          if-no-files-found: error
+      - name: Publish Release with ZIP and changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          flags=()
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            flags+=(--prerelease)
+          fi
+          gh release create "$RELEASE_TAG" "family-fund-manager_${RELEASE_TAG}.zip" \
+            --verify-tag --draft --title "$RELEASE_TAG" \
+            --notes-file "$RUNNER_TEMP/release-notes.md" "${flags[@]}"
+          gh release edit "$RELEASE_TAG" --draft=false

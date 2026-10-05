@@ -141,7 +141,23 @@ Windows 自动读取支持手动系统代理及其绕过列表，不解析 PAC �
 
 ## 开发
 
-### 打包离线发布版
+### 自动发布 Release（推荐）
+
+仓库已配置 **Publish offline Release** 工作流。先按 [提交与发版规范](./COMMIT_GUIDE.md) 更新版本号及 CHANGELOG、提交并推送代码，再推送与 `package.json` 一致的版本标签。例如本次版本：
+
+```bash
+git push origin main
+git tag v4.3.0
+git push origin v4.3.0
+```
+
+在 GitHub 的 **Actions → Publish offline Release** 查看进度。工作流会校验标签与版本、安装锁定依赖、运行完整测试，再使用 macOS 打包脚本生成 `family-fund-manager_v版本号.zip`（仅包含运行依赖），提取 CHANGELOG 对应版本的说明，创建并公开带 ZIP 附件的 Release。预发布版本（例如 `v4.4.0-beta.1`）会自动标记为预发布。平时推送 `main` 继续更新 Demo；只有推送版本标签才发布 Release。
+
+首次使用需确保仓库允许 GitHub Actions 运行。发布权限由工作流的 `contents: write` 和 GitHub 自动提供的令牌授权，无需另配个人访问令牌。标签或更新说明不符合要求、测试或打包失败时不会公开 Release。打包成功后可从工作流运行页面下载附件；若上传或公开 Release 失败，检查并处理可能留下的草稿，再重新运行工作流。已公开的同版本 Release 不会被自动覆盖。
+
+自动发布只使用标签指向的已提交代码。发布包仍需安装 Node.js；下载 Releases 中的 `family-fund-manager_v版本号.zip`，GitHub 自动生成的 Source code 压缩包不含运行依赖。
+
+### 本地打包离线发布版
 
 先执行 `npm install` 安装依赖。Windows 双击 `一键打包.bat`；macOS 首次执行 `chmod +x 一键打包.command`，之后双击 `一键打包.command`。也可以在项目目录通过终端运行：
 
