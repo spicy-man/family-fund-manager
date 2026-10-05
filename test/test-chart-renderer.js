@@ -196,6 +196,55 @@ assert.deepStrictEqual(allocationLabels.map(label => label.text), ['1.00%', '1.0
 allocationLabels.length = 0;
 window.FundChartRenderer.allocationLabelsPlugin.afterDatasetsDraw(allocationDrawing, {}, { empty: true });
 assert.strictEqual(allocationLabels.length, 0, 'placeholder slices must not show invented percentages');
+
+// Exercise Chart.js's real legend option cache, including the first reveal of a hidden canvas.
+const { Chart: RealChart, registerables, BasicPlatform } = require('chart.js');
+RealChart.register(...registerables);
+const resizedLabels = [];
+const allocationCanvas = { width: 0, height: 270 };
+const allocationContext = new Proxy({
+  canvas: allocationCanvas,
+  measureText: text => ({ width: String(text).length * 6 }),
+  getLineDash: () => [],
+  fillText(text, x, y) {
+    if (String(text).endsWith('%')) resizedLabels.push({ text, x, y });
+  }
+}, { get: (target, key) => key in target ? target[key] : () => {} });
+allocationCanvas.getContext = () => allocationContext;
+const resizingAllocation = new RealChart(allocationCanvas, {
+  platform: BasicPlatform,
+  type: 'doughnut',
+  plugins: [window.FundChartRenderer.allocationLabelsPlugin],
+  data: {
+    labels: ['John Titor', 'Alice Liddell', 'Giovanni Giorgio'],
+    datasets: [{ data: [58.19, 18.36, 23.45] }]
+  },
+  options: {
+    responsive: false, animation: false, maintainAspectRatio: false, cutout: '70%',
+    layout: { padding: { left: 64, right: 64, top: 18, bottom: 18 } },
+    plugins: {
+      allocationLabels: { empty: false },
+      legend: { position: 'right', labels: { color: '#334155' } }
+    }
+  }
+});
+try {
+  for (const width of [1900, 400, 1440, 400, 1900]) {
+    resizedLabels.length = 0;
+    resizingAllocation.resize(width, 270);
+    const legend = resizingAllocation.legend;
+    assert.strictEqual(legend.position, width < 560 ? 'bottom' : 'right');
+    assert.strictEqual(legend.options.position, legend.position,
+      'legend orientation and layout box must agree on the first resize');
+    const majorLabels = resizedLabels.filter(label => label.text === '58.19%');
+    assert(majorLabels.length > 0, 'resize must draw the allocation labels');
+    const arc = resizingAllocation.getDatasetMeta(0).data[0];
+    assert(majorLabels.every(label => label.x > arc.x + arc.outerRadius),
+      'the right-hand label must stay outside the ring, never cross it toward the left edge');
+  }
+} finally {
+  resizingAllocation.destroy();
+}
 assert(rendered.navTrendChart.config.plugins.includes(window.FundChartRenderer.datasetOpacityPlugin));
 assert.strictEqual(typeof rendered.renderTrendStats, 'function');
 assert.strictEqual(rendered.navTrendChart.options.plugins.legend.display, false);

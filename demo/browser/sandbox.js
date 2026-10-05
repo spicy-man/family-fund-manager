@@ -29,7 +29,7 @@ function createSandbox(seed, storage) {
     const tickers = [...config.tickers.map(item => item.ticker),
       ...[config.customBenchmark, config.customBenchmark2].flatMap(item => item?.components.map(component => component.ticker) || [])];
     if (tickers.some(ticker => !supported.has(ticker))) {
-      throw new InputError('体验版离线行情支持 AAPL、GOOGL、VGT。可调整这些标的及组合权重；其他标的请在本地完整版中使用。');
+      throw new InputError(`体验版离线行情支持 ${[...supported].join('、')}。可调整这些标的及组合权重；其他标的请在本地完整版中使用。`);
     }
   }
   function ensureIndexCache(dates) {

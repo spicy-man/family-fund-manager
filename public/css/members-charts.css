@@ -43,8 +43,8 @@
 /* 成员面板卡片 */
 .members-grid {
   display: grid;
-  /* 桌面端最多四列，剩余空间由每张卡片均分。 */
-  grid-template-columns: repeat(auto-fit, minmax(max(min(100%, 260px), calc((100% - 48px) / 4)), 1fr));
+  /* 最多四列；保留空列，少于四位成员时卡片不会拉伸填满整行。窄屏按可用宽度减少列数。 */
+  grid-template-columns: repeat(auto-fill, minmax(max(min(100%, 260px), calc((100% - 48px) / 4)), 1fr));
   gap: 16px;
 }
 

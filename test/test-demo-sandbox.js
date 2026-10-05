@@ -8,14 +8,22 @@ const { Buffer } = require('buffer');
 const { buildStaticDemo } = require('../scripts/build-static-demo');
 const { calculateStateFromDb } = require('../lib/calculator');
 const { buildDemoLedger } = require('../demo/build-ledger');
+const weeklyMarket = require('../demo/weekly-market.json');
 const output = fs.mkdtempSync(path.join(os.tmpdir(), 'fund-sandbox-test-'));
 const clone = value => JSON.parse(JSON.stringify(value));
 function storage() { const map = new Map(); return { getItem: key => map.get(key), setItem: (key, value) => map.set(key, value), removeItem: key => map.delete(key) }; }
 function openTab(store) {
   const seed = JSON.parse(fs.readFileSync(path.join(output, 'demo-data/seed.json'), 'utf8'));
+  // Keep the mutation scenario one week beyond the seed, independent of the
+  // wall clock and the application's future-valuation guard.
+  const scenarioNow = Date.parse(weeklyMarket.endDate) + 8 * 86400000 + 12 * 3600000;
+  class ScenarioDate extends Date {
+    constructor(...args) { super(...(args.length ? args : [scenarioNow])); }
+    static now() { return scenarioNow; }
+  }
   const context = vm.createContext({ window: { location: { href: 'https://example.org/project/' }, sessionStorage: store },
     document: { querySelector: () => ({}) }, fetch: async () => ({ ok: true, json: async () => clone(seed) }),
-    crypto: webcrypto, URL, TextEncoder, TextDecoder, Uint8Array, ArrayBuffer, setTimeout, clearTimeout, console });
+    crypto: webcrypto, URL, Date: ScenarioDate, TextEncoder, TextDecoder, Uint8Array, ArrayBuffer, setTimeout, clearTimeout, console });
   vm.runInContext(fs.readFileSync(path.join(output, 'js/demo-sandbox.js'), 'utf8'), context);
   return context.window.FundDemoSandbox.ready;
 }
@@ -29,7 +37,11 @@ function openTab(store) {
     const initial = (await get('/api/state')).data;
     assert.deepStrictEqual(clone(initial.summary), clone(calculateStateFromDb(buildDemoLedger()).summary));
     assert.deepStrictEqual(clone((await get('/api/members')).data.map(member => member.name)), ['John Titor', 'Alice Liddell', 'Giovanni Giorgio']);
-    const sunday = '2026-08-23'; const friday = '2026-08-28';
+    const afterCutoff = days => new Date(Date.parse(weeklyMarket.endDate) + days * 86400000).toISOString().slice(0, 10);
+    const sunday = afterCutoff(2); const friday = afterCutoff(7);
+    const tracked = (await get('/api/ticker-ath')).data;
+    assert.strictEqual(Object.keys(tracked).length, Object.keys(weeklyMarket.tickers).length);
+    assert(Object.values(tracked).every(quote => quote.regularCloseDate === weeklyMarket.endDate));
     const member = (await post('/api/members', { name: 'Hatsune Miku' })).data;
     await mutate('PUT', '/api/members/' + member.id, { name: 'Miku Hatsune' });
     const deposit = (await post('/api/transaction', { member: member.id, type: 'deposit', amount: 2000, cnhAmount: 14000, date: sunday })).data;
@@ -55,6 +67,12 @@ function openTab(store) {
     assert.strictEqual((await get('/api/state')).data.summary.cnhRate, 7.1);
     await post('/api/settings/custom-benchmark', { slot: 1, customBenchmark: { name: 'AAPL sandbox', components: [{ ticker: 'AAPL', weight: 100 }] } });
     assert.strictEqual((await get('/api/state')).data.settings.customBenchmark2.components[0].ticker, 'AAPL');
+    await post('/api/settings/custom-benchmark', { slot: 1, customBenchmark: { name: 'Blue chips sandbox', components: [
+      { ticker: 'VOO', weight: 50 }, { ticker: 'BRK-B', weight: 50 }
+    ] } });
+    const blueChipState = (await get('/api/state')).data;
+    assert.strictEqual(blueChipState.settings.customBenchmark2CacheReady, true);
+    assert.strictEqual(blueChipState.settings.customBenchmark2.components[1].ticker, 'BRK-B');
     await assert.rejects(post('/api/settings/tickers', { tickers: [{ ticker: 'UNKNOWN' }] }), /离线行情支持/);
     await post('/api/settings/tickers', { tickers: [{ ticker: 'AAPL' }] });
     const quotes = await post('/api/ticker-ath/refresh', {});

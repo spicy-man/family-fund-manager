@@ -1,6 +1,12 @@
 const fs = require('fs');
 const path = require('path');
-const { fetchYahooPrices, createPriceLookup, fetchTickerAthData } = require('../lib/yahoo');
+const { fetchYahooPrices, createPriceLookup, mergeTickerAthRecord } = require('../lib/yahoo');
+const { createJsonFetcher } = require('../lib/http-json');
+
+const TRACKED_TICKERS = [
+  'VOO', 'QQQM', 'AAPL', 'MSFT', 'GOOGL', 'META', 'AMZN', 'NVDA', 'BRK-B',
+  'KO', 'PG', 'BAC', 'JPM', 'V', 'MA', 'COST', 'WMT', 'JNJ', 'XOM', 'VGT'
+];
 
 const TICKERS = ['AAPL', 'GOOGL', 'VGT', '^GSPC', '^NDX', 'CNY=X'];
 const START_DATE = '2022-01-07';
@@ -27,21 +33,42 @@ function latestCompletedFriday(now = new Date()) {
 }
 
 (async () => {
-  const endDate = latestCompletedFriday();
+  const endDate = process.argv[2] || latestCompletedFriday();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate) || !Number.isFinite(Date.parse(endDate)) ||
+      isoDate(new Date(endDate)) !== endDate || new Date(endDate).getUTCDay() !== 5 ||
+      endDate < START_DATE || endDate > latestCompletedFriday()) {
+    throw new Error('Demo end date must be a completed Friday (YYYY-MM-DD).');
+  }
   const startSec = Math.floor(Date.parse('2021-12-15T00:00:00Z') / 1000);
   const endSec = Math.floor(Date.parse(`${endDate}T00:00:00Z`) / 1000) + 24 * 3600;
   const maps = Object.fromEntries(await Promise.all(
     TICKERS.map(async ticker => [ticker, await fetchYahooPrices(ticker, startSec, endSec)])
   ));
   const liveCnhMap = await fetchYahooPrices('USDCNH=X', startSec, endSec);
-  const tickers = await fetchTickerAthData({
-    tickers: [
-      { ticker: 'AAPL', name: 'Apple Inc.' },
-      { ticker: 'GOOGL', name: 'Alphabet Inc.' },
-      { ticker: 'VGT', name: 'Vanguard Information Technology ETF' }
-    ]
-  });
-  if (Object.values(tickers).some(item => item.error)) throw new Error('Unable to build current ticker snapshots');
+  const fetchJson = createJsonFetcher();
+  const historyPrices = { '^GSPC': maps['^GSPC'], '^NDX': maps['^NDX'] };
+  // Freeze both ATH and closing prices at the requested cutoff, including when
+  // Yahoo's metadata already describes a later session.
+  const asOf = new Date(endSec * 1000 + 5 * 3600);
+  const tickers = Object.fromEntries(await Promise.all(TRACKED_TICKERS.map(async ticker => {
+    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?period1=0&period2=${endSec}&interval=1d`;
+    const json = await fetchJson(url);
+    const result = json?.chart?.result?.[0];
+    if (!result) throw new Error(`Missing history for ${ticker}`);
+    const quote = result.indicators.quote[0];
+    const indices = result.timestamp.map((timestamp, index) => ({ timestamp, index }))
+      .filter(({ timestamp }) => timestamp < endSec);
+    const bounded = { ...result, meta: { ...result.meta, regularMarketTime: undefined },
+      timestamp: indices.map(item => item.timestamp),
+      indicators: { quote: [{ high: indices.map(item => quote.high[item.index]),
+        close: indices.map(item => quote.close[item.index]) }] } };
+    const record = mergeTickerAthRecord(ticker, null, bounded, asOf);
+    if (record.regularCloseDate !== endDate) throw new Error(`Stale close for ${ticker}: ${record.regularCloseDate}`);
+    historyPrices[ticker] = Object.fromEntries(indices
+      .filter(({ timestamp, index }) => timestamp >= startSec && Number.isFinite(quote.close[index]))
+      .map(({ timestamp, index }) => [isoDate(new Date(timestamp * 1000)), quote.close[index]]));
+    return [ticker, record];
+  })));
 
   for (const ticker of TICKERS) {
     if (Object.keys(maps[ticker]).length < 200) {
@@ -79,6 +106,7 @@ function latestCompletedFriday(now = new Date()) {
     endDate,
     latestCnh,
     tickers,
+    historyPrices,
     anchors: years.map(year => snapshot(`${year}-01-01`)),
     weeks: fridaysThrough(endDate).map(snapshot)
   };

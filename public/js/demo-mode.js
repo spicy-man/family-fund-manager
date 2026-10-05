@@ -74,18 +74,25 @@
       actions.className = 'demo-banner-actions';
       actions.append(reset, banner.querySelector('.demo-banner-exit'));
       banner.appendChild(actions);
-      const tickerHint = document.createElement('p');
-      tickerHint.className = 'demo-ticker-note';
-      tickerHint.id = 'demo-ticker-unavailable';
-      tickerHint.textContent = '体验版不可操作';
-      document.querySelector('#ticker-ath-container .panel-header')?.after(tickerHint);
       for (const id of ['btn-refresh-tickers', 'btn-config-tickers']) {
         const button = document.getElementById(id);
         if (!button) continue;
+        const wrapper = document.createElement('span');
+        wrapper.className = 'demo-ticker-action';
+        wrapper.tabIndex = 0;
+        wrapper.setAttribute('aria-label', button.getAttribute('aria-label'));
+        const tickerHint = document.createElement('span');
+        tickerHint.className = 'glass-tooltip demo-ticker-tooltip';
+        tickerHint.id = `${id}-unavailable`;
+        tickerHint.setAttribute('role', 'tooltip');
+        tickerHint.textContent = '体验版不可操作';
+        button.before(wrapper);
+        wrapper.append(button, tickerHint);
+        wrapper.setAttribute('aria-describedby', tickerHint.id);
         button.disabled = true;
         button.setAttribute('aria-disabled', 'true');
         button.setAttribute('aria-describedby', tickerHint.id);
-        button.title = '体验版不可操作';
+        button.removeAttribute('title');
       }
       if (operationPanel) {
         operationPanel.querySelector('.panel-badge').textContent = '沙盒体验';

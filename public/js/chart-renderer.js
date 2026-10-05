@@ -8,7 +8,12 @@ window.FundChartRenderer = {
       // Keep the legend out of the leader labels' way on narrow panels.
       const position = chart.width < 560 ? 'bottom' : 'right';
       chart.options.plugins.legend.position = position;
-      if (chart.legend) chart.legend.position = position;
+      if (chart.legend) {
+        // Chart.js caches the legend's options separately during beforeUpdate.
+        // Keep its orientation and layout box in sync on the first resize.
+        chart.legend.options.position = position;
+        chart.legend.position = position;
+      }
     },
     afterDatasetsDraw(chart, _args, options) {
       if (options.empty) return;

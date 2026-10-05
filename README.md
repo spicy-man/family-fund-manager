@@ -46,7 +46,7 @@ npm start
 
 ![只读 Demo 数据看板](preview/demo.png)
 
-需要把离线 Demo 快照更新到最新一周时，运行 `npm run demo:refresh`。
+需要把离线 Demo 快照更新到最新一周时，运行 `npm run demo:refresh`；指定截止周五可用 `npm run demo:refresh -- 2026-10-02`。回调追踪包含 VOO、QQQM 和 18 个股票/行业 ETF，采用截止日收盘价；周度净值对标继续使用估值日前一交易日收盘价。刷新后运行 `npm run demo:build` 重建沙盒。已打开的沙盒标签页保留当前体验修改，点击“重置样例”可载入新样例（会清除该标签页的体验修改）。
 
 如需更换端口：
 

@@ -66,6 +66,17 @@ function request(server, pathname, method = 'GET') {
     assert.strictEqual(weeklyValuations.length, weeklyMarket.weeks.length);
     assert.strictEqual(weeklyValuations[0].date, weeklyMarket.startDate);
     assert.strictEqual(weeklyValuations.at(-1).date, weeklyMarket.endDate);
+    assert(weeklyMarket.endDate >= '2026-10-02', 'demo market must include the refreshed cutoff');
+    const tracked = JSON.parse((await request(server, '/api/demo/ticker-ath')).body).data;
+    for (const ticker of ['VOO', 'QQQM', 'MSFT', 'META', 'AMZN', 'BRK-B', 'KO', 'PG', 'BAC']) {
+      assert(tracked[ticker], `Missing requested ticker ${ticker}`);
+    }
+    assert(Object.keys(tracked).length >= 20);
+    for (const quote of Object.values(tracked)) {
+      assert.strictEqual(quote.regularCloseDate, weeklyMarket.endDate);
+      assert(quote.athDate <= weeklyMarket.endDate);
+      assert(Math.abs(quote.drawdown - (quote.regularClose / quote.ath - 1) * 100) < 0.02);
+    }
     weeklyValuations.slice(1).forEach((event, index) => {
       assert.strictEqual(
         (Date.parse(event.date) - Date.parse(weeklyValuations[index].date)) / 86400000,

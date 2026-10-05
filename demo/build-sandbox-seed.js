@@ -17,7 +17,11 @@ function buildSandboxSeed() {
   const settlements = migrateSettlementLedger(db, { version: 1,
     records: ledger.events.filter(event => event.type === 'performance_settlement') }).ledger;
   const marketHistory = { version: 1, tickers: {}, updatedAt: weeklyMarket.endDate };
+  for (const [ticker, prices] of Object.entries(weeklyMarket.historyPrices || {})) {
+    mergeTickerPrices(marketHistory, ticker, prices);
+  }
   for (const [ticker, field] of [['AAPL', 'aapl'], ['GOOGL', 'googl'], ['VGT', 'vgt'], ['^GSPC', 'spx'], ['^NDX', 'ndx']]) {
+    if (weeklyMarket.historyPrices?.[ticker]) continue;
     const prices = Object.fromEntries([...weeklyMarket.weeks, ...weeklyMarket.anchors]
       .map(row => [row.priceDate, row[field]]));
     mergeTickerPrices(marketHistory, ticker, prices);
