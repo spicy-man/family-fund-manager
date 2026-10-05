@@ -29,6 +29,10 @@
   border-radius: 22px;
   transform: translateY(24px) scale(0.96);
   transition: transform 0.35s var(--spring-ease), opacity 0.3s var(--smooth-ease);
+}
+
+/* Tooltip panels share modal sizing while using the common glass material. */
+.modal-content:not(.glass-tooltip) {
   background: linear-gradient(135deg, rgba(28, 30, 48, 0.95) 0%, rgba(14, 16, 26, 0.97) 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
   box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 0 30px rgba(0, 242, 254, 0.15) !important;
@@ -36,7 +40,7 @@
   -webkit-backdrop-filter: blur(32px) saturate(180%);
 }
 
-body.theme-light .modal-content {
+body.theme-light .modal-content:not(.glass-tooltip) {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(243, 246, 251, 0.98) 100%) !important;
   border: 1px solid rgba(0, 0, 0, 0.12) !important;
   box-shadow: 0 30px 60px -15px rgba(31, 38, 135, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;

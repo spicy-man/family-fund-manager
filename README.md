@@ -141,6 +141,18 @@ Windows 自动读取支持手动系统代理及其绕过列表，不解析 PAC �
 
 ## 开发
 
+### 打包离线发布版
+
+先执行 `npm install` 安装依赖。Windows 双击 `一键打包.bat`；macOS 首次执行 `chmod +x 一键打包.command`，之后双击 `一键打包.command`。也可以在项目目录通过终端运行：
+
+```bash
+bash 一键打包.command --no-pause
+```
+
+脚本会校验版本号，在项目根目录生成 `family-fund-manager_v版本号.zip`，包含 Git 跟踪的项目文件和本机 `node_modules`，使用当前工作区中的修改。macOS 打包脚本会排除正式账本、备份和本地环境配置，保留启动脚本执行权限与依赖中的符号链接。同版本的旧 ZIP 会在新包生成成功后被替换。运行发布包仍需安装 Node.js；其他操作系统或处理器架构如遇到依赖不兼容，请在目标机器重新执行 `npm ci`。
+
+### 开发命令
+
 ```bash
 npm start    # 启动本地服务
 npm test     # 运行完整回归测试（自动使用临时账本并关闭外部同步）

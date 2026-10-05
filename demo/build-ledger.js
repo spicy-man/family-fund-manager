@@ -43,7 +43,7 @@ function buildDemoLedger() {
   const marketByDate = Object.fromEntries(weeklyMarket.weeks.map(row => [row.date, row]));
   let sequenceNumber = 0;
   let totalShares = 0;
-  let previousNav = 1;
+  let currentNav = 1;
 
   const push = event => events.push({
     ...event,
@@ -54,7 +54,7 @@ function buildDemoLedger() {
   const deposit = (id, member, amount, date, remark) => {
     const cnhAmount = historicalCnhAmount(amount, date);
     push({ id, type: 'deposit', member, amount, cnhAmount, date, remark });
-    totalShares += amount / previousNav;
+    totalShares += amount / currentNav;
   };
   const withdraw = (id, member, amount, date, remark) => {
     const cnhAmount = historicalCnhAmount(amount, date);
@@ -62,13 +62,30 @@ function buildDemoLedger() {
       id, type: 'withdraw', member, amount, cnhAmount, date, remark,
       performanceFee: { gpMember: 'alex', annualRate: 0.06, feeRate: 0.25 }
     });
-    totalShares -= amount / previousNav;
+    totalShares -= amount / currentNav;
   };
 
   deposit('demo_deposit_alex', 'alex', 60000, first.date, '发起人首期入金');
   deposit('demo_deposit_lin', 'lin', 40000, first.date, '家庭成员首期入金');
 
   weeklyMarket.weeks.forEach((row, index) => {
+    // Value the existing holdings before issuing or redeeming shares that day.
+    const aaplReturn = row.aapl / first.aapl;
+    const googlReturn = row.googl / first.googl;
+    const vgtReturn = row.vgt / first.vgt;
+    const grossFundNav = 0.2 * aaplReturn + 0.2 * googlReturn + 0.6 * vgtReturn;
+    const annualCostFactor = Math.max(0.98, 1 - (0.0015 * index / 52));
+    const targetNav = grossFundNav * annualCostFactor;
+    push({
+      id: `demo_week_${row.date}`,
+      type: 'valuation',
+      totalNAV: Number((totalShares * targetNav).toFixed(2)),
+      date: row.date,
+      remark: index === 0 ? '建仓周估值' : '周度估值'
+    });
+    currentNav = targetNav;
+
+
     if (row.date === '2022-06-10') {
       deposit('demo_deposit_zhou', 'zhou', 25000, row.date, '新增合伙人入金');
     }
@@ -89,20 +106,6 @@ function buildDemoLedger() {
       withdraw('demo_withdraw_zhou', 'zhou', 3500, row.date, '成员部分退出');
     }
 
-    const aaplReturn = row.aapl / first.aapl;
-    const googlReturn = row.googl / first.googl;
-    const vgtReturn = row.vgt / first.vgt;
-    const grossFundNav = 0.2 * aaplReturn + 0.2 * googlReturn + 0.6 * vgtReturn;
-    const annualCostFactor = Math.max(0.98, 1 - (0.0015 * index / 52));
-    const targetNav = grossFundNav * annualCostFactor;
-    push({
-      id: `demo_week_${row.date}`,
-      type: 'valuation',
-      totalNAV: Number((totalShares * targetNav).toFixed(2)),
-      date: row.date,
-      remark: index === 0 ? '建仓周估值' : '周度估值'
-    });
-    previousNav = targetNav;
 
     const isLastSeptemberWeek = row.date.slice(5, 7) === '09' &&
       weeklyMarket.weeks[index + 1]?.date.slice(0, 7) !== row.date.slice(0, 7);

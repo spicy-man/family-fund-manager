@@ -14,6 +14,19 @@ const read = file => fs.readFileSync(path.join(output, file), 'utf8');
   try {
     buildStaticDemo(output);
     assert.deepStrictEqual(JSON.parse(read('demo-data/state.json')).data, JSON.parse(JSON.stringify(calculateStateFromDb(buildDemoLedger()))));
+    const ledger = buildDemoLedger();
+    const history = calculateStateFromDb(ledger).charts.navHistory;
+    for (const event of ledger.events.filter(event => ['deposit', 'withdraw', 'transfer'].includes(event.type))) {
+      if (event.date === ledger.events[0].date) continue;
+      const operationIndex = ledger.events.findIndex(item => item.id === event.id);
+      const valuationIndex = ledger.events.findIndex(item => item.type === 'valuation' && item.date === event.date);
+      assert(valuationIndex >= 0 && valuationIndex < operationIndex,
+        `${event.id} must follow the same-day valuation`);
+      const operationPoint = history.find(item => item.eventId === event.id);
+      const valuationPoint = history.find(item => item.eventId === ledger.events[valuationIndex].id);
+      assert.strictEqual(operationPoint.navPerShare, valuationPoint.navPerShare,
+        `${event.id} must use the updated NAV without changing unit value`);
+    }
     const members = JSON.parse(read('demo-data/members.json')).data;
     assert.strictEqual(members.filter(member => member.primaryGp).length, 1);
     assert(read('index.html').includes('name="fund-static-demo"'));

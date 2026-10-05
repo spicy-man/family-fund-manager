@@ -348,10 +348,16 @@ document.addEventListener('DOMContentLoaded', () => {
       isDemoMode: window.FundDemoMode?.enabled === true
     });
 
+    window.FundMetricDetails.bind(activeReturnCard, returnDetailsModal, btnCloseReturnDetails);
+    window.FundMetricDetails.bind(
+      document.getElementById('nav-details-card'),
+      document.getElementById('nav-details-popover'),
+      document.getElementById('btn-close-nav-details')
+    );
+
     window.FundAppShell.init({
       elements: {
         backupModal, btnCloseModal, principlesModal, btnClosePrinciplesModal,
-        activeReturnCard, returnDetailsModal, btnCloseReturnDetails,
         memberModal, btnCloseMemberModal, btnSaveMemberSettings,
         editEventModal, btnCloseEditModal, tickerConfigModal, btnCloseTickerConfigModal,
         settlementPreviewModal, btnCloseSettlementPreview, btnCancelSettlement,
@@ -562,6 +568,8 @@ document.addEventListener('DOMContentLoaded', () => {
     elNavIndicator.textContent = latestValuationDate
       ? `最后更新 ${latestValuationDate}`
       : '暂无估值更新';
+
+    window.FundMetricDetails.render(appState.charts.navHistory);
 
     // Three-card overview: assets, NAV and the return on capital still managed.
     elFundTotalNav.innerHTML = `<span>$${formatMoney(s.totalNAV)}</span><span class="metric-inline metric-profit-inline ${s.profit >= 0 ? 'text-green' : 'text-magenta'}">${s.profit >= 0 ? '+' : ''}$${formatMoney(s.profit)}</span>`;

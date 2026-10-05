@@ -13,10 +13,8 @@ window.FundChartRenderer = {
     const byId = new Map(events.map(event => [event.id, event]));
     const days = new Map();
     history.forEach((point, index) => {
-      if (!this.operationTypes[point.type]) {
-        if (days.has(point.date)) days.get(point.date).index = index;
-        return;
-      }
+      // Match the operation point on the curve, not a later same-day valuation.
+      if (!this.operationTypes[point.type]) return;
       let day = days.get(point.date);
       if (!day) {
         day = { date: point.date, index, events: [] };

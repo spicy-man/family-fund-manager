@@ -364,7 +364,7 @@ assert.strictEqual(dualBenchmarkRendered.trendSeries[4].label, '组合二');
 assert.deepStrictEqual(dualBenchmarkRendered.trendSeries[4].values, [1, 1.08]);
 assert.strictEqual(dualBenchmarkRendered.navTrendChart.data.datasets[5].label, '组合二');
 
-// Operations must use the ledger's settlement snapshot and the final point of a day.
+// Operations must use the ledger's settlement snapshot and the final operation of a day.
 const operationHistory = [
   { eventId: 'd1', date: '2026-01-01', type: 'deposit', member: 'alice', amount: 100 },
   { eventId: 't1', date: '2026-01-01', type: 'transfer', fromMember: 'alice', toMember: 'bob', amount: 20 },
@@ -378,9 +378,17 @@ const renderer = window.FundChartRenderer;
 const operationDays = renderer.groupOperations(operationHistory, [ledgerSettlement]);
 assert.strictEqual(operationDays.length, 2);
 assert.strictEqual(operationDays[0].events.length, 2);
-assert.strictEqual(operationDays[0].index, 2);
+assert.strictEqual(operationDays[0].index, 1);
 assert.strictEqual(operationDays[1].events[0], ledgerSettlement);
 assert.strictEqual(renderer.groupOperations([]).length, 0);
+const withdrawalHistory = [
+  { eventId: 'demo_withdraw_zhou', date: '2026-06-12', type: 'withdraw', member: 'zhou', amount: 3500 },
+  { eventId: 'demo_week_2026-06-12', date: '2026-06-12', type: 'valuation' }
+];
+const withdrawalDays = renderer.groupOperations(withdrawalHistory);
+assert.strictEqual(withdrawalDays[0].index, 0,
+  'a same-day valuation must not move the withdrawal marker away from its curve point');
+assert.strictEqual(renderer.clusterOperations(withdrawalDays, { getPixelForValue: i => 40 + i * 100 })[0].x, 40);
 assert.strictEqual(renderer.clusterOperations(operationDays, { getPixelForValue: i => i * 10 }).length, 1);
 assert.strictEqual(renderer.clusterOperations(operationDays, { getPixelForValue: i => i * 100 }).length, 2);
 assert.strictEqual(renderer.clusterOperations([0, 1, 2, 3].map(index => ({ index })), { getPixelForValue: i => i * 20 }).length, 2,

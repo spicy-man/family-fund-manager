@@ -32,7 +32,7 @@
       </svg>
       <span>
         <strong>家庭财富账本</strong>
-        <small>WEALTH LEDGER <b class="sidebar-version">v4.1.0</b></small>
+        <small>WEALTH LEDGER <b class="sidebar-version">v4.2.0</b></small>
       </span>
     </a>
 
@@ -115,7 +115,7 @@
         <div class="logo-text">
           <h1>家庭基金账目管理系统</h1>
           <span class="sub-logo">Family Private Wealth &amp; NAV Ledger &nbsp;<span
-              class="version-badge">v4.1.0</span></span>
+              class="version-badge">v4.2.0</span></span>
         </div>
       </div>
       <div class="header-actions">
@@ -237,7 +237,8 @@
         </div>
 
         <!-- Unit NAV Card -->
-        <div class="metric-card premium-border">
+        <div class="metric-card premium-border" id="nav-details-card" role="button" tabindex="0"
+          aria-haspopup="dialog" aria-controls="nav-details-popover" aria-expanded="false" aria-label="查看单位净值表现详情">
           <div class="card-glow glow-blue"></div>
           <div class="metric-info">
             <span class="metric-label">基金单位净值 (NAV / Share)</span>
@@ -254,7 +255,7 @@
 
         <!-- Active Capital Return Card -->
         <div class="metric-card metric-card--interactive premium-border" id="active-return-card" role="button"
-          tabindex="0" aria-haspopup="dialog" aria-controls="return-details-modal"
+          tabindex="0" aria-haspopup="dialog" aria-controls="return-details-modal" aria-expanded="false"
           aria-label="查看在管本金收益率与历史累计收益率详情">
           <div class="card-glow glow-magenta"></div>
           <div class="metric-info">
@@ -895,9 +896,9 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="return-details-modal" role="dialog" aria-modal="true"
+  <div class="metric-details-popover" id="return-details-modal" role="dialog" hidden
     aria-labelledby="return-details-modal-title" aria-hidden="true">
-    <div class="modal-content glass-panel premium-border return-details-modal-content" tabindex="-1">
+    <div class="modal-content premium-border return-details-modal-content glass-tooltip" tabindex="-1">
       <div class="modal-header">
         <div>
           <h3 id="return-details-modal-title">收益率详情</h3>
@@ -939,6 +940,55 @@
           </article>
         </div>
         <p class="return-details-note">成员退出后，其历史本金不再影响在管收益率，但已经实现的收益仍完整保留在历史累计口径中。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="metric-details-popover" id="nav-details-popover" role="dialog" hidden
+    aria-labelledby="nav-details-title" aria-hidden="true">
+    <div class="modal-content premium-border return-details-modal-content glass-tooltip" tabindex="-1">
+      <div class="modal-header">
+        <div>
+          <h3 id="nav-details-title">单位净值表现</h3>
+          <p class="section-desc privacy-sensitive" id="nav-details-period">暂无净值历史</p>
+        </div>
+        <button class="btn-close" id="btn-close-nav-details" type="button" aria-label="关闭单位净值详情">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="return-details-grid">
+          <article>
+            <span>最大回撤</span>
+            <strong class="privacy-sensitive text-magenta" id="nav-details-drawdown">—</strong>
+            <small>历史峰值至后续低点的最大跌幅</small>
+          </article>
+          <article>
+            <span>平均年化收益率</span>
+            <strong class="privacy-sensitive" id="nav-details-annualized">—</strong>
+            <small>成立以来复合年化收益率（CAGR）</small>
+          </article>
+          <article>
+            <span>MAR 比率</span>
+            <strong class="privacy-sensitive" id="nav-details-mar">—</strong>
+            <small>复合年化收益率 ÷ 最大回撤</small>
+          </article>
+          <article>
+            <span>年化波动率</span>
+            <strong class="privacy-sensitive" id="nav-details-volatility">—</strong>
+            <small>月度收益标准差 × √12</small>
+          </article>
+          <article>
+            <span>夏普比率 (Sharpe)</span>
+            <strong class="privacy-sensitive" id="nav-details-sharpe">—</strong>
+            <small>承担整体波动的收益效率</small>
+          </article>
+          <article>
+            <span>Sortino 比率</span>
+            <strong class="privacy-sensitive" id="nav-details-sortino">—</strong>
+            <small>承担下行波动的收益效率</small>
+          </article>
+        </div>
+        <p class="return-details-note">按已记录的单位净值计算，不受图表区间筛选影响。未满一年时年化收益仅供参考；没有回撤或不足一天时，MAR 比率显示为 —。</p>
+        <p class="return-details-note">波动率、夏普和 Sortino 按完整月份的末次估值计算，未结束月份与缺失月份不补值。无风险利率与目标收益均为 0%；不足 12 个月收益样本、零波动或无下行波动时，对应比率显示为 —。<span class="privacy-sensitive" id="nav-details-risk-samples">月度收益样本：0 个</span></p>
       </div>
     </div>
   </div>
@@ -1282,6 +1332,7 @@
   <script src="js/chart-controls.js"></script>
   <script src="js/settings-controller.js"></script>
   <script src="js/management-controller.js"></script>
+  <script src="js/metric-details.js"></script>
   <script src="js/app-shell-controller.js"></script>
   <script src="js/custom-select.js"></script>
   <script src="js/ticker-panel.js"></script>
