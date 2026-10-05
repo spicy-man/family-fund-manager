@@ -270,7 +270,8 @@ input[type="date"],
 
 .custom-select__menu {
   position: fixed;
-  z-index: 220;
+  /* Menus are portaled to body and must sit above modal overlays (1000). */
+  z-index: 1100;
   box-sizing: border-box;
   padding: 6px;
   overflow-x: hidden;

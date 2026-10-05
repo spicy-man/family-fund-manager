@@ -54,6 +54,12 @@
   gap: 10px;
 }
 
+.member-panel-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
 #members-section .member-view {
   display: none;
 }

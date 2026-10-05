@@ -17,6 +17,8 @@ const tests = [
   "test/test-ticker-cache.js",
   "test/test-ticker-panel-refresh.js",
   "test/test-calculator.js",
+  "test/test-member-statement.js",
+  "test/test-member-statement-print.js",
   "test/test-performance-settlement.js",
   "test/test-performance-fee-policy.js",
   "test/test-replay-performance.js",

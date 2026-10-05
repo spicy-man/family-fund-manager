@@ -70,6 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let disposalTrial = null;
   let memberEditor = null;
   let ledgerActions = null;
+  const memberStatement = window.FundMemberStatementController.create({
+    getState: () => appState, getMembers: () => membersList,
+    modal: window.FundModal, ui: window.FundUiUtils, showToast
+  });
 
   // --- DOM 元素定义 ---
   const elSystemTime = document.getElementById('system-time');
@@ -111,7 +115,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Dynamic Containers
   const elMembersGridContainer = document.getElementById('members-grid-container');
-  const elMemberCountBadge = document.getElementById('member-count-badge');
   const elTxMember = document.getElementById('tx-member');
   const filterMember = document.getElementById('filter-member');
 
@@ -261,7 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
     elements: {
       benchmarkPolicyGroup,
       benchmarkPolicyButtons,
-      privacyButtons: [btnPrivacyToggle, btnSettlementPrivacyToggle, document.getElementById('tx-trial-privacy-toggle'), document.getElementById('tf-trial-privacy-toggle')]
+      privacyButtons: [btnPrivacyToggle, btnSettlementPrivacyToggle, document.getElementById('btn-statement-privacy-toggle'), document.getElementById('tx-trial-privacy-toggle'), document.getElementById('tf-trial-privacy-toggle')]
     },
     api: Api,
     segmentedControl: window.FundSegmentedControl,
@@ -473,6 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // 执行页面数据渲染
       renderDashboard();
       renderMembersGrid();
+      memberStatement.sync();
       renderLedger();
       renderCharts();
       const onboardingShown = onboardingController?.showIfEmpty(appState) === true;
@@ -640,7 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return window.FundMemberRenderer.renderGrid({
       state: appState,
       members: membersList,
-      elements: { grid: elMembersGridContainer, countBadge: elMemberCountBadge },
+      elements: { grid: elMembersGridContainer },
       utils: { escapeHtml, formatMoney, getAvatarText, getMemberAvatarColor },
       isDark: checkIfDark()
     });

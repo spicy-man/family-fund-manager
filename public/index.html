@@ -32,7 +32,7 @@
       </svg>
       <span>
         <strong>家庭财富账本</strong>
-        <small>WEALTH LEDGER <b class="sidebar-version">v4.4.4</b></small>
+        <small>WEALTH LEDGER <b class="sidebar-version">v4.5.0</b></small>
       </span>
     </a>
 
@@ -115,7 +115,7 @@
         <div class="logo-text">
           <h1>家庭基金账目管理系统</h1>
           <span class="sub-logo">Family Private Wealth &amp; NAV Ledger &nbsp;<span
-              class="version-badge">v4.4.4</span></span>
+              class="version-badge">v4.5.0</span></span>
         </div>
       </div>
       <div class="header-actions">
@@ -291,7 +291,6 @@
               家庭成员
             </h2>
             <div class="member-panel-actions">
-              <span class="panel-badge" id="member-count-badge">成员人数: 0 人</span>
               <div class="tab-buttons segmented-control segmented-control--2" aria-label="成员资产视图">
                 <button class="tab-btn segmented-control__button active" type="button"
                   data-member-view="assets">成员资产</button>
@@ -310,6 +309,9 @@
                 <canvas id="memberAllocationChart"></canvas>
               </div>
             </div>
+          </div>
+          <div class="member-panel-footer">
+            <button class="btn btn-primary theme-button" id="btn-member-statement" type="button" aria-controls="member-statement-modal" disabled>成员报表</button>
           </div>
         </section>
 
@@ -1479,6 +1481,41 @@
   <script src="js/notifications.js"></script>
   <script src="js/member-editor-controller.js"></script>
   <script src="js/ledger-actions-controller.js"></script>
+  <div class="modal-overlay" id="member-statement-modal" aria-hidden="true">
+    <div class="modal-content statement-dialog" role="dialog" aria-modal="true" aria-labelledby="member-statement-title" tabindex="-1">
+      <div class="modal-header statement-controls">
+        <div><h3 id="member-statement-title">成员报表</h3><p class="statement-caption">按结算周期查看年度权益</p></div>
+        <div class="settlement-preview-header-actions">
+          <button id="btn-statement-privacy-toggle" class="btn btn-secondary flex-center" type="button"
+            title="切换成员报表隐私模式" aria-label="切换成员报表隐私模式">
+            <svg class="btn-icon icon-eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <svg class="btn-icon icon-eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
+              <path
+                d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
+          </button>
+        <button class="btn-close" id="btn-close-member-statement" type="button" aria-label="关闭成员报表">×</button>
+        </div>
+      </div>
+      <div class="statement-controls statement-filters">
+        <div class="form-group"><label for="statement-member">成员</label><select id="statement-member" class="select-input"></select></div>
+        <div class="form-group"><label for="statement-period">结算周期</label><select id="statement-period" class="select-input"></select></div>
+      </div>
+      <p id="statement-status" role="status" class="statement-controls"></p>
+      <article id="statement-content" class="statement-paper privacy-sensitive" aria-live="polite"></article>
+      <footer class="statement-controls statement-actions">
+        <button id="btn-print-statement" class="btn btn-primary theme-button" type="button" disabled>导出 / 打印</button>
+      </footer>
+    </div>
+  </div>
+  <script src="js/member-statement.js"></script>
+  <script src="js/member-statement-controller.js"></script>
   <script src="js/app.js"></script>
 </body>
 

@@ -4,9 +4,8 @@
  */
 window.FundMemberRenderer = {
   renderGrid({ state, members, elements, utils, isDark }) {
-    const { grid, countBadge } = elements;
+    const { grid } = elements;
     const { escapeHtml, formatMoney, getAvatarText, getMemberAvatarColor } = utils;
-    countBadge.textContent = `成员人数: ${members.length} 人`;
 
     if (members.length === 0) {
       grid.innerHTML = '<div style="grid-column:1 / -1;text-align:center;color:var(--color-text-muted);padding:30px;font-size:0.85rem;">暂无家庭成员。请点击右上角【家庭成员管理】添加出资人。</div>';

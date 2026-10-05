@@ -57,7 +57,16 @@
     });
     const activeOption = options[normalizedIndex];
     instance.trigger.setAttribute('aria-activedescendant', activeOption.id);
-    if (scroll) activeOption.scrollIntoView({ block: 'nearest' });
+    if (scroll) {
+      // Scroll only the portaled menu; scrollIntoView can scroll the page or
+      // modal and trigger the outside-scroll handler, immediately closing it.
+      const top = activeOption.offsetTop;
+      const bottom = top + activeOption.offsetHeight;
+      if (top < instance.menu.scrollTop) instance.menu.scrollTop = top;
+      else if (bottom > instance.menu.scrollTop + instance.menu.clientHeight) {
+        instance.menu.scrollTop = bottom - instance.menu.clientHeight;
+      }
+    }
   }
 
   function refreshInstance(instance) {
