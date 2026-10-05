@@ -36,6 +36,10 @@ function openTab(store) {
     const mutate = (method, url, body) => sandbox.request(url, { method, body: JSON.stringify(body) });
     const initial = (await get('/api/state')).data;
     assert.deepStrictEqual(clone(initial.summary), clone(calculateStateFromDb(buildDemoLedger()).summary));
+    assert.deepStrictEqual(clone(initial.settings.customBenchmark), { name: 'VGT', components: [{ ticker: 'VGT', weight: 100 }] });
+    assert.deepStrictEqual(clone(initial.settings.customBenchmark2), { name: 'BRK-B', components: [{ ticker: 'BRK-B', weight: 100 }] });
+    assert.strictEqual(initial.settings.customBenchmarkCacheReady, true);
+    assert.strictEqual(initial.settings.customBenchmark2CacheReady, true);
     assert.deepStrictEqual(clone((await get('/api/members')).data.map(member => member.name)), ['John Titor', 'Alice Liddell', 'Giovanni Giorgio']);
     const afterCutoff = days => new Date(Date.parse(weeklyMarket.endDate) + days * 86400000).toISOString().slice(0, 10);
     const sunday = afterCutoff(2); const friday = afterCutoff(7);

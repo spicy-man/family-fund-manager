@@ -2,17 +2,13 @@ const weeklyMarket = require('./weekly-market.json');
 const { customBenchmarkSignature, mergeCustomEntryForSlot } = require('../lib/custom-benchmark');
 
 const portfolio1 = {
-  name: '组合 1 · 科技成长',
-  components: [
-    { ticker: 'AAPL', weight: 30 },
-    { ticker: 'GOOGL', weight: 30 },
-    { ticker: 'VGT', weight: 40 }
-  ]
+  name: 'VGT',
+  components: [{ ticker: 'VGT', weight: 100 }]
 };
 
 const portfolio2 = {
-  name: 'VGT',
-  components: [{ ticker: 'VGT', weight: 100 }]
+  name: 'BRK-B',
+  components: [{ ticker: 'BRK-B', weight: 100 }]
 };
 
 const members = [
@@ -28,15 +24,13 @@ const signature2 = customBenchmarkSignature(portfolio2);
 function customCacheEntry(row) {
   const primary = {
     signature: signature1,
-    components: {
-      AAPL: { price: row.aapl, priceDate: row.priceDate },
-      GOOGL: { price: row.googl, priceDate: row.priceDate },
-      VGT: { price: row.vgt, priceDate: row.priceDate }
-    }
+    components: { VGT: { price: row.vgt, priceDate: row.priceDate } }
   };
   const secondary = {
     signature: signature2,
-    components: { VGT: { price: row.vgt, priceDate: row.priceDate } }
+    components: {
+      'BRK-B': { price: weeklyMarket.historyPrices['BRK-B'][row.priceDate], priceDate: row.priceDate }
+    }
   };
   return mergeCustomEntryForSlot(primary, 1, secondary);
 }

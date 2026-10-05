@@ -84,12 +84,10 @@ function request(server, pathname, method = 'GET') {
         'demo valuations must contain one uninterrupted snapshot per week'
       );
     });
-    assert.deepStrictEqual(state.settings.customBenchmark.components, [
-      { ticker: 'AAPL', weight: 30 },
-      { ticker: 'GOOGL', weight: 30 },
-      { ticker: 'VGT', weight: 40 }
-    ]);
-    assert.deepStrictEqual(state.settings.customBenchmark2.components, [{ ticker: 'VGT', weight: 100 }]);
+    assert.strictEqual(state.settings.customBenchmark.name, 'VGT');
+    assert.strictEqual(state.settings.customBenchmark2.name, 'BRK-B');
+    assert.deepStrictEqual(state.settings.customBenchmark.components, [{ ticker: 'VGT', weight: 100 }]);
+    assert.deepStrictEqual(state.settings.customBenchmark2.components, [{ ticker: 'BRK-B', weight: 100 }]);
     assert.strictEqual(state.settings.customBenchmarkCacheReady, true);
     assert.strictEqual(state.settings.customBenchmark2CacheReady, true);
     assert.strictEqual(state.summary.cnhRate, weeklyMarket.latestCnh.rate);

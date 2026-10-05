@@ -336,3 +336,57 @@ body:not(.theme-light) .member-hover-details {
   width: 100% !important;
   height: 100% !important;
 }
+
+/* 日期轴与走势之间的操作轨道，位置由图表刻度同步。 */
+.chart-operations-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  margin: 12px 0 4px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+.chart-operations-toolbar label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.chart-operations-toolbar input { accent-color: var(--color-primary); }
+.chart-operations-toolbar i { font-style: normal; font-weight: 700; margin-right: 4px; }
+.chart-operation-track { position: absolute; height: 1px; background: var(--color-panel-border); }
+.chart-operation-marker {
+  position: absolute;
+  top: 0;
+  transform: translate(-50%, -50%);
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--operation-color);
+  border-radius: 50%;
+  background: var(--option-bg);
+  color: var(--operation-color);
+  font: 600 10px Inter, sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.chart-operation-marker::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; }
+.chart-operation-marker:hover, .chart-operation-marker:focus-visible {
+  outline: 1px solid var(--operation-color);
+  outline-offset: 2px;
+  z-index: 2;
+}
+.chart-operation-tooltip {
+  position: absolute;
+  z-index: 20;
+  width: max-content;
+  max-width: min(360px, calc(100% - 24px));
+  max-height: none;
+  overflow: visible;
+  padding: 12px 14px;
+  color: var(--color-text-main);
+  pointer-events: auto;
+}
+.chart-operation-tooltip[hidden], .chart-operation-track[hidden] { display: none; }
+.chart-operation-detail { font-size: 11px; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; margin: 7px 0 12px; }
+
+/* 操作详情可以越过图表和面板边界，完整展示合并操作。 */
+#trends-section,
+#chart-tab-nav-container { overflow: visible; }
+#trends-section:has(.chart-operation-tooltip:not([hidden])) { z-index: 40; }

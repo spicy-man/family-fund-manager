@@ -7,6 +7,8 @@ const listeners = {};
 function createMockElement() {
   const element = {
     children: [],
+    listeners: {},
+    addEventListener(name, handler) { this.listeners[name] = handler; },
     className: '',
     dataset: {},
     offsetWidth: 180,
@@ -361,5 +363,62 @@ const dualBenchmarkRendered = window.FundChartRenderer.render({
 assert.strictEqual(dualBenchmarkRendered.trendSeries[4].label, '组合二');
 assert.deepStrictEqual(dualBenchmarkRendered.trendSeries[4].values, [1, 1.08]);
 assert.strictEqual(dualBenchmarkRendered.navTrendChart.data.datasets[5].label, '组合二');
+
+// Operations must use the ledger's settlement snapshot and the final point of a day.
+const operationHistory = [
+  { eventId: 'd1', date: '2026-01-01', type: 'deposit', member: 'alice', amount: 100 },
+  { eventId: 't1', date: '2026-01-01', type: 'transfer', fromMember: 'alice', toMember: 'bob', amount: 20 },
+  { date: '2026-01-01', type: 'valuation' },
+  { eventId: 's1', date: '2026-01-02', type: 'performance_settlement' },
+  { date: '2026-01-03', type: 'valuation' },
+  { date: '2026-01-04', type: 'performance_settlement_reversal' }
+];
+const ledgerSettlement = { id: 's1', date: '2026-01-02', type: 'performance_settlement', gpMember: 'bob', snapshot: { totalFee: 12.34 } };
+const renderer = window.FundChartRenderer;
+const operationDays = renderer.groupOperations(operationHistory, [ledgerSettlement]);
+assert.strictEqual(operationDays.length, 2);
+assert.strictEqual(operationDays[0].events.length, 2);
+assert.strictEqual(operationDays[0].index, 2);
+assert.strictEqual(operationDays[1].events[0], ledgerSettlement);
+assert.strictEqual(renderer.groupOperations([]).length, 0);
+assert.strictEqual(renderer.clusterOperations(operationDays, { getPixelForValue: i => i * 10 }).length, 1);
+assert.strictEqual(renderer.clusterOperations(operationDays, { getPixelForValue: i => i * 100 }).length, 2);
+assert.strictEqual(renderer.clusterOperations([0, 1, 2, 3].map(index => ({ index })), { getPixelForValue: i => i * 20 }).length, 2,
+  'nearby dates must not chain into one cluster spanning the entire chart');
+
+const operationContainer = createMockElement();
+operationContainer.clientWidth = 600;
+operationContainer.clientHeight = 340;
+operationContainer.querySelector = selector => operationContainer.children.find(child => child.className.split(' ').includes(selector.slice(1)));
+const operationChart = dualBenchmarkRendered.navTrendChart;
+operationChart.canvas = { parentElement: operationContainer };
+operationChart.chartArea = { top: 10, bottom: 260, left: 40, right: 560 };
+operationChart.width = 600;
+operationChart.scales = { x: { getPixelForValue: i => 40 + i * 100 } };
+operationChart.ctx = { save() {}, restore() {}, setLineDash() {}, beginPath() {}, moveTo() {}, lineTo() {}, stroke() {} };
+operationChart.$operationTrack.days = operationDays;
+renderer.operationTrackPlugin.afterDraw(operationChart);
+const track = operationContainer.querySelector('.chart-operation-track');
+assert.strictEqual(track.children.length, 2);
+assert.strictEqual(track.children[0].textContent, '2');
+assert.strictEqual(track.children[0].style.values['--operation-color'], '#858b95');
+assert.strictEqual(track.children[1].textContent, '◆');
+track.children[1].listeners.click();
+const operationTooltip = operationContainer.querySelector('.chart-operation-tooltip');
+assert(operationTooltip.children.some(child => child.textContent.includes('$12.34')));
+assert(operationTooltip.children.some(child => child.textContent.includes('Bob')));
+assert.strictEqual(operationTooltip.hidden, false);
+assert.strictEqual(operationTooltip.style.top, '156px', 'operation tooltip must sit above the marker using its full height');
+operationTooltip.offsetHeight = 400;
+track.children[1].listeners.focus();
+assert.strictEqual(operationTooltip.style.top, '-144px', 'tall operation cards must extend above the chart instead of being clipped or pushed down');
+assert(operationChart.$activeOperation);
+track.children[1].listeners.keydown({ key: 'Escape' });
+assert.strictEqual(operationTooltip.hidden, true);
+assert.strictEqual(operationChart.$activeOperation, null);
+operationChart.$operationTrack.version = 'empty';
+operationChart.$operationTrack.days = [];
+renderer.operationTrackPlugin.afterDraw(operationChart);
+assert.strictEqual(track.children.length, 0, 'switching date ranges must remove stale operation markers');
 
 console.log('Chart renderer interaction regression tests passed.');

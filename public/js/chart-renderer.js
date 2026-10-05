@@ -2,6 +2,180 @@
  * 图表与趋势统计渲染器。Chart.js 实例由调用方持有，避免模块私有状态。
  */
 window.FundChartRenderer = {
+  operationTypes: {
+    deposit: { symbol: '↑', label: '入金', color: '#23845a' },
+    withdraw: { symbol: '↓', label: '出金', color: '#c45b60' },
+    transfer: { symbol: '⇄', label: '内部转让', color: '#62738b' },
+    performance_settlement: { symbol: '◆', label: '业绩结算', color: '#a67b36' }
+  },
+
+  groupOperations(history, events = []) {
+    const byId = new Map(events.map(event => [event.id, event]));
+    const days = new Map();
+    history.forEach((point, index) => {
+      if (!this.operationTypes[point.type]) {
+        if (days.has(point.date)) days.get(point.date).index = index;
+        return;
+      }
+      let day = days.get(point.date);
+      if (!day) {
+        day = { date: point.date, index, events: [] };
+        days.set(point.date, day);
+      }
+      day.index = index;
+      day.events.push(byId.get(point.eventId) || point);
+    });
+    return [...days.values()];
+  },
+
+  clusterOperations(days, scale, gap = 30) {
+    const clusters = [];
+    days.forEach(day => {
+      const x = scale.getPixelForValue(day.index);
+      const last = clusters.at(-1);
+      if (last && x - last.firstX < gap) {
+        last.days.push(day);
+        last.lastX = x;
+        // Anchor merged markers to the first date so neighbouring groups stay separated.
+      } else {
+        clusters.push({ x, firstX: x, lastX: x, days: [day] });
+      }
+    });
+    return clusters;
+  },
+
+  operationTrackPlugin: {
+    id: 'operationTrack',
+    afterDestroy(chart) {
+      clearTimeout(chart.$operationHideTimer);
+      const container = chart.canvas?.parentElement;
+      container?.querySelector('.chart-operation-track')?.remove();
+      container?.querySelector('.chart-operation-tooltip')?.remove();
+    },
+    afterDraw(chart) {
+      const model = chart.$operationTrack;
+      const container = chart.canvas.parentElement;
+      if (!model || !container || !chart.chartArea || !chart.scales.x) return;
+      let track = container.querySelector('.chart-operation-track');
+      if (!track) {
+        track = document.createElement('div');
+        track.className = 'chart-operation-track';
+        track.setAttribute('role', 'group');
+        track.setAttribute('aria-label', '图表操作轨道');
+        container.appendChild(track);
+      }
+      const clusters = window.FundChartRenderer.clusterOperations(model.days, chart.scales.x);
+      const y = chart.chartArea.bottom + 12;
+      const key = JSON.stringify([model.version, chart.width, y, clusters.map(group => group.x)]);
+      if (track.dataset.layout !== key) {
+        track.dataset.layout = key;
+        track.replaceChildren();
+        chart.$activeOperation = null;
+        track.style.top = `${y}px`;
+        track.style.left = `${chart.chartArea.left}px`;
+        track.style.width = `${chart.chartArea.right - chart.chartArea.left}px`;
+        clusters.forEach(group => {
+          const events = group.days.flatMap(day => day.events);
+          const type = window.FundChartRenderer.operationTypes[events[0].type];
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'chart-operation-marker';
+          button.style.left = `${group.x - chart.chartArea.left}px`;
+          button.style.setProperty('--operation-color', events.length > 1 ? '#858b95' : type.color);
+          button.textContent = events.length > 1 ? String(events.length) : type.symbol;
+          const dates = group.days.map(day => day.date);
+          button.setAttribute('aria-label', `${dates.join('、')}，${events.length} 笔操作：${[...new Set(events.map(event => window.FundChartRenderer.operationTypes[event.type].label))].join('、')}`);
+          const show = () => {
+            clearTimeout(chart.$operationHideTimer);
+            chart.$activeOperation = group;
+            const existing = container.querySelector('.chart-external-tooltip');
+            if (existing) existing.style.opacity = '0';
+            let tooltip = container.querySelector('.chart-operation-tooltip');
+            if (!tooltip) {
+              tooltip = document.createElement('div');
+              tooltip.className = 'glass-tooltip chart-operation-tooltip';
+              tooltip.setAttribute('role', 'tooltip');
+              tooltip.addEventListener('mouseenter', () => clearTimeout(chart.$operationHideTimer));
+              tooltip.addEventListener('mouseleave', () => {
+                if (chart.$pinnedOperation) return;
+                chart.$activeOperation = null; tooltip.hidden = true;
+                chart.$operationTrack.renderStats(); chart.draw();
+              });
+              container.appendChild(tooltip);
+            }
+            tooltip.replaceChildren();
+            group.days.forEach(day => {
+              const title = document.createElement('div');
+              title.className = 'chart-external-tooltip-title';
+              title.textContent = `${day.date} · ${day.events.length} 笔操作`;
+              tooltip.appendChild(title);
+              day.events.forEach(event => {
+                const row = document.createElement('div');
+                row.className = 'chart-operation-detail privacy-sensitive';
+                row.textContent = chart.$operationTrack.describe(event);
+                tooltip.appendChild(row);
+              });
+            });
+            tooltip.hidden = false;
+            const position = window.FundChartRenderer.calculateTooltipPosition({
+              caretX: group.x, caretY: y,
+              tooltipWidth: tooltip.offsetWidth, tooltipHeight: tooltip.offsetHeight,
+              containerWidth: container.clientWidth, containerHeight: container.clientHeight, inset: 12
+            });
+            tooltip.style.left = `${position.left}px`;
+            // Keep the entire card above the marker, even beyond the chart bounds.
+            tooltip.style.top = `${y - tooltip.offsetHeight - 16}px`;
+            chart.$operationTrack.renderStats(group.days.at(-1).index);
+            chart.draw();
+          };
+          const hide = () => {
+            if (chart.$pinnedOperation === group) return;
+            chart.$activeOperation = null;
+            const tooltip = container.querySelector('.chart-operation-tooltip');
+            if (tooltip) tooltip.hidden = true;
+            chart.$operationTrack.renderStats();
+            chart.draw();
+          };
+          button.addEventListener('mouseenter', show);
+          button.addEventListener('mouseleave', () => { chart.$operationHideTimer = setTimeout(hide, 150); });
+          button.addEventListener('focus', show);
+          button.addEventListener('blur', () => { chart.$pinnedOperation = null; hide(); });
+          button.addEventListener('click', () => {
+            if (chart.$pinnedOperation === group) { chart.$pinnedOperation = null; hide(); }
+            else { chart.$pinnedOperation = group; show(); }
+          });
+          button.addEventListener('keydown', event => {
+            if (event.key === 'Escape') { chart.$pinnedOperation = null; hide(); }
+          });
+          track.appendChild(button);
+        });
+        chart.$pinnedOperation = null;
+        const tooltip = container.querySelector('.chart-operation-tooltip');
+        if (tooltip) tooltip.hidden = true;
+      }
+      const toggle = document.getElementById('chk-chart-operations');
+      track.hidden = toggle ? !toggle.checked : false;
+      if (track.hidden) {
+        chart.$activeOperation = null;
+        chart.$pinnedOperation = null;
+        const tooltip = container.querySelector('.chart-operation-tooltip');
+        if (tooltip) tooltip.hidden = true;
+      }
+      if (chart.$activeOperation) {
+        const { ctx, chartArea } = chart;
+        ctx.save();
+        ctx.strokeStyle = chart.$operationTrack.dark ? 'rgba(203,213,225,.55)' : 'rgba(98,115,139,.55)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        chart.$activeOperation.days.forEach(day => {
+          const x = chart.scales.x.getPixelForValue(day.index);
+          ctx.beginPath(); ctx.moveTo(x, chartArea.top); ctx.lineTo(x, chartArea.bottom); ctx.stroke();
+        });
+        ctx.restore();
+      }
+    }
+  },
+
   allocationLabelsPlugin: {
     id: 'allocationLabels',
     beforeLayout(chart) {
@@ -243,6 +417,7 @@ window.FundChartRenderer = {
     const chartBgColor = isDarkTheme ? '#0f111a' : '#ffffff';
 
     if (navTrendChart) {
+      if (navTrendChart.$operationTrack) navTrendChart.$operationTrack.dark = isDarkTheme;
       navTrendChart.options.plugins.legend.labels.color = labelColor;
       navTrendChart.options.scales.x.grid.color = gridColor;
       navTrendChart.options.scales.x.ticks.color = axisColor;
@@ -706,11 +881,12 @@ window.FundChartRenderer = {
       nextNav = new Chart(navCtx, {
         type: 'line',
         data: { labels, datasets },
-        plugins: [window.FundChartRenderer.datasetOpacityPlugin],
+        plugins: [window.FundChartRenderer.datasetOpacityPlugin, window.FundChartRenderer.operationTrackPlugin],
         options: {
           responsive: true,
           maintainAspectRatio: false,
           animation: chartAnimation,
+          layout: { padding: { right: 14 } },
           interaction: { mode: 'index', intersect: false },
           plugins: {
             legend: {
@@ -755,7 +931,7 @@ window.FundChartRenderer = {
                 maxTicksLimit: 7,
                 maxRotation: 0,
                 minRotation: 0,
-                padding: 10,
+                padding: 26,
                 callback: formatTrendAxisDate
               }
             },
@@ -790,7 +966,36 @@ window.FundChartRenderer = {
         }
       });
     }
-    nextNav.options.onHover = (_event, active) => renderStats(active.length ? active[0].index : null);
+    const memberName = id => members.find(member => member.id === id)?.name || '未知成员';
+    clearTimeout(nextNav.$operationHideTimer);
+    nextNav.$operationTrack = {
+      version: this.operationTrackVersion = (this.operationTrackVersion || 0) + 1,
+      days: this.groupOperations(filtered, state.events), dark, renderStats,
+      describe: event => {
+        const type = this.operationTypes[event.type];
+        const person = event.type === 'transfer'
+          ? `${memberName(event.fromMember)} → ${memberName(event.toMember)}`
+          : memberName(event.type === 'performance_settlement' ? event.gpMember : event.member);
+        const amount = event.type === 'performance_settlement'
+          ? event._totalFee ?? event.snapshot?.totalFee ?? 0
+          : event.amount;
+        const details = [person, `$${formatMoney(amount)}`];
+        if (event.cnhAmount) details.push(`¥${formatMoney(event.cnhAmount)}`);
+        const lines = [`${type.symbol} ${type.label}`, details.join(' · ')];
+        if (event.remark) lines.push(event.remark);
+        return lines.join('\n');
+      }
+    };
+    nextNav.draw();
+    const operationToggle = document.getElementById('chk-chart-operations');
+    if (operationToggle) operationToggle.onchange = () => { renderStats(); nextNav.draw(); };
+    nextNav.options.onHover = (_event, active) => {
+      nextNav.$activeOperation = null;
+      nextNav.$pinnedOperation = null;
+      const tooltip = navCanvas.parentElement?.querySelector('.chart-operation-tooltip');
+      if (tooltip) tooltip.hidden = true;
+      renderStats(active.length ? active[0].index : null);
+    };
     nextNav.options.plugins.tooltip.callbacks.afterBody = context => {
       if (!context?.length) return [];
       const event = filtered[context[0].dataIndex];
