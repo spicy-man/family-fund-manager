@@ -32,7 +32,7 @@
       </svg>
       <span>
         <strong>家庭财富账本</strong>
-        <small>WEALTH LEDGER <b class="sidebar-version">v4.3.2</b></small>
+        <small>WEALTH LEDGER <b class="sidebar-version">v4.4.0</b></small>
       </span>
     </a>
 
@@ -115,7 +115,7 @@
         <div class="logo-text">
           <h1>家庭基金账目管理系统</h1>
           <span class="sub-logo">Family Private Wealth &amp; NAV Ledger &nbsp;<span
-              class="version-badge">v4.3.2</span></span>
+              class="version-badge">v4.4.0</span></span>
         </div>
       </div>
       <div class="header-actions">
@@ -511,6 +511,16 @@
               </div>
             </div>
 
+            <section id="tx-trial" class="disposal-trial" aria-label="出金试算" hidden>
+              <p class="section-desc">部分出金按希望到手的金额试算；全部退出按当前权益扣除应计报酬。</p>
+              <div class="disposal-trial-actions">
+                <button type="button" id="tx-trial-partial" class="btn btn-secondary">试算当前金额</button>
+                <button type="button" id="tx-trial-full" class="btn btn-secondary">试算全部退出</button>
+              </div>
+              <div id="tx-trial-result" class="disposal-trial-result" role="status" aria-live="polite" hidden></div>
+              <button type="button" id="tx-trial-apply" class="btn btn-secondary btn-block" hidden>使用此试算金额</button>
+            </section>
+
             <button type="submit" class="btn btn-primary theme-button btn-block flex-center gap-2">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                 style="width: 18px; height: 18px;">
@@ -617,6 +627,16 @@
                 <input type="text" id="tf-remark" required placeholder="请说明转让的具体原委原因">
               </div>
             </div>
+
+            <section id="tf-trial" class="disposal-trial" aria-label="转让试算">
+              <p class="section-desc">部分转让按希望受让方获得的金额试算；全部退出按当前权益扣除应计报酬。</p>
+              <div class="disposal-trial-actions">
+                <button type="button" id="tf-trial-partial" class="btn btn-secondary">试算当前金额</button>
+                <button type="button" id="tf-trial-full" class="btn btn-secondary">试算全部转让</button>
+              </div>
+              <div id="tf-trial-result" class="disposal-trial-result" role="status" aria-live="polite" hidden></div>
+              <button type="button" id="tf-trial-apply" class="btn btn-secondary btn-block" hidden>使用此试算金额</button>
+            </section>
 
             <button type="submit" class="btn btn-primary theme-button btn-block flex-center gap-2"
               style="font-weight: 700;">
@@ -1384,6 +1404,7 @@
   <script src="js/ticker-config-controller.js"></script>
   <script src="js/custom-benchmark-controller.js"></script>
   <script src="js/settlement-controller.js"></script>
+  <script src="js/disposal-trial-controller.js"></script>
   <script src="js/transaction-controller.js"></script>
   <script src="js/chart-controls.js"></script>
   <script src="js/settings-controller.js"></script>

@@ -80,6 +80,7 @@ const Api = {
   async updateMemberRoles(id, roles) { return jsonRequest(`/api/members/${id}/roles`, 'PUT', roles); },
   async deleteMember(id) { return (await requestApi(`/api/members/${id}`, { method: 'DELETE' })).data; },
   async syncCnhRate() { return (await requestApi('/api/settings/sync-rate', { method: 'POST' })).cnhRate; },
+  async previewDisposal(data) { return (await jsonRequest('/api/disposal/preview', 'POST', data)).data; },
   async addTransfer(data) { return jsonRequest('/api/transfer', 'POST', data); },
   async previewSettlement(data) { return (await jsonRequest('/api/performance-settlement/preview', 'POST', data)).data; },
   async confirmSettlement(data) { return jsonRequest('/api/performance-settlement', 'POST', data); },

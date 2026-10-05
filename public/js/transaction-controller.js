@@ -1,5 +1,5 @@
 (function () {
-  function init({ elements, api, submission, resetDefaultDates, loadAllData, showToast, showSubmissionSuccess, closeModal, getLatestValuationDate, formatMoney }) {
+  function init({ elements, api, submission, getPreviewToken = () => undefined, resetDefaultDates, loadAllData, showToast, showSubmissionSuccess, closeModal, getLatestValuationDate, formatMoney }) {
     const {
       txDate, tfDate, valDate, editDate, editEventType,
       tfAmount, tfRate, tfCnhDisplay, inputCnhRate,
@@ -95,7 +95,7 @@
       }
 
       try {
-        await Api.addTransfer({ fromMember, toMember, amount, cnhRate, date, remark });
+        await Api.addTransfer({ fromMember, toMember, amount, cnhRate, date, remark, previewToken: getPreviewToken('tf') });
         showSubmissionSuccess('内部份额转让已提交并保存');
         formTransfer.reset();
         resetDefaultDates();
@@ -235,7 +235,7 @@
       }
 
       try {
-        await Api.addTransaction({ member, type, amount, cnhAmount, date, remark });
+        await Api.addTransaction({ member, type, amount, cnhAmount, date, remark, previewToken: type === 'withdraw' ? getPreviewToken('tx') : undefined });
         showSubmissionSuccess('交易记录已提交并保存');
         formTransaction.reset();
         resetDefaultDates();

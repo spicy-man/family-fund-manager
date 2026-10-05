@@ -12,6 +12,14 @@ function registerTransactionRoutes(app, deps, utils) {
     }
   });
 
+  app.post('/api/disposal/preview', (req, res, next) => {
+    try {
+      res.json({ success: true, data: service.previewDisposal(req.body) });
+    } catch (error) {
+      handleApiError(error, req, res, next);
+    }
+  });
+
   app.post('/api/transaction', (req, res, next) => {
     try {
       const event = service.createTransaction(req.body);

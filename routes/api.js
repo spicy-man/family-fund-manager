@@ -87,7 +87,9 @@ function registerApiRoutes(app, deps) {
 
     const insufficientBalance = validationState.events.find(event =>
       (event.type === 'withdraw' || event.type === 'transfer') &&
-      (event._grossAmount ?? event._actualAmount) + BALANCE_TOLERANCE < event.amount
+      (event._fullExit && event._accountValueBefore !== undefined
+        ? event._accountValueBefore
+        : (event._grossAmount ?? event._actualAmount)) + BALANCE_TOLERANCE < event.amount
     );
     const unpaidFee = validationState.events.find(event =>
       (event.type === 'withdraw' || event.type === 'transfer') &&

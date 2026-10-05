@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let hasPromptedGpSetup = false;
   let onboardingController = null;
   let formController = null;
+  let disposalTrial = null;
   let memberEditor = null;
   let ledgerActions = null;
 
@@ -289,6 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- 业务控制器初始化 ---
   function initControllers() {
+    disposalTrial = window.FundDisposalTrial.init({ api: Api, formatMoney });
     formController = window.FundTransactionController.init({
       elements: {
         txDate, tfDate, valDate, editDate, editEventType,
@@ -301,6 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
       },
       api: Api,
       submission: window.FundSubmission,
+      getPreviewToken: prefix => disposalTrial.token(prefix),
       resetDefaultDates,
       loadAllData,
       showToast,
@@ -450,6 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- 数据拉取与主渲染控制 ---
   async function loadAllData() {
+    disposalTrial?.invalidate();
     try {
       // 同时获取成员列表与基金状态
       membersList = await Api.getMembers();
