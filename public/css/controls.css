@@ -114,18 +114,18 @@
   gap: 10px;
 }
 
-#btn-settlement-privacy-toggle {
+:is(#btn-settlement-privacy-toggle, #tx-trial-privacy-toggle, #tf-trial-privacy-toggle) {
   width: 38px;
   height: 38px;
   padding: 0;
 }
 
-#btn-settlement-privacy-toggle .btn-icon {
+:is(#btn-settlement-privacy-toggle, #tx-trial-privacy-toggle, #tf-trial-privacy-toggle) .btn-icon {
   width: 18px;
   height: 18px;
 }
 
-#btn-settlement-privacy-toggle .icon-eye-closed {
+:is(#btn-settlement-privacy-toggle, #tx-trial-privacy-toggle, #tf-trial-privacy-toggle) .icon-eye-closed {
   display: none;
 }
 

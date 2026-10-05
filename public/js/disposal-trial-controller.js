@@ -40,6 +40,7 @@
         preview = null;
         appliedSignature = null;
         result.hidden = true;
+        get('trial-subtitle').textContent = '';
         apply.hidden = true;
         view.hidden = true;
         modal.close(dialog);
@@ -53,7 +54,8 @@
         const accountShares = account => shares(account.lpShares + account.gpCarryShares);
         const row = (label, before, after) => `<tr><th scope="row">${label}</th><td>${value(before)}</td><td>${value(after)}</td></tr>`;
         const balance = (name, account) => `<section class="trial-balance"><h4>${escape(name)}</h4><div class="table-container"><table class="settlement-preview-table trial-account-table" aria-label="${escape(name)}操作前后对比"><thead><tr><th scope="col">账户变化</th><th scope="col">操作前</th><th scope="col">操作后</th></tr></thead><tbody>${row('权益', money(account.before.currentValue), money(account.after.currentValue))}${row('本金', money(account.before.remainingPrincipal), money(account.after.remainingPrincipal))}${row('份额', accountShares(account.before), accountShares(account.after))}</tbody></table></div></section>`;
-        result.innerHTML = `<div class="trial-context">${escape(data.sender.before.name || '出让方')}${data.recipient ? ' → ' + escape(data.recipient.after.name || '受让方') : ''} · ${data.fullExit ? (prefix === 'tx' ? '全部退出' : '全部转让') : (prefix === 'tx' ? '部分出金' : '部分转让')} · ${escape(data.date)}</div>
+        get('trial-subtitle').textContent = `${data.sender.before.name || '出让方'}${data.recipient ? ' → ' + (data.recipient.after.name || '受让方') : ''} · ${data.fullExit ? (prefix === 'tx' ? '全部退出' : '全部转让') : (prefix === 'tx' ? '部分出金' : '部分转让')} · ${data.date}`;
+        result.innerHTML = `
           <div class="settlement-summary-grid">${[[prefix === 'tx' ? '预计到手' : '受让方获得', money(data.actualAmount)], ['业绩报酬', money(data.performanceFee)], ['对应人民币', '¥' + formatMoney(data.cnhAmount)]].map(([label, amount]) => `<div class="info-alert trial-summary-card"><div>${label}</div><strong class="privacy-sensitive">${escape(amount)}</strong></div>`).join('')}</div>
           ${balance(data.recipient ? '出让方账户' : '账户变化', data.sender)}
           ${data.recipient ? balance('受让方账户', data.recipient) : ''}

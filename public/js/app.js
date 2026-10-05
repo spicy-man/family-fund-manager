@@ -261,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
     elements: {
       benchmarkPolicyGroup,
       benchmarkPolicyButtons,
-      privacyButtons: [btnPrivacyToggle, btnSettlementPrivacyToggle]
+      privacyButtons: [btnPrivacyToggle, btnSettlementPrivacyToggle, document.getElementById('tx-trial-privacy-toggle'), document.getElementById('tf-trial-privacy-toggle')]
     },
     api: Api,
     segmentedControl: window.FundSegmentedControl,

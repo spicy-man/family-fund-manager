@@ -367,7 +367,6 @@ select:focus-visible {
 
 /* Disposal previews reuse the settlement modal, summary, table and button surfaces. */
 .disposal-trial-modal .trial-sheet { width: min(860px, calc(100vw - 32px)); max-width: calc(100% - 32px); }
-.trial-context { font-size: .78rem; color: var(--color-text-muted); margin-bottom: 18px; }
 .trial-summary-card { display: block; margin: 0; }
 .trial-summary-card > div { font-size: .7rem; color: var(--color-text-muted); }
 .trial-summary-card strong { display: block; font-size: 1.15rem; margin-top: 4px; overflow-wrap: anywhere; }

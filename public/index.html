@@ -32,7 +32,7 @@
       </svg>
       <span>
         <strong>家庭财富账本</strong>
-        <small>WEALTH LEDGER <b class="sidebar-version">v4.4.2</b></small>
+        <small>WEALTH LEDGER <b class="sidebar-version">v4.4.3</b></small>
       </span>
     </a>
 
@@ -115,7 +115,7 @@
         <div class="logo-text">
           <h1>家庭基金账目管理系统</h1>
           <span class="sub-logo">Family Private Wealth &amp; NAV Ledger &nbsp;<span
-              class="version-badge">v4.4.2</span></span>
+              class="version-badge">v4.4.3</span></span>
         </div>
       </div>
       <div class="header-actions">
@@ -1075,8 +1075,22 @@
     aria-labelledby="tx-trial-title" aria-hidden="true">
     <div class="modal-content glass-panel premium-border trial-sheet" tabindex="-1">
       <div class="modal-header">
-        <div><h3 id="tx-trial-title">出金试算</h3></div>
-        <button type="button" id="tx-trial-close" class="btn-close" aria-label="关闭出金试算">×</button>
+        <div><h3 id="tx-trial-title">出金试算</h3><p id="tx-trial-subtitle" class="section-desc" style="margin:4px 0 0"></p></div>
+        <div class="settlement-preview-header-actions">          <button id="tx-trial-privacy-toggle" class="btn btn-secondary flex-center" type="button"
+            title="切换出金试算明细隐私模式" aria-label="切换出金试算明细隐私模式">
+            <svg class="btn-icon icon-eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <svg class="btn-icon icon-eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
+              <path
+                d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
+          </button>
+<button type="button" id="tx-trial-close" class="btn-close" aria-label="关闭出金试算">×</button></div>
       </div>
       <div id="tx-trial-result" class="disposal-trial-result" role="status" aria-live="polite" hidden></div>
       <div class="trial-sheet-footer">
@@ -1090,8 +1104,22 @@
     aria-labelledby="tf-trial-title" aria-hidden="true">
     <div class="modal-content glass-panel premium-border trial-sheet" tabindex="-1">
       <div class="modal-header">
-        <div><h3 id="tf-trial-title">转让试算</h3></div>
-        <button type="button" id="tf-trial-close" class="btn-close" aria-label="关闭转让试算">×</button>
+        <div><h3 id="tf-trial-title">转让试算</h3><p id="tf-trial-subtitle" class="section-desc" style="margin:4px 0 0"></p></div>
+        <div class="settlement-preview-header-actions">          <button id="tf-trial-privacy-toggle" class="btn btn-secondary flex-center" type="button"
+            title="切换转让试算明细隐私模式" aria-label="切换转让试算明细隐私模式">
+            <svg class="btn-icon icon-eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <svg class="btn-icon icon-eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
+              <path
+                d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
+          </button>
+<button type="button" id="tf-trial-close" class="btn-close" aria-label="关闭转让试算">×</button></div>
       </div>
       <div id="tf-trial-result" class="disposal-trial-result" role="status" aria-live="polite" hidden></div>
       <div class="trial-sheet-footer">
