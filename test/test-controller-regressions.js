@@ -174,9 +174,6 @@ async function restoreWarningTest() {
 }
 
 async function deleteUndoTests() {
-  const appSource = fs.readFileSync(path.join(__dirname, '../public/js/app.js'), 'utf8');
-  const handlerSource = appSource.slice(appSource.indexOf('  function handleDeleteEvent('),
-    appSource.indexOf('  // 弹出编辑账目模态框'));
   const create = () => {
     const undoButton = element(), row = { style: {}, querySelectorAll: () => [{ _deleteEventId: 'd' }] };
     const timer = {}, notices = [], deletion = deferred();
@@ -190,8 +187,14 @@ async function deleteUndoTests() {
       formatMoney: value => value.toFixed(2), dismissToast() {},
       showToast: message => notices.push(message), loadAllData() {}
     };
-    vm.runInNewContext(handlerSource, context);
-    context.handleDeleteEvent('d', 'LP', 'deposit', 100);
+    const controller = load('ledger-actions-controller.js', context.document, {
+      setTimeout: context.setTimeout, clearTimeout: context.clearTimeout
+    }).FundLedgerActions.create({
+      elements: { ledgerTbody: context.ledgerTbody }, api: context.Api,
+      notifications: { dismissToast: context.dismissToast, showToast: context.showToast },
+      loadAllData: context.loadAllData, formatMoney: context.formatMoney
+    });
+    controller.remove('d', 'LP', 'deposit', 100);
     return { undoButton, row, timer, notices, deletion, getDeletes: () => deletes };
   };
   const cancelled = create();

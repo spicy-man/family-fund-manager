@@ -50,6 +50,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const { open: openModal, close: closeModal } = window.FundModal;
   const { getLatestValuationDate } = window.FundDateTime;
 
+  const notifications = window.FundNotifications.create({ escapeHtml });
+  const { showToast, showSubmissionSuccess } = notifications;
+
   // --- 全局状态 ---
   let appState = null;
   let membersList = [];
@@ -64,6 +67,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let hasPromptedGpSetup = false;
   let onboardingController = null;
   let formController = null;
+  let memberEditor = null;
+  let ledgerActions = null;
 
   // --- DOM 元素定义 ---
   const elSystemTime = document.getElementById('system-time');
@@ -300,6 +305,30 @@ document.addEventListener('DOMContentLoaded', () => {
       formatMoney
     });
 
+    memberEditor = window.FundMemberEditor.create({
+      elements: { gpSetupWarning, elMembersEditList },
+      api: Api,
+      getMembers: () => membersList,
+      getState: () => appState,
+      checkIfDark,
+      loadAllData,
+      showToast,
+      ui: { escapeHtml, getAvatarText, getMemberAvatarColor }
+    });
+    ledgerActions = window.FundLedgerActions.create({
+      elements: { ledgerTbody, editEventId, editEventType, editDate, editRemark, editMember,
+        editAmount, editCnhAmount, editFromMember, editToMember, editCnhRate, editEventModal },
+      api: Api,
+      getState: () => appState,
+      loadAllData,
+      notifications,
+      modal: window.FundModal,
+      customSelect: window.FundCustomSelect,
+      prepareEdit: formController.prepareEdit,
+      getLatestValuationDate,
+      formatMoney
+    });
+
     const managementController = window.FundManagementController.init({
       elements: {
         memberModal, backupModal, formAddMember, newMemberName,
@@ -308,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
       api: Api,
       modal: window.FundModal,
       loadAllData,
-      renderMembersEditorList,
+      renderMembersEditorList: () => memberEditor.render(),
       showToast
     });
     const { openMembersPanel, openBackupPanel } = managementController;
@@ -434,7 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const onboardingShown = onboardingController?.showIfEmpty(appState) === true;
       if (!onboardingShown && !hasPromptedGpSetup && membersList.length && !membersList.some(member => member.primaryGp)) {
         hasPromptedGpSetup = true;
-        renderMembersEditorList();
+        memberEditor.render();
         openModal(memberModal);
         showToast('请先在成员设置中指定主GP；同一成员可以同时选择LP和GP。', 'warning');
       }
@@ -585,150 +614,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // 3. 家庭成员管理模态框列表渲染 (带 inline 修改与安全删除)
-  function renderMembersEditorList() {
-    if (gpSetupWarning) gpSetupWarning.hidden = membersList.some(member => member.primaryGp);
-    if (membersList.length === 0) {
-      elMembersEditList.innerHTML = `
-        <div style="text-align: center; color: var(--color-text-muted); padding: 20px; font-size: 0.8rem;">
-          当前家庭无成员数据，请输入名字创建
-        </div>
-      `;
-      return;
-    }
-
-    elMembersEditList.innerHTML = membersList.map((m, idx) => {
-      const shortName = escapeHtml(getAvatarText(m.name));
-
-      const isDark = checkIfDark();
-      const { background: cardColor, color: cardTextColor } = getMemberAvatarColor(m.id || m.name, isDark, idx);
-
-      // 检查成员是否拥有交易历史
-      const hasTx = appState.events.some(e =>
-        e.member === m.id || e.fromMember === m.id || e.toMember === m.id
-      );
-
-      return `
-        <div class="member-edit-item${m.primaryGp ? ' is-primary-gp' : ''}" id="member-edit-item-${m.id}">
-          <div class="member-edit-left">
-            <div class="member-edit-avatar" style="background: ${cardColor}; color: ${cardTextColor};">${shortName}</div>
-            <div class="member-edit-identity">
-              <span class="member-edit-name" id="member-name-span-${m.id}" title="双击或点击右侧笔头重命名">${escapeHtml(m.name)}</span>
-              <input type="text" class="input-rename" id="member-name-input-${m.id}" value="${escapeHtml(m.name)}" style="display: none;">
-              <span class="member-role-badge">LP</span>
-            </div>
-            <label class="primary-gp-choice" title="设为全系统唯一的主 GP">
-              <input type="radio" name="primary-gp" id="member-primary-gp-${m.id}" ${m.primaryGp ? 'checked' : ''}>
-              <span class="primary-gp-radio"></span>
-              <span>主 GP</span>
-            </label>
-          </div>
-          <div class="member-edit-actions">
-            <button class="btn-rename-save" id="btn-rename-edit-${m.id}" title="重命名成员" style="color: var(--color-cyan);">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-              </svg>
-            </button>
-            <button class="btn-rename-save" id="btn-rename-save-${m.id}" title="保存修改" style="color: var(--color-green); display: none;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-            </button>
-            <button class="btn-delete" id="btn-member-del-${m.id}" title="${hasTx ? '已有出入金或转让记录，禁止删除' : '移除该成员'}" ${hasTx ? 'disabled style="opacity: 0.25; cursor: not-allowed;"' : ''}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    // 事件绑定
-    membersList.forEach(m => {
-      const span = document.getElementById(`member-name-span-${m.id}`);
-      const input = document.getElementById(`member-name-input-${m.id}`);
-      const btnEdit = document.getElementById(`btn-rename-edit-${m.id}`);
-      const btnSave = document.getElementById(`btn-rename-save-${m.id}`);
-      const btnDel = document.getElementById(`btn-member-del-${m.id}`);
-      const primaryGp = document.getElementById(`member-primary-gp-${m.id}`);
-
-      const saveRoles = async () => {
-        try {
-          await Api.updateMemberRoles(m.id, { gp: true, primaryGp: true });
-          await loadAllData();
-          renderMembersEditorList();
-        } catch (error) {
-          showToast(error.message, 'error');
-          renderMembersEditorList();
-        }
-      };
-      primaryGp.addEventListener('change', saveRoles);
-
-      const startEdit = () => {
-        span.style.display = 'none';
-        btnEdit.style.display = 'none';
-        input.style.display = 'block';
-        btnSave.style.display = 'inline-flex';
-        input.focus();
-        input.select();
-      };
-
-      const saveEdit = async () => {
-        const newName = input.value.trim();
-        if (!newName) {
-          showToast('成员姓名不能为空', 'error');
-          return;
-        }
-        if (newName === m.name) {
-          // 无改动取消
-          cancelEdit();
-          return;
-        }
-        try {
-          await Api.updateMember(m.id, newName);
-          showToast(`家庭成员【${m.name}】已成功重命名为【${newName}】`, 'success');
-          await loadAllData();
-          renderMembersEditorList();
-        } catch (err) {
-          showToast(err.message, 'error');
-        }
-      };
-
-      const cancelEdit = () => {
-        span.style.display = 'block';
-        btnEdit.style.display = 'inline-flex';
-        input.style.display = 'none';
-        btnSave.style.display = 'none';
-        input.value = m.name;
-      };
-
-      span.addEventListener('dblclick', startEdit);
-      btnEdit.addEventListener('click', startEdit);
-      btnSave.addEventListener('click', saveEdit);
-
-      input.addEventListener('keyup', (e) => {
-        if (e.key === 'Enter') saveEdit();
-        if (e.key === 'Escape') cancelEdit();
-      });
-
-      if (btnDel && !btnDel.disabled) {
-        btnDel.addEventListener('click', async () => {
-          if (confirm(`确定要从系统删除家庭成员【${m.name}】吗？删除后将无法撤销。`)) {
-            try {
-              await Api.deleteMember(m.id);
-              showToast(`家庭成员【${m.name}】已移除`, 'success');
-              await loadAllData();
-              renderMembersEditorList();
-            } catch (err) {
-              showToast(err.message, 'error');
-            }
-          }
-        });
-      }
-    });
-  }
-
   // 4. 历史账目表格流水渲染 (USD 币种重构)
   function renderLedger() {
     return window.FundLedgerRenderer.render({
@@ -736,164 +621,9 @@ document.addEventListener('DOMContentLoaded', () => {
       members: membersList,
       elements: { filterMember, filterType, ledgerTbody },
       utils: { escapeHtml, formatMoney },
-      onEdit: handleEditEvent,
-      onDelete: handleDeleteEvent
+      onEdit: ledgerActions.edit,
+      onDelete: ledgerActions.remove
     });
-  }
-
-  // 删除单条交易记录 — 3 秒内可撤销
-  function handleDeleteEvent(id, name, type, value) {
-    const UNDO_DELAY = 3000; // 3 秒
-
-    // 找到对应的 <tr> 行，视觉上先隐藏（软删除）
-    const allRows = ledgerTbody.querySelectorAll('tr');
-    let targetRow = null;
-    allRows.forEach(row => {
-      // 通过行上绑定的删除按钮 data 匹配（找到包含该 id 对应删除按钮的行）
-      row.querySelectorAll('button').forEach(btn => {
-        if (btn._deleteEventId === id) targetRow = row;
-      });
-    });
-    if (targetRow) {
-      targetRow.style.transition = 'opacity 0.3s, transform 0.3s';
-      targetRow.style.opacity = '0.2';
-      targetRow.style.pointerEvents = 'none';
-    }
-
-    // 构建撤销 Toast
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = 'toast toast-undo';
-    toast.innerHTML = `
-      <div class="toast-undo-row">
-        <svg class="toast-undo-icon ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/></svg>
-        <span class="toast-undo-text">
-          <strong>已删除</strong>
-          ${type === 'deposit' ? '入金' : type === 'withdraw' ? '出金' : type === 'transfer' ? '转让' : '估值'}记录（$${formatMoney(value)}）<br>
-          <span style="font-size:0.75rem; opacity:0.7;">3 秒内可撤销，操作完成后将重算账目</span>
-        </span>
-        <button class="toast-undo-btn" id="undo-btn-${id}">↩ 撤销</button>
-      </div>
-      <div class="toast-undo-progress-wrap">
-        <div class="toast-undo-progress-bar" id="undo-progress-${id}" style="animation-duration: ${UNDO_DELAY}ms;"></div>
-      </div>
-    `;
-    container.appendChild(toast);
-
-    // 入场动画
-    toast.style.animation = 'toastSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards';
-
-    let undone = false;
-    let deletionStarted = false;
-
-    // 撤销按钮点击处理
-    const undoBtn = document.getElementById(`undo-btn-${id}`);
-    if (undoBtn) {
-      undoBtn.addEventListener('click', () => {
-        if (undone || deletionStarted) return;
-        undone = true;
-        undoBtn.disabled = true;
-        clearTimeout(deleteTimer);
-        // 恢复行显示
-        if (targetRow) {
-          targetRow.style.opacity = '1';
-          targetRow.style.pointerEvents = '';
-          targetRow.style.transform = '';
-        }
-        // 关闭 Toast
-        dismissToast(toast);
-        showToast('已撤销删除操作', 'success');
-      });
-    }
-
-    // 3 秒后执行真正删除
-    const deleteTimer = setTimeout(() => {
-      if (undone) return;
-      deletionStarted = true;
-      if (undoBtn) undoBtn.disabled = true;
-      Api.deleteEvent(id)
-        .then(() => {
-          showToast('账目记录已删除，系统已完成全额重算！', 'success');
-          loadAllData();
-        })
-        .catch(err => {
-          // 删除失败，恢复行
-          if (targetRow) {
-            targetRow.style.opacity = '1';
-            targetRow.style.pointerEvents = '';
-          }
-          showToast('删除失败：' + err.message, 'error');
-        });
-      dismissToast(toast);
-    }, UNDO_DELAY);
-  }
-
-  // 弹出编辑账目模态框并填充回显
-  function handleEditEvent(e) {
-    const editModalTitle = document.getElementById('edit-modal-title');
-    const editGroupMember = document.getElementById('edit-group-member');
-    const editGroupCnhAmount = document.getElementById('edit-group-cnh-amount');
-    const editLabelAmount = document.getElementById('edit-label-amount');
-    const editGroupTransferMembers = document.getElementById('edit-group-transfer-members');
-    const editGroupCnhRate = document.getElementById('edit-group-cnh-rate');
-
-    // 填充基本信息
-    editEventId.value = e.id;
-    editEventType.value = e.type;
-    editDate.value = e.date;
-    if (e.type === 'valuation') editDate.max = getLatestValuationDate();
-    else editDate.removeAttribute('max');
-    editDate.setCustomValidity('');
-    editRemark.value = e.remark || '';
-
-    // 重置特有选项组显示状态
-    editGroupMember.style.display = 'none';
-    editGroupCnhAmount.style.display = 'none';
-    editGroupTransferMembers.style.display = 'none';
-    editGroupCnhRate.style.display = 'none';
-
-    if (e.type === 'deposit' || e.type === 'withdraw') {
-      // 交易类型：显示成员选择和人民币金额
-      editModalTitle.textContent = e.type === 'deposit' ? '修改出资入金流水分账' : '修改出资金额提现流水分账';
-      editGroupMember.style.display = 'block';
-      editGroupCnhAmount.style.display = 'block';
-      editLabelAmount.textContent = '美元金额 (USD)';
-
-      editMember.value = e.member;
-      const editUsdAmount = e.fullExit && e.requestedGrossAmount !== undefined
-        ? e.requestedGrossAmount
-        : e.amount;
-      editAmount.value = editUsdAmount;
-      editCnhAmount.value = e.fullExit && e.requestedGrossAmount !== undefined && e.amount > 0
-        ? ((e.cnhAmount || 0) * e.requestedGrossAmount / e.amount).toFixed(2)
-        : (e.cnhAmount || '');
-    } else if (e.type === 'valuation') {
-      // 估值类型：隐藏成员选择和人民币金额
-      editModalTitle.textContent = '修改定期基金估值重估记录';
-      editLabelAmount.textContent = '基金总资产估值 (USD)';
-
-      editAmount.value = e.totalNAV;
-    } else if (e.type === 'transfer') {
-      // 转让类型：显示出让/受让方，及转让汇率
-      editModalTitle.textContent = '修改内部份额转让记录';
-      editGroupTransferMembers.style.display = 'flex';
-      editGroupCnhRate.style.display = 'block';
-      editLabelAmount.textContent = '转让金额 (USD)';
-
-      editFromMember.value = e.fromMember;
-      editToMember.value = e.toMember;
-      editAmount.value = e.fullExit && e.requestedGrossAmount !== undefined
-        ? e.requestedGrossAmount
-        : e.amount;
-      editCnhRate.value = e.cnhRate ||
-        (e.amount > 0 && Number.isFinite(e.cnhAmount)
-          ? e.cnhAmount / e.amount
-          : (appState.summary.cnhRate || 7.2000));
-    }
-
-    formController.prepareEdit(e);
-    window.FundCustomSelect?.refresh(editEventModal);
-    openModal(editEventModal);
   }
 
   function renderCharts() {
@@ -924,53 +654,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 辅助：可靠关闭 Toast（退场动画 + 300ms超时双重兜底移除）
-  function dismissToast(toast) {
-    if (!toast || toast.dataset.dismissing === 'true') return;
-    toast.dataset.dismissing = 'true';
-    toast.style.animation = 'toastSlideOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards';
-    const removeToast = () => {
-      clearTimeout(safetyTimer);
-      toast.remove();
-    };
-    const safetyTimer = setTimeout(removeToast, 280);
-    toast.addEventListener('animationend', removeToast, { once: true });
-  }
 
-  // 轻量级 Toast 弹出式提示
-  function showToast(message, type = 'success') {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
-    toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
-    toast.textContent = message;
-
-    // 支持点击快速关闭，防止意外遮挡
-    toast.addEventListener('click', () => dismissToast(toast));
-
-    container.appendChild(toast);
-
-    // 3.5秒后自动淡出销毁
-    setTimeout(() => dismissToast(toast), 3500);
-  }
-
-  function showSubmissionSuccess(message) {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = 'toast toast-success toast-submission-success';
-    toast.setAttribute('role', 'status');
-    toast.setAttribute('aria-live', 'polite');
-    toast.innerHTML = `
-      <svg class="toast-success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="m5 12 4.2 4.2L19 6.5"/></svg>
-      <div><strong>提交成功</strong><span>${escapeHtml(message)}</span></div>
-    `;
-
-    // 支持点击快速关闭，防止意外遮挡
-    toast.addEventListener('click', () => dismissToast(toast));
-
-    container.appendChild(toast);
-
-    setTimeout(() => dismissToast(toast), 3500);
-  }
 });
