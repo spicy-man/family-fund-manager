@@ -59,7 +59,7 @@ window.FundTickerPanel = {
               <th scope="col">ATH</th>
               <th scope="col">收盘</th>
               <th scope="col">回调幅度</th>
-              <th scope="col">今年涨幅</th>
+              <th scope="col" title="最新前复权收盘价相对上一年最后一个交易日前复权收盘价的涨幅">今年涨幅</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -222,7 +222,7 @@ function bindTickerTooltips(container, data, formatMonthDay) {
       const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
       return match ? `${match[1]}/${match[2]}/${match[3]}` : '--';
     };
-    details.textContent = `ATH 日期：${formatFullDate(item.athDate)}\n收盘日期：${formatFullDate(item.regularCloseDate)}`;
+    details.textContent = `ATH 日期：${formatFullDate(item.athDate)}\n收盘日期：${formatFullDate(item.regularCloseDate)}\n今年涨幅起点：${formatFullDate(item.previousYearCloseDate)}（前复权）`;
     tooltip.appendChild(details);
     tooltip.dataset.ticker = item.ticker;
   };

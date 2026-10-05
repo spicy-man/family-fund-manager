@@ -151,8 +151,8 @@ const benchmarkDb = {
     { id: 'mark', type: 'valuation', totalNAV: 110, date: '2026-07-07', createdAt: 2 }
   ],
   indexCache: {
-    '2026-07-06': { spx: 100, ndx: 200, spxPriceDate: '2026-07-03', ndxPriceDate: '2026-07-03', policy: 'previous' },
-    '2026-07-07': { spx: 110, ndx: 220, spxPriceDate: '2026-07-06', ndxPriceDate: '2026-07-06', policy: 'previous' }
+    '2026-07-06': { spx: 100, ndx: 200, spxPriceDate: '2026-07-03', ndxPriceDate: '2026-07-03', policy: 'previous', source: 'VOO/QQQM:adjusted-close' },
+    '2026-07-07': { spx: 110, ndx: 220, spxPriceDate: '2026-07-06', ndxPriceDate: '2026-07-06', policy: 'previous', source: 'VOO/QQQM:adjusted-close' }
   }
 };
 const benchmarkState = calculateStateFromDb(benchmarkDb);
@@ -168,13 +168,13 @@ const legacyCacheState = calculateStateFromDb({
     '2026-07-07': { spx: 110, ndx: 220 }
   }
 });
-assert.strictEqual(legacyCacheState.charts.navHistory[1].sp500NAV, 1);
+assert.strictEqual(legacyCacheState.charts.navHistory[1].sp500NAV, null);
 
 const sameDayCloseState = calculateStateFromDb({
   ...benchmarkDb,
   indexCache: {
     '2026-07-06': benchmarkDb.indexCache['2026-07-06'],
-    '2026-07-07': { spx: 110, ndx: 220, spxPriceDate: '2026-07-07', ndxPriceDate: '2026-07-07', policy: 'previous' }
+    '2026-07-07': { spx: 110, ndx: 220, spxPriceDate: '2026-07-07', ndxPriceDate: '2026-07-07', policy: 'previous', source: 'VOO/QQQM:adjusted-close' }
   }
 });
 assert.strictEqual(sameDayCloseState.charts.navHistory[1].sp500NAV, 1);
@@ -187,7 +187,7 @@ const deprecatedSameDayPolicyState = calculateStateFromDb({
     '2026-07-07': { spx: 111.1, ndx: 222.2, spxPriceDate: '2026-07-07', ndxPriceDate: '2026-07-07', policy: 'same_day' }
   }
 });
-assert.strictEqual(deprecatedSameDayPolicyState.charts.navHistory[1].sp500NAV, 1);
+assert.strictEqual(deprecatedSameDayPolicyState.charts.navHistory[1].sp500NAV, null);
 assert.strictEqual(deprecatedSameDayPolicyState.settings.benchmarkClosePolicy, 'previous');
 assert.strictEqual(deprecatedSameDayPolicyState.settings.benchmarkCacheReady, false);
 assert.strictEqual(benchmarkState.charts.navHistory[1].ndx, 220);

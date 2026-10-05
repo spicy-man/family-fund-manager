@@ -37,15 +37,11 @@ assert.deepStrictEqual(findCloseForPolicy('2026-07-05', prices, 'same_day'), {
 });
 
 assert.strictEqual(getTickerHistoryStartSec(null), 0);
-const incrementalStart = getTickerHistoryStartSec({ historyThrough: '2026-07-31' });
-assert(incrementalStart > 0, 'an existing ticker must not restart at the Unix epoch');
-assert.strictEqual(
-  incrementalStart,
-  Math.floor(Date.parse('2026-07-31T00:00:00Z') / 1000) - 14 * 24 * 3600
-);
+assert.strictEqual(getTickerHistoryStartSec({ historyThrough: '2026-07-31' }), 0,
+  'all-time adjusted highs must refresh full history after corporate actions');
 
 const merged = mergeTickerAthRecord('VOO', {
-  ath: 115,
+  ath: 500,
   athDate: '2026-06-01',
   regularClose: 114,
   regularCloseDate: '2026-07-30',
@@ -54,22 +50,55 @@ const merged = mergeTickerAthRecord('VOO', {
   longName: 'Cached name'
 }, {
   timestamp: [
+    Date.parse('2025-12-31T12:00:00Z') / 1000,
     Date.parse('2026-07-31T12:00:00Z') / 1000,
     Date.parse('2026-08-03T12:00:00Z') / 1000,
     Date.parse('2026-08-04T12:00:00Z') / 1000
   ],
-  indicators: { quote: [{ high: [116, 120, 999], close: [115, null, 999] }] },
+  indicators: { quote: [{ high: [101, 116, 120, 999], close: [100, 115, 119, 999] }],
+    adjclose: [{ adjclose: [90, 103.5, 107.1, 999] }] },
   meta: {
     longName: 'Vanguard S&P 500 ETF',
     regularMarketPrice: 119,
     regularMarketTime: Date.parse('2026-08-03T20:00:01Z') / 1000
   }
 }, new Date('2026-08-04T12:00:00Z'));
-assert.strictEqual(merged.ath, 120);
+assert.strictEqual(merged.ath, 108);
 assert.strictEqual(merged.athDate, '2026-08-03');
-assert.strictEqual(merged.regularClose, 119);
+assert.strictEqual(merged.regularClose, 107.1);
 assert.strictEqual(merged.historyThrough, '2026-08-03');
 assert.strictEqual(merged.ytdChange, 19);
+
+assert.strictEqual(merged.priceBasis, 'adjusted-close');
+assert.strictEqual(merged.previousYearClose, 90);
+assert.strictEqual(merged.previousYearCloseDate, '2025-12-31');
+assert.throws(() => mergeTickerAthRecord('AAPL', null, {
+  timestamp: [Date.parse('2026-08-03') / 1000],
+  indicators: { quote: [{ close: [100], high: [101] }] }
+}), /No adjusted close/);
+assert.throws(() => mergeTickerAthRecord('AAPL', null, {
+  timestamp: [Date.parse('2026-08-03') / 1000],
+  indicators: { quote: [{ close: [100], high: [101] }], adjclose: [{ adjclose: [null] }] }
+}), /Incomplete adjusted history/);
+assert.throws(() => mergeTickerAthRecord('AAPL', { ...merged, historyBarCount: 5 }, {
+  timestamp: [Date.parse('2026-08-03') / 1000],
+  indicators: { quote: [{ close: [100], high: [101] }], adjclose: [{ adjclose: [90] }] }
+}, new Date('2026-08-04T12:00:00Z')), /Incomplete full adjusted history/);
+
+// YTD starts at the final prior-year session, including the first session's return.
+const yearBoundary = mergeTickerAthRecord('AAPL', null, {
+  timestamp: ['2025-12-30', '2025-12-31', '2026-01-02'].map(date => Date.parse(`${date}T15:00:00Z`) / 1000),
+  indicators: { quote: [{ close: [98, 100, 105], high: [99, 101, 106] }],
+    adjclose: [{ adjclose: [88.2, 90, 94.5] }] }
+}, new Date('2026-01-03T12:00:00Z'));
+assert.strictEqual(yearBoundary.previousYearCloseDate, '2025-12-31');
+assert.strictEqual(yearBoundary.ytdChange, 5);
+const withoutAnchor = mergeTickerAthRecord('AAPL', { previousYear: 2025, previousYearClose: 80 }, {
+  timestamp: [Date.parse('2026-06-01T15:00:00Z') / 1000],
+  indicators: { quote: [{ close: [100], high: [101] }], adjclose: [{ adjclose: [90] }] }
+}, new Date('2026-06-02T12:00:00Z'));
+assert.strictEqual(withoutAnchor.ytdChange, null, 'never substitute an older cached or mid-year price for the year-end anchor');
+assert.strictEqual(withoutAnchor.previousYearCloseDate, null);
 
 (async () => {
   const rate = await fetchCnhRateFromApi();

@@ -124,7 +124,7 @@ function buildDemoLedger() {
     }
 
     indexCache[row.date] = {
-      policy: 'previous', spx: row.spx, ndx: row.ndx,
+      policy: 'previous', source: weeklyMarket.priceBasis === 'adjusted-close' ? 'VOO/QQQM:adjusted-close' : 'legacy-index-close', spx: row.spx, ndx: row.ndx,
       spxPriceDate: row.priceDate, ndxPriceDate: row.priceDate
     };
     customBenchmarkCache[row.date] = customCacheEntry(row);
@@ -132,7 +132,7 @@ function buildDemoLedger() {
 
   weeklyMarket.anchors.forEach(row => {
     indexCache[row.date] = {
-      policy: 'previous', spx: row.spx, ndx: row.ndx,
+      policy: 'previous', source: weeklyMarket.priceBasis === 'adjusted-close' ? 'VOO/QQQM:adjusted-close' : 'legacy-index-close', spx: row.spx, ndx: row.ndx,
       spxPriceDate: row.priceDate, ndxPriceDate: row.priceDate
     };
     customBenchmarkCache[row.date] = customCacheEntry(row);

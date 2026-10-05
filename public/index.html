@@ -32,7 +32,7 @@
       </svg>
       <span>
         <strong>家庭财富账本</strong>
-        <small>WEALTH LEDGER <b class="sidebar-version">v4.3.1</b></small>
+        <small>WEALTH LEDGER <b class="sidebar-version">v4.3.2</b></small>
       </span>
     </a>
 
@@ -115,7 +115,7 @@
         <div class="logo-text">
           <h1>家庭基金账目管理系统</h1>
           <span class="sub-logo">Family Private Wealth &amp; NAV Ledger &nbsp;<span
-              class="version-badge">v4.3.1</span></span>
+              class="version-badge">v4.3.2</span></span>
         </div>
       </div>
       <div class="header-actions">
@@ -237,7 +237,7 @@
         </div>
 
         <!-- Unit NAV Card -->
-        <div class="metric-card premium-border" id="nav-details-card" role="button" tabindex="0"
+        <div class="metric-card metric-card--interactive premium-border" id="nav-details-card" role="button" tabindex="0"
           aria-haspopup="dialog" aria-controls="nav-details-popover" aria-expanded="false" aria-label="查看单位净值表现详情">
           <div class="card-glow glow-blue"></div>
           <div class="metric-info">
@@ -342,12 +342,13 @@
                 配置组合 2
               </button>
               <span class="benchmark-policy-help-wrap">
-                <button class="benchmark-policy-help" type="button" aria-label="指数口径说明"
+                <button class="benchmark-policy-help" type="button" aria-label="基准口径说明"
                   aria-describedby="benchmark-policy-tooltip">?</button>
                 <span class="glass-tooltip benchmark-policy-tooltip" id="benchmark-policy-tooltip" role="tooltip">
-                  <strong>指数口径说明</strong>
+                  <strong>基准口径说明</strong>
+                  <span>标普500使用 VOO，纳斯达克100使用 QQQM；所有标的（包括自定义组合及自选行情）均采用含分红、拆股调整的前复权价格。</span>
                   <span>估值日 T 严格匹配 T-1 交易日美股收盘价。今年以来 (YTD) 统一以当年 1 月 1 日（或首个交易日）作为 NAV 的 1.0000
-                    基准点，指数采用上一年最后一个交易日收盘价作为基准点。</span>
+                    基准点，ETF 基准采用上一年最后一个交易日的前复权收盘价作为基准点。</span>
                 </span>
               </span>
             </div>
@@ -911,7 +912,12 @@
           <span>在管本金收益率</span>
           <strong class="privacy-sensitive" id="return-details-active-rate">—</strong>
           <small>（当前资产 − 剩余本金）÷ 剩余本金</small>
+          <small class="privacy-sensitive" id="return-details-current-assets">当前资产：$0.00</small>
         </section>
+        <div class="return-details-reconciliation" aria-label="本金与收益对账">
+          <p><span>出金 = 退出本金 + 退出收益</span><strong class="privacy-sensitive" id="return-details-withdraw-check">—</strong></p>
+          <p><span>历史收益 = 在管收益 + 退出收益</span><strong class="privacy-sensitive" id="return-details-profit-check">—</strong></p>
+        </div>
         <div class="return-details-grid">
           <article>
             <span>当前剩余本金</span>
@@ -938,8 +944,18 @@
             <span>历史累计出金</span>
             <strong class="privacy-sensitive" id="return-details-total-withdraw">$0.00</strong>
           </article>
+          <article>
+            <span>累计退出本金</span>
+            <strong class="privacy-sensitive" id="return-details-exited-principal">$0.00</strong>
+            <small>历史累计入金 − 当前剩余本金</small>
+          </article>
+          <article>
+            <span>累计退出收益</span>
+            <strong class="privacy-sensitive" id="return-details-exited-profit">$0.00</strong>
+            <small>历史累计出金 − 累计退出本金；亏损时为负</small>
+          </article>
         </div>
-        <p class="return-details-note">成员退出后，其历史本金不再影响在管收益率，但已经实现的收益仍完整保留在历史累计口径中。</p>
+        <p class="return-details-note">出金包含本金和收益，不全是本金。退出收益保留在历史累计收益中，不再计入当前在管收益。以上均为美元口径。</p>
       </div>
     </div>
   </div>
@@ -987,8 +1003,48 @@
             <small>复合年化收益率 ÷ 最大回撤</small>
           </article>
         </div>
-        <p class="return-details-note">按已记录的单位净值计算，不受图表区间筛选影响。未满一年时年化收益仅供参考；最差年度收益以 1 月 1 日净值为跨年分界，作为上年终点和本年起点；成立首年从首条记录开始，今年算至最新记录，缺少次年 1 月 1 日记录时取当年末条净值。取各年区间收益中的最低值，不做年化。年度内清仓重置的年份不参与比较，无可计算期间时显示为 —；没有回撤或不足一天时，MAR 比率显示为 —。</p>
-        <p class="return-details-note">夏普比率和索提诺比率按完整月份的末次估值计算，未结束月份与缺失月份不补值。无风险利率与目标收益均为 0%；不足 12 个月收益样本、零波动或无下行波动时，对应比率显示为 —。<span class="privacy-sensitive" id="nav-details-risk-samples">月度收益样本：0 个</span></p>
+        <section class="nav-calculation-notes" aria-labelledby="nav-calculation-title">
+          <div class="nav-calculation-heading">
+            <h4 id="nav-calculation-title">计算口径</h4>
+            <span class="nav-sample-count privacy-sensitive" id="nav-details-risk-samples">月度收益样本：0 个</span>
+          </div>
+          <p class="nav-calculation-intro">基于全部已记录净值，不随图表区间筛选变化。</p>
+          <dl class="nav-calculation-summary">
+            <div>
+              <dt>年化收益</dt>
+              <dd>成立以来的复合年化收益；记录未满一年时，仅供参考。</dd>
+            </div>
+            <div>
+              <dt>最差年度</dt>
+              <dd>取各自然年已记录期间收益的最低值，不做年化。</dd>
+            </div>
+            <div>
+              <dt>风险比率</dt>
+              <dd>夏普、索提诺按完整月份计算；无风险利率与目标收益均为 0%。</dd>
+            </div>
+          </dl>
+          <details class="nav-calculation-details">
+            <summary>详细计算规则与缺失值说明</summary>
+            <dl class="nav-calculation-summary">
+              <div>
+                <dt>年度边界</dt>
+                <dd>以 1 月 1 日净值作为上年终点和本年起点。成立首年从首条记录开始，今年算至最新记录；缺少次年 1 月 1 日记录时，取当年末条净值。</dd>
+              </div>
+              <div>
+                <dt>年度例外</dt>
+                <dd>年度内清仓重置的年份不参与比较；无可计算期间时，最差年度收益显示为「—」。</dd>
+              </div>
+              <div>
+                <dt>月度样本</dt>
+                <dd>使用完整月份的末次估值，未结束月份与缺失月份不补值。不足 12 个月收益样本、零波动或无下行波动时，对应风险比率显示为「—」。</dd>
+              </div>
+              <div>
+                <dt>MAR 比率</dt>
+                <dd>没有回撤或记录不足一天时，显示为「—」。</dd>
+              </div>
+            </dl>
+          </details>
+        </section>
       </div>
     </div>
   </div>

@@ -19,7 +19,7 @@ function selectTickerData(cache, config, includeMissing = false) {
   const selected = {};
   for (const item of config.tickers) {
     const ticker = item.ticker;
-    if (cache.tickers?.[ticker]) {
+    if (cache.tickers?.[ticker]?.priceBasis === 'adjusted-close') {
       selected[ticker] = cache.tickers[ticker];
     } else if (includeMissing) {
       selected[ticker] = { ticker, error: true, pending: true };
@@ -71,7 +71,10 @@ function isTickerCacheStale(cache, config, now = getNow()) {
   const { expectedCloseDate, retryDuration } = getTickerRefreshPolicy(now);
   return config.tickers.some(({ ticker }) => {
     const cachedTicker = cache.tickers?.[ticker];
-    if (!cachedTicker) return true;
+    if (!cachedTicker || cachedTicker.priceBasis !== 'adjusted-close') {
+      const lastAttemptAt = tickerRefreshAttempts.get(ticker);
+      return !lastAttemptAt || nowMs - lastAttemptAt >= retryDuration;
+    }
     if (cachedTicker.regularCloseDate >= expectedCloseDate) return false;
     const updatedAt = Date.parse(cachedTicker.updatedAt || '');
     const lastAttemptAt = tickerRefreshAttempts.get(ticker) || 0;
@@ -139,7 +142,7 @@ app.get('/api/ticker-ath', async (req, res, next) => {
   try {
     const config = readConfig();
     let cache = readTickerCache();
-    const hasEveryTicker = config.tickers.every(({ ticker }) => cache.tickers?.[ticker]);
+    const hasEveryTicker = config.tickers.every(({ ticker }) => cache.tickers?.[ticker]?.priceBasis === 'adjusted-close');
     const stale = isTickerCacheStale(cache, config);
 
     if (hasEveryTicker) {

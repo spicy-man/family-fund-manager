@@ -27,15 +27,15 @@ const benchmark2 = normalizeCustomBenchmark({
 });
 const history = emptyMarketHistory();
 const daily = {
-  '^GSPC': { '2026-08-27': 7730.99, '2026-08-28': 7711.76 },
-  '^NDX': { '2026-08-27': 29641.56, '2026-08-28': 29433.43 },
+  'VOO': { '2026-08-27': 7730.99, '2026-08-28': 7711.76 },
+  'QQQM': { '2026-08-27': 29641.56, '2026-08-28': 29433.43 },
   VGT: { '2026-08-27': 121.91, '2026-08-28': 120.07 },
   'BRK-B': { '2026-08-27': 503.7, '2026-08-28': 505 }
 };
 for (const [ticker, prices] of Object.entries(daily)) {
   mergeTickerPrices(history, ticker, prices, {
     from: '2026-08-01',
-    through: '2026-08-31'
+    through: '2026-08-31', priceBasis: 'adjusted-close'
   });
 }
 
@@ -49,7 +49,7 @@ assert.strictEqual(historyRequestStart({
 assert.strictEqual(historyRequestStart({
   fetchedFrom: '2025-01-01',
   prices: { '2026-08-28': 1 }
-}, '2025-12-18'), '2026-08-14', 'covered history should continue incrementally');
+}, '2025-12-18'), '2025-01-01', 'adjusted history must refresh the full stored range');
 
 const materialized = materializeBenchmarkCaches(
   ['2026-08-28', '2026-08-31'],
@@ -92,22 +92,22 @@ assert.strictEqual(
 );
 
 const failedBackfillHistory = emptyMarketHistory();
-mergeTickerPrices(failedBackfillHistory, '^GSPC', {}, {
+mergeTickerPrices(failedBackfillHistory, 'VOO', {}, {
   from: '2020-01-01',
-  through: '2026-08-31'
+  through: '2026-08-31', priceBasis: 'adjusted-close'
 });
 assert.strictEqual(
-  failedBackfillHistory.tickers['^GSPC'].fetchedFrom,
+  failedBackfillHistory.tickers['VOO'].fetchedFrom,
   null,
   'an empty provider response must not prevent a later backfill retry'
 );
 
 // A later incomplete provider response must never erase a recorded trading day.
-mergeTickerPrices(history, '^GSPC', { '2026-08-27': 7730.99 }, {
+mergeTickerPrices(history, 'VOO', { '2026-08-27': 7730.99 }, {
   from: '2026-08-20',
-  through: '2026-08-31'
+  through: '2026-08-31', priceBasis: 'adjusted-close'
 });
-assert.strictEqual(history.tickers['^GSPC'].prices['2026-08-28'], 7711.76);
+assert.strictEqual(history.tickers['VOO'].prices['2026-08-28'], 7711.76);
 
 // Raw daily history overrides a stale per-NAV cache during ledger replay.
 const state = calculateStateFromDb({
@@ -121,8 +121,8 @@ const state = calculateStateFromDb({
   customBenchmark2: benchmark2,
   marketHistory: history,
   indexCache: {
-    '2026-08-28': { spx: 7730.99, ndx: 29641.56, spxPriceDate: '2026-08-27', ndxPriceDate: '2026-08-27', policy: 'previous' },
-    '2026-08-31': { spx: 7730.99, ndx: 29641.56, spxPriceDate: '2026-08-27', ndxPriceDate: '2026-08-27', policy: 'previous' }
+    '2026-08-28': { spx: 7730.99, ndx: 29641.56, spxPriceDate: '2026-08-27', ndxPriceDate: '2026-08-27', policy: 'previous', source: 'VOO/QQQM:adjusted-close' },
+    '2026-08-31': { spx: 7730.99, ndx: 29641.56, spxPriceDate: '2026-08-27', ndxPriceDate: '2026-08-27', policy: 'previous', source: 'VOO/QQQM:adjusted-close' }
   },
   customBenchmarkCache: {}
 });
@@ -169,14 +169,14 @@ const largeBenchmarks = [
 ];
 const origin = Date.parse('2012-01-01T00:00:00Z');
 const dateAt = offset => new Date(origin + offset * 86400000).toISOString().slice(0, 10);
-for (const [tickerIndex, ticker] of ['^GSPC', '^NDX', 'VGT', 'BRK-B', 'AAPL', 'MSFT'].entries()) {
+for (const [tickerIndex, ticker] of ['VOO', 'QQQM', 'VGT', 'BRK-B', 'AAPL', 'MSFT'].entries()) {
   const prices = {};
   // Insert in reverse order; weekdays plus missing days exercise predecessors.
   for (let day = 4999; day >= 0; day--) {
     if ([0, 6].includes(new Date(origin + day * 86400000).getUTCDay()) || day % 97 === 0) continue;
     prices[dateAt(day)] = 100 + tickerIndex * 20 + day / 100;
   }
-  mergeTickerPrices(largeHistory, ticker, prices);
+  mergeTickerPrices(largeHistory, ticker, prices, { priceBasis: 'adjusted-close' });
 }
 const largeDates = Array.from({ length: 231 }, (_, index) => dateAt(730 + index * 14));
 function referenceClose(date, prices) {
@@ -187,11 +187,11 @@ function referenceClose(date, prices) {
 function referenceMaterialize() {
   const result = { dates: benchmarkDates(largeDates), indexCache: {}, customBenchmarkCache: {} };
   for (const date of result.dates) {
-    const spx = referenceClose(date, largeHistory.tickers['^GSPC'].prices);
-    const ndx = referenceClose(date, largeHistory.tickers['^NDX'].prices);
+    const spx = referenceClose(date, largeHistory.tickers['VOO'].prices);
+    const ndx = referenceClose(date, largeHistory.tickers['QQQM'].prices);
     if (spx && ndx) result.indexCache[date] = {
-      spx: Number(spx.price.toFixed(2)), ndx: Number(ndx.price.toFixed(2)),
-      spxPriceDate: spx.date, ndxPriceDate: ndx.date, policy: 'previous'
+      spx: Number(spx.price.toFixed(6)), ndx: Number(ndx.price.toFixed(6)),
+      spxPriceDate: spx.date, ndxPriceDate: ndx.date, policy: 'previous', source: 'VOO/QQQM:adjusted-close'
     };
     largeBenchmarks.forEach((benchmark, slot) => {
       const components = {};

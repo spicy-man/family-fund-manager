@@ -565,7 +565,9 @@ window.FundChartRenderer = {
       const anchorValue = configuredAnchor?.[rawField] ?? fallbackAnchor?.[rawField];
       const anchorDate = configuredAnchor?.[`${rawField}PriceDate`] ?? fallbackAnchor?.[sourceDateField];
       if (!Number.isFinite(anchorValue)) {
-        return filtered.map(item => Number((item[normalizedField] / base[normalizedField]).toFixed(4)));
+        return filtered.map(item => Number.isFinite(item[normalizedField]) &&
+          Number.isFinite(base[normalizedField]) && base[normalizedField] > 0
+          ? Number((item[normalizedField] / base[normalizedField]).toFixed(4)) : null);
       }
       return filtered.map(item => {
         if (!Number.isFinite(item[rawField]) || !item[sourceDateField] || item[sourceDateField] < anchorDate) return null;

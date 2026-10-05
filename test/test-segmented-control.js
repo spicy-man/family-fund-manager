@@ -41,7 +41,7 @@ assert(segmentedControl.includes("document.querySelectorAll('.segmented-control'
 assert(segmentedControl.includes('function activate'), 'active option switching must use the shared helper');
 assert(
   html.includes('class="glass-tooltip benchmark-policy-tooltip"') &&
-    html.includes('<strong>指数口径说明</strong>') &&
+    html.includes('<strong>基准口径说明</strong>') &&
     html.includes('估值日 T 严格匹配 T-1 交易日美股收盘价'),
   'benchmark help must explain snapshot matching and the YTD anchor'
 );

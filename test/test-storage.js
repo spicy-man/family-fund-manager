@@ -173,12 +173,13 @@ try {
   assert.strictEqual(fs.readdirSync(backupDir).length, backupsBeforeIndexWrite);
   assert.notStrictEqual(storage.CUSTOM_BENCHMARK_CACHE_FILE, storage.INDEX_CACHE_FILE);
   const marketHistory = {
-    version: 1,
+    version: 2,
     updatedAt: '2026-08-04T00:00:00.000Z',
     tickers: {
       '^GSPC': {
         fetchedFrom: '2026-08-01',
         fetchedThrough: '2026-08-04',
+        priceBasis: 'close',
         prices: { '2026-08-03': 6330.94 }
       }
     }

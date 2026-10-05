@@ -16,15 +16,15 @@ function buildSandboxSeed() {
   }
   const settlements = migrateSettlementLedger(db, { version: 1,
     records: ledger.events.filter(event => event.type === 'performance_settlement') }).ledger;
-  const marketHistory = { version: 1, tickers: {}, updatedAt: weeklyMarket.endDate };
+  const marketHistory = { version: 2, tickers: {}, updatedAt: weeklyMarket.endDate };
   for (const [ticker, prices] of Object.entries(weeklyMarket.historyPrices || {})) {
-    mergeTickerPrices(marketHistory, ticker, prices);
+    mergeTickerPrices(marketHistory, ticker, prices, { priceBasis: weeklyMarket.priceBasis || 'close' });
   }
-  for (const [ticker, field] of [['AAPL', 'aapl'], ['GOOGL', 'googl'], ['VGT', 'vgt'], ['^GSPC', 'spx'], ['^NDX', 'ndx']]) {
+  for (const [ticker, field] of [['AAPL', 'aapl'], ['GOOGL', 'googl'], ['VGT', 'vgt'], ['VOO', 'spx'], ['QQQM', 'ndx']]) {
     if (weeklyMarket.historyPrices?.[ticker]) continue;
     const prices = Object.fromEntries([...weeklyMarket.weeks, ...weeklyMarket.anchors]
       .map(row => [row.priceDate, row[field]]));
-    mergeTickerPrices(marketHistory, ticker, prices);
+    mergeTickerPrices(marketHistory, ticker, prices, { priceBasis: weeklyMarket.priceBasis || 'close' });
   }
   return { db, settlements, marketHistory,
     config: { tickers: Object.values(weeklyMarket.tickers).map(({ ticker, longName }) => ({ ticker, name: longName })),

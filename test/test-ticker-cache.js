@@ -14,7 +14,7 @@ let persisted = {
   updatedAt: oldUpdatedAt,
   tickers: {
     VOO: {
-      ticker: 'VOO', ath: 100, athDate: '2025-12-01', regularClose: 95,
+      ticker: 'VOO', priceBasis: 'adjusted-close', ath: 100, athDate: '2025-12-01', regularClose: 95,
       regularCloseDate: '2026-01-02', historyThrough: '2026-01-02', updatedAt: oldUpdatedAt
     }
   }
@@ -141,7 +141,17 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   assert.strictEqual(manualResult.body.refreshSuccess, true);
   assert.deepStrictEqual(manualResult.body.failedTickers, []);
 
-  console.log('Ticker persistent stale-while-revalidate assertions passed.');
+  // A fresh legacy price-only cache must still bootstrap adjusted data.
+  persisted.tickers.VOO.priceBasis = 'close';
+  const migrated = requestTicker();
+  await nextTurn();
+  assert.strictEqual(fetchCalls, 4, 'legacy source must refresh even when its close date is current');
+  finishFetch({ VOO: { ...persisted.tickers.VOO, priceBasis: 'adjusted-close', ath: 99 } });
+  const migratedResult = await migrated;
+  assert.strictEqual(migratedResult.body.data.VOO.priceBasis, 'adjusted-close');
+  assert.strictEqual(migratedResult.body.data.VOO.ath, 99);
+
+  console.log('Ticker persistent stale-while-revalidate and adjusted-cache migration assertions passed.');
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;

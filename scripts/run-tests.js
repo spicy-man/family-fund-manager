@@ -13,6 +13,7 @@ const tests = [
   "test/test-http-json.js",
   "test/test-custom-benchmark.js",
   "test/test-market-history.js",
+  "test/test-adjusted-benchmark.js",
   "test/test-ticker-cache.js",
   "test/test-ticker-panel-refresh.js",
   "test/test-calculator.js",

@@ -77,7 +77,7 @@ assert.strictEqual(isUsableCustomEntry(customEntry(100, 200, '2026-01-05'), '202
   'same-day closes must not leak into a NAV snapshot');
 
 const indexEntry = (spx, ndx, priceDate) => ({
-  spx, ndx, spxPriceDate: priceDate, ndxPriceDate: priceDate, policy: 'previous'
+  spx, ndx, spxPriceDate: priceDate, ndxPriceDate: priceDate, policy: 'previous', source: 'VOO/QQQM:adjusted-close'
 });
 const state = calculateStateFromDb({
   cnhRate: 7.2,

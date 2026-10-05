@@ -447,6 +447,34 @@
   border-color: rgba(244, 63, 94, 0.18) !important;
 }
 
+.return-details-reconciliation {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 12px;
+  background: rgba(var(--color-primary-rgb), 0.055);
+}
+
+.return-details-reconciliation p {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.return-details-reconciliation span {
+  color: var(--color-text-muted);
+}
+
+.return-details-reconciliation strong {
+  color: var(--color-heading);
+  font-variant-numeric: tabular-nums;
+}
+
 .return-details-note {
   margin: 14px 2px 0;
   color: var(--color-text-muted);
@@ -458,6 +486,98 @@
   margin-top: 8px;
   font-size: 0.625rem;
   line-height: 1.45;
+}
+
+/* Keep NAV methodology readable without overwhelming the metric cards. */
+.nav-calculation-notes {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-panel-border);
+  color: var(--color-text-muted);
+  font-size: 0.625rem;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.nav-calculation-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.nav-calculation-heading h4 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+.nav-sample-count {
+  padding: 2px 8px;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 6px;
+  font-size: 0.625rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-calculation-intro {
+  margin: 8px 0 12px;
+}
+
+.nav-calculation-summary {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.nav-calculation-summary > div {
+  display: grid;
+  grid-template-columns: 5.5em minmax(0, 1fr);
+  gap: 12px;
+}
+
+.nav-calculation-summary dt {
+  color: var(--color-heading);
+  font-weight: 500;
+}
+
+.nav-calculation-summary dd {
+  margin: 0;
+}
+
+.nav-calculation-details {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-panel-border);
+}
+
+.nav-calculation-details summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--color-primary);
+}
+
+.nav-calculation-details summary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+.nav-calculation-details[open] summary {
+  margin-bottom: 12px;
+}
+
+@media (max-width: 520px) {
+  .nav-calculation-summary > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .nav-calculation-summary {
+    gap: 12px;
+  }
 }
 
 @media (max-width: 520px) {

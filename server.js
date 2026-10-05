@@ -328,9 +328,8 @@ const {
 } = require('./lib/yahoo');
 const {
   normalizeMarketHistory,
-  mergeTickerPrices,
+  replaceAdjustedTickerPrices,
   addUtcDays,
-  previousWeekday,
   benchmarkDates,
   historyRequestStart,
   mergeCustomBenchmarkCaches,
@@ -358,11 +357,13 @@ async function syncBenchmarkHistory(dates) {
     normalizeCustomBenchmark(config.customBenchmark),
     normalizeCustomBenchmark(config.customBenchmark2)
   ];
+  dates = [...new Set([...dates, ...readDb().events.map(event => event.date),
+    ...Object.keys(storage.readIndexCache()), ...Object.keys(storage.readCustomBenchmarkCache())])];
   const datesToBuild = benchmarkDates(dates);
   if (datesToBuild.length === 0) return;
   const requestedTickers = [...new Set([
-    '^GSPC',
-    '^NDX',
+    'VOO',
+    'QQQM',
     ...customBenchmarks.flatMap(benchmark =>
       benchmark ? benchmark.components.map(component => component.ticker) : [])
   ])];
@@ -376,36 +377,20 @@ async function syncBenchmarkHistory(dates) {
     const nowSec = Math.floor(Date.now() / 1000);
     let changed = false;
 
-    // Fetch a broad daily series first. Existing dates are merged, never
-    // removed, so a later incomplete Yahoo response cannot erase history.
+    // Refresh the entire series, including every historical adjustment factor.
     await Promise.all(requestedTickers.map(async ticker => {
       const record = history.tickers[ticker];
       const requestStart = historyRequestStart(record, oldestRequired);
       const prices = await fetchYahooPrices(
         ticker,
         Math.floor(Date.parse(`${requestStart}T00:00:00Z`) / 1000),
-        nowSec
+        nowSec,
+        { adjusted: true }
       );
-      changed = mergeTickerPrices(history, ticker, prices, {
+      changed = replaceAdjustedTickerPrices(history, ticker, prices, {
         from: requestStart,
         through: today
       }) || changed;
-    }));
-
-    // Yahoo's broad historical endpoint can occasionally omit its newest
-    // completed candle. Probe each missing expected business day with a narrow
-    // date request; holidays simply remain absent and resolve to the prior close.
-    await Promise.all(requestedTickers.map(async ticker => {
-      for (const date of datesToBuild) {
-        const expectedDate = previousWeekday(date);
-        if (history.tickers[ticker]?.prices?.[expectedDate]) continue;
-        const prices = await fetchYahooPrices(
-          ticker,
-          Math.floor(Date.parse(`${addUtcDays(date, -14)}T00:00:00Z`) / 1000),
-          Math.floor(Date.parse(`${date}T00:00:00Z`) / 1000)
-        );
-        changed = mergeTickerPrices(history, ticker, prices) || changed;
-      }
     }));
 
     if (changed) {

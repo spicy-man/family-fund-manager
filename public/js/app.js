@@ -97,6 +97,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const returnDetailsHistoryProfit = document.getElementById('return-details-history-profit');
   const returnDetailsTotalDeposit = document.getElementById('return-details-total-deposit');
   const returnDetailsTotalWithdraw = document.getElementById('return-details-total-withdraw');
+  const returnDetailsCurrentAssets = document.getElementById('return-details-current-assets');
+  const returnDetailsExitedPrincipal = document.getElementById('return-details-exited-principal');
+  const returnDetailsExitedProfit = document.getElementById('return-details-exited-profit');
+  const returnDetailsWithdrawCheck = document.getElementById('return-details-withdraw-check');
+  const returnDetailsProfitCheck = document.getElementById('return-details-profit-check');
 
   // The overview is deliberately terse: one aligned title, one key figure, one supporting fact.
   document.querySelectorAll('.metric-label').forEach((label, index) => {
@@ -608,6 +613,22 @@ document.addEventListener('DOMContentLoaded', () => {
     returnDetailsHistoryProfit.className = `privacy-sensitive ${s.profit >= 0 ? 'text-green' : 'text-magenta'}`;
     returnDetailsTotalDeposit.textContent = `$${formatMoney(s.totalDeposit)}`;
     returnDetailsTotalWithdraw.textContent = `$${formatMoney(s.totalWithdraw)}`;
+    // Reconcile the displayed cents, avoiding floating-point subtraction noise.
+    const exitedPrincipalCents = Math.round(s.totalDeposit * 100) - Math.round(s.remainingPrincipal * 100);
+    const exitedProfitCents = Math.round(s.totalWithdraw * 100) - exitedPrincipalCents;
+    const exitedPrincipal = exitedPrincipalCents / 100;
+    const exitedProfit = exitedProfitCents / 100;
+    returnDetailsCurrentAssets.textContent = `当前资产：$${formatMoney(s.totalNAV)}`;
+    returnDetailsExitedPrincipal.textContent = `$${formatMoney(exitedPrincipal)}`;
+    returnDetailsExitedProfit.textContent = signedMoney(exitedProfit);
+    returnDetailsExitedProfit.className = `privacy-sensitive ${exitedProfit >= 0 ? 'text-green' : 'text-magenta'}`;
+    const profitOperator = exitedProfit >= 0 ? '+' : '−';
+    returnDetailsWithdrawCheck.textContent = `$${formatMoney(s.totalWithdraw)} = $${formatMoney(exitedPrincipal)} ${profitOperator} $${formatMoney(Math.abs(exitedProfit))}`;
+    returnDetailsProfitCheck.textContent = `${signedMoney(s.profit)} = ${signedMoney(s.activeProfit)} ${profitOperator} $${formatMoney(Math.abs(exitedProfit))}`;
+    const roundingCents = Math.round(s.profit * 100) - Math.round(s.activeProfit * 100) - exitedProfitCents;
+    if (roundingCents !== 0) {
+      returnDetailsProfitCheck.textContent += ` ${roundingCents > 0 ? '+' : '−'} $${formatMoney(Math.abs(roundingCents) / 100)}（分位舍入差）`;
+    }
   }
 
   // 2. 动态家庭成员资产网格渲染
