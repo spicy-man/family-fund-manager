@@ -22,6 +22,7 @@ const tests = [
   "test/test-event-order.js",
   "test/test-api-errors.js",
   "test/test-api-validation.js",
+  "test/test-transaction-service.js",
   "test/test-backup-import.js",
   "test/test-api-integration.js",
   "test/test-demo-mode.js",

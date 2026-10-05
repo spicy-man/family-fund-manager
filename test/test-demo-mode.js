@@ -52,7 +52,7 @@ function request(server, pathname, method = 'GET') {
     const membersResponse = await request(server, '/api/demo/members');
     assert.strictEqual(membersResponse.status, 200);
     const members = JSON.parse(membersResponse.body).data;
-    assert.deepStrictEqual(members.map(member => member.name), ['John Titor', 'Alice Liddell', 'Sherlock Holmes']);
+    assert.deepStrictEqual(members.map(member => member.name), ['John Titor', 'Alice Liddell', 'Giovanni Giorgio']);
     assert.strictEqual(members.filter(member => member.primaryGp).length, 1);
 
     const stateResponse = await request(server, '/api/demo/state');

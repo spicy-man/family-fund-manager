@@ -18,7 +18,7 @@ const portfolio2 = {
 const members = [
   { id: 'alex', name: 'John Titor', roles: { lp: true, gp: true } },
   { id: 'lin', name: 'Alice Liddell', roles: { lp: true, gp: false } },
-  { id: 'zhou', name: 'Sherlock Holmes', roles: { lp: true, gp: false } }
+  { id: 'zhou', name: 'Giovanni Giorgio', roles: { lp: true, gp: false } }
 ];
 
 const performanceFee = { gpMemberId: 'alex', annualRate: 0.06, feeRate: 0.25 };

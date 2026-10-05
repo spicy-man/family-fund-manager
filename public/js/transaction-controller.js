@@ -100,6 +100,8 @@
         formTransfer.reset();
         resetDefaultDates();
         await loadAllData();
+        tfRate.value = (parseFloat(inputCnhRate.value) || 7.2).toFixed(4);
+        updateTfCnhDisplay();
       } catch (err) {
         showToast(err.message, 'error');
       }

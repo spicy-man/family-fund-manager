@@ -62,7 +62,7 @@ PORT=3001 npm start
 
 ### GitHub Pages 在线预览
 
-在线预览为可操作沙盒，支持成员管理、入金出金、估值、转让、账目修改删除、结算预览确认与冲销，以及 ZIP 备份导出恢复。成员为 John Titor、Alice Liddell、Sherlock Holmes 等虚构角色。
+在线预览为可操作沙盒，支持成员管理、入金出金、估值、转让、账目修改删除、结算预览确认与冲销，以及 ZIP 备份导出恢复。示例成员为 John Titor、Alice Liddell、Giovanni Giorgio。
 
 所有业务规则复用本地完整版，体验数据仅保存在当前标签页的 sessionStorage 中，刷新后仍保留，随浏览器会话保存，不同访客互不影响；顶部“重置样例”可恢复初始账本。数据不会上传到 GitHub，也不读取本地 `data/` 或 `backups/`。请用虚构数据体验。
 

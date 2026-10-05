@@ -28,7 +28,7 @@ function openTab(store) {
     const mutate = (method, url, body) => sandbox.request(url, { method, body: JSON.stringify(body) });
     const initial = (await get('/api/state')).data;
     assert.deepStrictEqual(clone(initial.summary), clone(calculateStateFromDb(buildDemoLedger()).summary));
-    assert.deepStrictEqual(clone((await get('/api/members')).data.map(member => member.name)), ['John Titor', 'Alice Liddell', 'Sherlock Holmes']);
+    assert.deepStrictEqual(clone((await get('/api/members')).data.map(member => member.name)), ['John Titor', 'Alice Liddell', 'Giovanni Giorgio']);
     const sunday = '2026-08-23'; const friday = '2026-08-28';
     const member = (await post('/api/members', { name: 'Hatsune Miku' })).data;
     await mutate('PUT', '/api/members/' + member.id, { name: 'Miku Hatsune' });

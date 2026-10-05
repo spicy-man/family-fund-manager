@@ -120,16 +120,22 @@ async function transactionTests() {
     'editFromMember', 'editToMember', 'editCnhRate', 'editEventModal', 'formTransaction',
     'elTxMember', 'txAmount', 'txCnhAmount', 'txRemark', 'formValuation', 'valTotalNav', 'valRemark'];
   const elements = Object.fromEntries(names.map(name => [name, element()]));
-  const edits = [], additions = [];
+  const edits = [], additions = [], transfers = [];
+  let transferFails = false;
   const window = load('transaction-controller.js', {
     getElementById: () => null, querySelector: () => ({ value: 'deposit' })
   });
   const controller = window.FundTransactionController.init({
     elements, api: {
       async updateEvent(_id, payload) { edits.push(payload); },
+      async addTransfer(payload) {
+        if (transferFails) throw new Error('transfer failed');
+        transfers.push(payload);
+      },
       async addTransaction(payload) { additions.push(payload); }
     }, submission: { runOnce: async (_form, fn) => fn() }, resetDefaultDates() {},
-    loadAllData: async () => {}, showToast() {}, showSubmissionSuccess() {}, closeModal() {},
+    loadAllData: async () => { elements.inputCnhRate.value = '6.95'; },
+    showToast() {}, showSubmissionSuccess() {}, closeModal() {},
     getLatestValuationDate: () => '2026-09-29', formatMoney: value => value.toFixed(2)
   });
   elements.editEventType.value = 'deposit'; elements.editDate.value = '2026-03-01';
@@ -154,6 +160,30 @@ async function transactionTests() {
   elements.txAmount.value = '100'; elements.formTransaction.reset = () => {};
   await elements.formTransaction.handlers.submit({ preventDefault() {} });
   assert.strictEqual(additions[0].cnhAmount, undefined, 'blank new CNH must omit the amount');
+
+  elements.formTransfer.reset = () => {
+    elements.tfAmount.value = '';
+    elements.tfRate.value = '';
+    elements.tfRemark.value = '';
+  };
+  elements.tfDate.value = '2026-03-01';
+  elements.tfFromMember.value = 'seller'; elements.tfToMember.value = 'buyer';
+  elements.tfAmount.value = '100'; elements.tfRate.value = '7.05';
+  elements.tfAmount.handlers.input();
+  assert.strictEqual(elements.tfCnhDisplay.textContent, '折合 CNH: ≈ ¥705.00');
+  await elements.formTransfer.handlers.submit({ preventDefault() {} });
+  assert.strictEqual(transfers[0].cnhRate, 7.05, 'save must use the agreed rate');
+  assert.strictEqual(elements.tfRate.value, '6.9500', 'reset must restore the refreshed global rate');
+  assert.strictEqual(elements.tfCnhDisplay.textContent, '折合 CNH: ≈ ¥0.00', 'reset must clear the previous conversion');
+  elements.tfAmount.value = '200'; elements.tfAmount.handlers.input();
+  await elements.formTransfer.handlers.submit({ preventDefault() {} });
+  assert.strictEqual(transfers[1].cnhRate, 6.95, 'a consecutive transfer must use the restored rate');
+  transferFails = true;
+  elements.tfAmount.value = '100'; elements.tfRate.value = '7.1';
+  elements.tfRate.handlers.input();
+  await elements.formTransfer.handlers.submit({ preventDefault() {} });
+  assert.strictEqual(elements.tfRate.value, '7.1', 'failed transfers must preserve the agreed rate for retry');
+  assert.strictEqual(elements.tfCnhDisplay.textContent, '折合 CNH: ≈ ¥710.00');
 }
 
 async function restoreWarningTest() {
