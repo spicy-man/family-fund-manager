@@ -16,7 +16,7 @@ function harness(demo = null) {
   }
   for (const prefix of ['tx', 'tf']) {
     const form = elements[prefix === 'tx' ? 'form-transaction' : 'form-transfer'] = new Element('form');
-    for (const suffix of ['trial', 'trial-result', 'trial-apply', 'trial-partial', 'trial-full', 'date', 'amount', 'member', 'cnh-amount', 'from-member', 'to-member', 'rate']) {
+    for (const suffix of ['trial', 'trial-result', 'trial-apply', 'trial-partial', 'trial-full', 'trial-modal', 'trial-view', 'trial-close', 'trial-cancel', 'date', 'amount', 'member', 'cnh-amount', 'from-member', 'to-member', 'rate']) {
       const el = elements[prefix + '-' + suffix] = new Element(prefix + '-' + suffix);
       el.form = form;
     }
@@ -35,7 +35,7 @@ function harness(demo = null) {
     window, document: { getElementById: id => elements[id] }, Event: class { constructor(type, options) { this.type = type; Object.assign(this, options); } }
   });
   const pending = [];
-  const controller = window.FundDisposalTrial.init({ api: { previewDisposal: input => new Promise((resolve, reject) => pending.push({ input, resolve, reject })) }, formatMoney: n => Number(n).toFixed(2) });
+  const controller = window.FundDisposalTrial.init({ modal: { bindAccessible() {}, open(dialog) { dialog.open = true; }, close(dialog) { dialog.open = false; } }, api: { previewDisposal: input => new Promise((resolve, reject) => pending.push({ input, resolve, reject })) }, formatMoney: n => Number(n).toFixed(2) });
   return { elements, pending, controller };
 }
 const account = { currentValue: 1000, remainingPrincipal: 500, lpShares: 500, gpCarryShares: 0 };
@@ -58,6 +58,10 @@ const response = input => ({ input: { ...input, previewToken: 'token' }, date: i
   e['tx-trial-apply'].dispatchEvent({ type: 'click' });
   assert.strictEqual(controller.token('tx'), 'token');
   assert.strictEqual(e['tx-trial-result'].hidden, false, 'input event during apply must not lose the selected estimate');
+  assert.strictEqual(e['tx-trial-modal'].open, false, 'applying must return to the registration form');
+  assert.strictEqual(e['tx-trial-view'].hidden, false);
+  e['tx-trial-view'].dispatchEvent({ type: 'click' });
+  assert.strictEqual(e['tx-trial-modal'].open, true, 'selected estimate must remain reviewable');
   e['tx-date'].value = '2026-01-18';
   e['form-transaction'].dispatchEvent({ type: 'change' });
   assert.strictEqual(controller.token('tx'), undefined);

@@ -1,5 +1,5 @@
 (function () {
-  function init({ api, formatMoney }) {
+  function init({ api, formatMoney, modal = window.FundModal }) {
     if (window.FundDemoMode?.enabled && !window.FundDemoMode.sandbox) {
       return { invalidate() {}, token() { return undefined; } };
     }
@@ -11,7 +11,12 @@
       const get = suffix => document.getElementById(prefix + '-' + suffix);
       const form = document.getElementById(prefix === 'tx' ? 'form-transaction' : 'form-transfer');
       const panel = get('trial');
+      const dialog = get('trial-modal');
       const result = get('trial-result');
+      const view = get('trial-view');
+      modal.bindAccessible(dialog, get('trial-close'));
+      get('trial-cancel').addEventListener('click', () => modal.close(dialog));
+      view.addEventListener('click', () => modal.open(dialog, view));
       const apply = get('trial-apply');
       const partial = get('trial-partial');
       const full = get('trial-full');
@@ -36,28 +41,24 @@
         appliedSignature = null;
         result.hidden = true;
         apply.hidden = true;
+        view.hidden = true;
+        modal.close(dialog);
         partial.disabled = false;
         full.disabled = false;
         if (prefix === 'tx') panel.hidden = !document.getElementById('t-select-withdraw').checked;
       }
       function render(data) {
         result.classList.remove('disposal-trial-error');
-        const item = (label, value) => `<article><span>${label}</span><strong class="privacy-sensitive">${escape(value)}</strong></article>`;
-        const cards = [
-          item(prefix === 'tx' ? '预计到手金额' : '受让方获得金额', money(data.actualAmount)),
-          item('应计业绩报酬', money(data.performanceFee)),
-          item('出让方净扣减份额', shares(data.sharesDeducted)),
-          item('操作前权益', money(data.sender.before.currentValue)),
-          item('操作后剩余权益', money(data.sender.after.currentValue)),
-          item('操作后剩余份额', shares(data.sender.after.lpShares + data.sender.after.gpCarryShares)),
-          item('操作后剩余本金', money(data.sender.after.remainingPrincipal)),
-          item('对应人民币金额', '¥' + formatMoney(data.cnhAmount))
-        ];
-        if (data.recipient) {
-          cards.push(item('受让方操作后权益', money(data.recipient.after.currentValue)));
-          cards.push(item('受让方操作后本金', money(data.recipient.after.remainingPrincipal)));
-        }
-        result.innerHTML = `<p>${data.fullExit ? '全部退出' : '部分处置'} · 操作日期 ${escape(data.date)}<br>采用估值：${escape(data.valuationDate || '初始净值（尚无估值记录）')} · 单位净值 ${escape(shares(data.nav))}</p><div class="disposal-trial-grid">${cards.join('')}</div><p>以上为操作当时的权益，沿用上述估值，不预测行情。报酬以份额结晶；GP 本人的净扣减已计入报酬回流。${data.fullExit ? '全部退出带入表单的是扣费前权益及对应人民币，实际金额以上述试算为准。' : ''}试算未保存账目，提交前请核对日期及人民币金额。</p>`;
+        const value = text => `<span class="privacy-sensitive">${escape(text)}</span>`;
+        const accountShares = account => shares(account.lpShares + account.gpCarryShares);
+        const row = (label, before, after) => `<tr><th scope="row">${label}</th><td>${value(before)}</td><td>${value(after)}</td></tr>`;
+        const balance = (name, account) => `<section class="trial-balance"><h4>${escape(name)}</h4><table aria-label="${escape(name)}操作前后对比"><thead><tr><th scope="col">账户变化</th><th scope="col">操作前</th><th scope="col">操作后</th></tr></thead><tbody>${row('权益', money(account.before.currentValue), money(account.after.currentValue))}${row('本金', money(account.before.remainingPrincipal), money(account.after.remainingPrincipal))}${row('份额', accountShares(account.before), accountShares(account.after))}</tbody></table></section>`;
+        result.innerHTML = `<div class="trial-context">${escape(data.sender.before.name || '出让方')}${data.recipient ? ' → ' + escape(data.recipient.after.name || '受让方') : ''} · ${data.fullExit ? (prefix === 'tx' ? '全部退出' : '全部转让') : (prefix === 'tx' ? '部分出金' : '部分转让')} · ${escape(data.date)}</div>
+          <section class="trial-hero"><span class="trial-hero-label">${prefix === 'tx' ? '预计到手' : '受让方获得'}</span><strong class="trial-hero-amount privacy-sensitive">${escape(money(data.actualAmount))}</strong><div class="trial-money-details"><div><span>业绩报酬</span><strong class="privacy-sensitive">${escape(money(data.performanceFee))}</strong></div><div><span>对应人民币</span><strong class="privacy-sensitive">¥${escape(formatMoney(data.cnhAmount))}</strong></div></div></section>
+          ${balance(data.recipient ? '出让方账户' : '账户变化', data.sender)}
+          ${data.recipient ? balance('受让方账户', data.recipient) : ''}
+          <p class="trial-valuation">基于 <strong>${escape(data.valuationDate || '初始净值')}</strong> 的估值 · 单位净值 <strong class="privacy-sensitive">${escape(shares(data.nav))}</strong><br>仅作试算，尚未保存账目。</p>
+          <details class="trial-notes"><summary>计算口径与金额说明</summary><p>所选日期没有新估值时沿用此前估值，不预测行情。净扣减 ${value(shares(data.sharesDeducted))} 份，已计入业绩报酬结晶及 GP 自身的报酬回流。${data.fullExit ? '全部退出带入表单的是扣费前权益及对应人民币，实际金额以上述试算为准。' : '部分处置金额表示希望到手或受让方获得的金额。'}正式提交前请核对日期和人民币金额。</p></details>`;
         result.hidden = false;
         apply.hidden = false;
       }
@@ -72,6 +73,8 @@
         full.disabled = true;
         result.textContent = '正在试算…';
         result.hidden = false;
+        result.classList.remove('disposal-trial-error');
+        modal.open(dialog, fullExit ? full : partial);
         try {
           const response = await api.previewDisposal({ ...data, fullExit });
           if (generation !== requestGeneration) return;
@@ -99,7 +102,9 @@
         preview = data;
         appliedSignature = JSON.stringify(payload());
         render(data);
-        apply.hidden = true;
+        view.textContent = '✓ 已带入试算金额 · ' + money(data.actualAmount) + ' · 查看';
+        view.hidden = false;
+        modal.close(dialog);
       });
       form.addEventListener('input', invalidate);
       form.addEventListener('change', invalidate);

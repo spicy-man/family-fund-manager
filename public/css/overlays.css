@@ -364,3 +364,36 @@ select:focus-visible {
   background: rgba(var(--color-primary-rgb), 0.22);
   border-color: rgba(var(--color-primary-rgb), 0.45);
 }
+
+/* Disposal estimates use a focused receipt rather than a dashboard of cards. */
+.disposal-trial-modal .trial-sheet { width: 560px; max-width: calc(100% - 32px); padding: 26px; }
+.trial-sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.trial-eyebrow { display: block; color: var(--color-text-muted); font-size: 0.66rem; letter-spacing: 0.1em; margin-bottom: 6px; }
+.trial-sheet-header h3 { font-size: 1.15rem; font-weight: 600; color: var(--color-text-main); }
+.trial-context { font-size: 0.78rem; color: var(--color-text-muted); margin-bottom: 18px; }
+.trial-hero { padding-bottom: 22px; border-bottom: 1px solid var(--color-panel-border); }
+.trial-hero-label { display: block; color: var(--color-text-muted); font-size: 0.76rem; }
+.trial-hero-amount { display: block; font-family: 'Outfit', sans-serif; font-size: clamp(2rem, 7vw, 2.8rem); line-height: 1.25; font-weight: 600; letter-spacing: -0.035em; color: var(--color-text-main); margin: 6px 0 16px; overflow-wrap: anywhere; }
+.trial-money-details { display: flex; flex-wrap: wrap; gap: 12px 28px; font-size: 0.76rem; }
+.trial-money-details span { color: var(--color-text-muted); margin-right: 8px; }
+.trial-money-details strong { font-weight: 500; color: var(--color-text-main); }
+.trial-balance { padding-top: 20px; }
+.trial-balance h4 { font-size: 0.8rem; font-weight: 600; margin-bottom: 12px; color: var(--color-text-main); }
+.trial-balance table { width: 100%; border-collapse: collapse; table-layout: fixed; font-variant-numeric: tabular-nums; }
+.trial-balance th, .trial-balance td { padding: 8px 0; font-size: 0.78rem; text-align: right; border: none; overflow-wrap: anywhere; }
+.trial-balance thead th { font-size: 0.66rem; font-weight: 400; color: var(--color-text-muted); padding-top: 0; }
+.trial-balance th:first-child { width: 24%; text-align: left; font-weight: 400; color: var(--color-text-muted); }
+.trial-balance tbody td:last-child { font-weight: 600; color: var(--color-text-main); }
+.trial-valuation { border-top: 1px solid var(--color-panel-border); margin-top: 20px; padding-top: 16px; font-size: 0.7rem; color: var(--color-text-muted); line-height: 1.7; }
+.trial-valuation strong { font-weight: 500; color: var(--color-text-main); }
+.trial-notes { margin-top: 10px; font-size: 0.7rem; color: var(--color-text-muted); line-height: 1.7; }
+.trial-notes summary { cursor: pointer; }
+.trial-notes p { margin-top: 8px; }
+.trial-sheet-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid var(--color-panel-border); padding-top: 20px; margin-top: 20px; }
+.trial-sheet-footer .btn { padding: 10px 22px; font-size: 0.8rem; }
+.trial-dismiss { color: var(--color-text-muted); font-size: 0.78rem; padding: 10px 0; }
+.disposal-trial-error { color: var(--color-negative); font-size: 0.85rem; line-height: 1.7; }
+@media (max-width: 480px) {
+  .disposal-trial-modal .trial-sheet { padding: 22px 18px; }
+  .trial-balance th, .trial-balance td { font-size: 0.72rem; }
+}

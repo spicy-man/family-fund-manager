@@ -523,15 +523,14 @@ input:focus,
   color: var(--color-text-muted);
 }
 
-/* Read-only withdrawal and transfer estimates, beside their registration forms. */
-.disposal-trial { margin: 16px 0; padding: 16px; border: 1px solid var(--color-panel-border); border-radius: 12px; }
-.disposal-trial[hidden], .disposal-trial [hidden] { display: none !important; }
-.disposal-trial-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-.disposal-trial-actions .btn { flex: 1; }
-.disposal-trial-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 12px 0; }
-.disposal-trial-grid article { min-width: 0; }
-.disposal-trial-grid span { display: block; color: var(--color-text-muted); font-size: 0.75rem; margin-bottom: 4px; }
-.disposal-trial-grid strong { overflow-wrap: anywhere; }
-.disposal-trial-result p { font-size: 0.78rem; line-height: 1.6; }
-.disposal-trial-error { color: var(--color-negative); }
-@media (max-width: 480px) { .disposal-trial-grid { grid-template-columns: 1fr; } }
+/* Keep estimates out of the registration form's main visual flow. */
+.disposal-trial { margin: 4px 0 18px; }
+.disposal-trial[hidden], .disposal-trial [hidden], .disposal-trial-modal [hidden] { display: none !important; }
+.disposal-trial-entry { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.72rem; }
+.disposal-trial-entry > span { color: var(--color-text-muted); }
+.disposal-trial-entry > div { display: flex; gap: 14px; }
+.trial-link, .trial-applied, .trial-dismiss { border: 0; background: none; font: inherit; cursor: pointer; }
+.trial-link { padding: 4px 0; color: var(--color-blue); font-size: 0.72rem; }
+.trial-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+.trial-link:disabled { opacity: 0.5; cursor: wait; }
+.trial-applied { display: block; width: 100%; padding: 10px 0 0; text-align: left; color: var(--color-positive); font-size: 0.72rem; }
