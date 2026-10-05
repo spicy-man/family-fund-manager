@@ -104,7 +104,7 @@
         preview = data;
         appliedSignature = JSON.stringify(payload());
         render(data);
-        view.textContent = '✓ 已带入试算金额 · ' + money(data.actualAmount) + ' · 查看';
+        view.innerHTML = '✓ 已带入试算金额 · <span class="privacy-sensitive">' + escape(money(data.actualAmount)) + '</span> · 查看';
         view.hidden = false;
         modal.close(dialog);
       });

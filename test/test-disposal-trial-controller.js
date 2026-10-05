@@ -60,6 +60,7 @@ const response = input => ({ input: { ...input, previewToken: 'token' }, date: i
   assert.strictEqual(e['tx-trial-result'].hidden, false, 'input event during apply must not lose the selected estimate');
   assert.strictEqual(e['tx-trial-modal'].open, false, 'applying must return to the registration form');
   assert.strictEqual(e['tx-trial-view'].hidden, false);
+  assert(e['tx-trial-view'].innerHTML.includes('<span class="privacy-sensitive">'), 'mask the estimate amount without disabling its review button');
   e['tx-trial-view'].dispatchEvent({ type: 'click' });
   assert.strictEqual(e['tx-trial-modal'].open, true, 'selected estimate must remain reviewable');
   e['tx-date'].value = '2026-01-18';

@@ -99,6 +99,20 @@ const near = (a, b) => assert(Math.abs(a - b) < 1e-7, `${a} != ${b}`);
   });
   assert.strictEqual(withoutCnh.body.data.input.cnhAmount, 2160, 'apply payload must contain the default conversion even when CNH was omitted');
 
+  const roundedCnhDb = clone(fixture);
+  roundedCnhDb.cnhRate = 7.1234;
+  roundedCnhDb.events[1].totalNAV = 2000.10;
+  const roundedCnhApi = makeApi(undefined, roundedCnhDb);
+  const roundedTrial = (await request(roundedCnhApi.routes['post:/api/disposal/preview'], {
+    type: 'withdraw', member: 'a', date: '2026-01-11', fullExit: true
+  })).body.data;
+  assert.strictEqual(roundedTrial.input.cnhAmount, 14247.51);
+  const roundedSaved = await request(roundedCnhApi.routes['post:/api/transaction'], {
+    ...roundedTrial.input, cnhAmount: Number(roundedTrial.input.cnhAmount.toFixed(2))
+  });
+  assert.strictEqual(roundedSaved.status, 200);
+  near(roundedSaved.body.data.cnhAmount, roundedTrial.cnhAmount);
+
   const changed = makeApi(undefined, fixture);
   const trial = (await request(changed.routes['post:/api/disposal/preview'], { type: 'withdraw', member: 'a', amount: 300, date: '2026-01-11' })).body.data;
   await request(changed.routes['post:/api/transaction'], { type: 'deposit', member: 'a', amount: 100, date: '2026-01-11' });
