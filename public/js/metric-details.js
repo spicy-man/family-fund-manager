@@ -1,6 +1,31 @@
 (function () {
   let closeCurrent = null;
 
+  function calculateWorstYear(history) {
+    const years = new Map();
+    const resetYears = new Set();
+    let segment = 0;
+    for (const point of history) {
+      const year = Number(point.date.slice(0, 4));
+      if (point.totalShares <= 0) { segment++; resetYears.add(year); continue; }
+      const entry = years.get(year);
+      if (entry) entry.last = { ...point, segment };
+      else years.set(year, { first: { ...point, segment }, last: { ...point, segment } });
+    }
+    const returns = [];
+    for (const [year, { first, last }] of years) {
+      if (resetYears.has(year)) continue;
+      const start = first;
+      // January 1 is shared by the preceding year's end and this year's start.
+      const nextStart = years.get(year + 1)?.first;
+      const end = nextStart?.date === `${year + 1}-01-01` ? nextStart : last;
+      if (start.date === end.date || start.segment !== end.segment || start.navPerShare <= 0) continue;
+      const value = end.navPerShare / start.navPerShare - 1;
+      if (Number.isFinite(value)) returns.push(value);
+    }
+    return returns.length ? Math.min(...returns) : null;
+  }
+
   function calculateRisk(history) {
     const months = new Map();
     let segment = 0;
@@ -43,7 +68,7 @@
   function calculate(history = []) {
     // Empty-fund NAV resets are accounting defaults, not strategy returns.
     const points = history.filter(point => point.totalShares > 0);
-    const empty = { drawdown: null, annualized: null, mar: null, start: null, end: null,
+    const empty = { drawdown: null, annualized: null, worstYear: null, mar: null, start: null, end: null,
       volatility: null, sharpe: null, sortino: null, monthlySamples: 0 };
     if (!points.length || points.some(point => !Number.isFinite(point.navPerShare) || point.navPerShare < 0)) return empty;
     let peak = points[0].navPerShare;
@@ -58,7 +83,7 @@
     const growth = days > 0 ? Math.pow(last.navPerShare / first.navPerShare, 365 / days) - 1 : null;
     const annualized = Number.isFinite(growth) ? growth : null;
     const ratio = annualized !== null && drawdown > 0 ? annualized / drawdown : null;
-    return { drawdown, annualized, mar: Number.isFinite(ratio) ? ratio : null, start: first.date, end: last.date,
+    return { drawdown, annualized, worstYear: calculateWorstYear(history), mar: Number.isFinite(ratio) ? ratio : null, start: first.date, end: last.date,
       ...calculateRisk(history) };
   }
 
@@ -70,7 +95,9 @@
     annualized.textContent = stats.annualized > 0 ? `+${percent(stats.annualized)}` : percent(stats.annualized);
     annualized.className = `privacy-sensitive${stats.annualized === null ? '' : stats.annualized >= 0 ? ' text-green' : ' text-magenta'}`;
     document.getElementById('nav-details-mar').textContent = stats.mar === null ? '—' : stats.mar.toFixed(2);
-    document.getElementById('nav-details-volatility').textContent = percent(stats.volatility);
+    const worstYear = document.getElementById('nav-details-worst-year');
+    worstYear.textContent = stats.worstYear > 0 ? `+${percent(stats.worstYear)}` : percent(stats.worstYear);
+    worstYear.className = `privacy-sensitive${stats.worstYear === null ? '' : stats.worstYear >= 0 ? ' text-green' : ' text-magenta'}`;
     for (const key of ['sharpe', 'sortino']) {
       document.getElementById(`nav-details-${key}`).textContent = stats[key] === null ? '—' : stats[key].toFixed(2);
     }

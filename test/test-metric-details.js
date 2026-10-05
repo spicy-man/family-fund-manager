@@ -65,15 +65,57 @@ assert(calculate(monthlyHistory(Array(12).fill(-0.02))).sortino < 0);
 const reset = [...monthly];
 reset.splice(6, 0, { date: '2024-07-01', type: 'withdraw', navPerShare: 1, totalShares: 0 });
 assert.strictEqual(calculate(reset).monthlySamples, 11, 'empty fund reset breaks the return series');
-const nodes = Object.fromEntries(['drawdown', 'annualized', 'mar', 'volatility', 'sharpe', 'sortino', 'risk-samples', 'period']
+const annualHistory = [
+  { date: '2025-06-21', navPerShare: 1, totalShares: 100 },
+  { date: '2025-12-31', navPerShare: 1.228, totalShares: 100 },
+  { date: '2026-01-01', navPerShare: 1.2292, totalShares: 100 },
+  { date: '2026-10-05', navPerShare: 1.4015, totalShares: 200 }
+];
+const currentYearReturn = 1.4015 / 1.2292 - 1;
+assert(Math.abs(calculate(annualHistory.slice(0, 3)).worstYear - 0.2292) < 1e-12,
+  'January 1 of the next year closes the preceding year');
+assert(Math.abs(calculate([
+  { date: '2025-01-01', navPerShare: 1, totalShares: 100 },
+  { date: '2025-12-31', navPerShare: 1.3, totalShares: 100 },
+  { date: '2026-01-01', navPerShare: 0.9, totalShares: 100 },
+  { date: '2026-10-05', navPerShare: 1.08, totalShares: 100 }
+]).worstYear + 0.1) < 1e-12, 'shared boundary can change which year is worst');
+assert(Math.abs(calculate(annualHistory).worstYear - currentYearReturn) < 1e-12,
+  'use the first NAV of each year, matching recorded interval returns');
+assert(Math.abs(calculate(annualHistory.slice(0, 2)).worstYear - 0.228) < 1e-12,
+  'include partial inception year without annualizing');
+assert.strictEqual(calculate(annualHistory.slice(0, 1)).worstYear, null, 'one snapshot has no return interval');
+assert(Math.abs(calculate([
+  { date: '2025-01-01', navPerShare: 1, totalShares: 100 },
+  { date: '2025-12-31', navPerShare: 0.8, totalShares: 100 }
+]).worstYear + 0.2) < 1e-12);
+assert.strictEqual(calculate([
+  annualHistory[0], { date: '2025-07-01', navPerShare: 1, totalShares: 0 }, annualHistory[1]
+]).worstYear, null, 'do not bridge an empty fund reset');
+assert(Math.abs(calculate([
+  { date: '2024-06-30', navPerShare: 1, totalShares: 100 },
+  { date: '2024-10-01', navPerShare: 0.9, totalShares: 100 },
+  ...annualHistory
+]).worstYear + 0.1) < 1e-12, 'include partial years without December records');
+assert(Math.abs(calculate([
+  annualHistory[0], { ...annualHistory[1], date: '2025-12-20' }
+]).worstYear - 0.228) < 1e-12, 'include unfinished years');
+const nodes = Object.fromEntries(['drawdown', 'annualized', 'mar', 'worst-year', 'sharpe', 'sortino', 'risk-samples', 'period']
   .map(name => [`nav-details-${name}`, {}]));
 document.getElementById = id => nodes[id];
 window.FundMetricDetails.render(monthly);
-assert.strictEqual(nodes['nav-details-volatility'].textContent, `${(risk.volatility * 100).toFixed(2)}%`);
+assert.strictEqual(nodes['nav-details-worst-year'].textContent, `${risk.worstYear > 0 ? '+' : ''}${(risk.worstYear * 100).toFixed(2)}%`);
 assert.strictEqual(nodes['nav-details-sharpe'].textContent, risk.sharpe.toFixed(2));
 assert.strictEqual(nodes['nav-details-sortino'].textContent, risk.sortino.toFixed(2));
 window.FundMetricDetails.render([]);
 assert.strictEqual(nodes['nav-details-sortino'].textContent, '—');
+assert.strictEqual(nodes['nav-details-worst-year'].textContent, '—');
+window.FundMetricDetails.render(annualHistory);
+assert.strictEqual(nodes['nav-details-worst-year'].textContent, '+14.02%');
+assert.strictEqual(nodes['nav-details-worst-year'].className, 'privacy-sensitive text-green');
+window.FundMetricDetails.render([{ ...annualHistory[0], navPerShare: 2 }, annualHistory[1]]);
+assert.strictEqual(nodes['nav-details-worst-year'].textContent, '-38.60%');
+assert.strictEqual(nodes['nav-details-worst-year'].className, 'privacy-sensitive text-magenta');
 function element(bounds = {}) {
   return { handlers: {}, attributes: {}, hidden: true, style: {}, children: [],
     addEventListener(type, fn) { this.handlers[type] = fn; },

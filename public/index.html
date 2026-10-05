@@ -32,7 +32,7 @@
       </svg>
       <span>
         <strong>家庭财富账本</strong>
-        <small>WEALTH LEDGER <b class="sidebar-version">v4.3.0</b></small>
+        <small>WEALTH LEDGER <b class="sidebar-version">v4.3.1</b></small>
       </span>
     </a>
 
@@ -115,7 +115,7 @@
         <div class="logo-text">
           <h1>家庭基金账目管理系统</h1>
           <span class="sub-logo">Family Private Wealth &amp; NAV Ledger &nbsp;<span
-              class="version-badge">v4.3.0</span></span>
+              class="version-badge">v4.3.1</span></span>
         </div>
       </div>
       <div class="header-actions">
@@ -957,38 +957,38 @@
       <div class="modal-body">
         <div class="return-details-grid">
           <article>
+            <span>年化收益率</span>
+            <strong class="privacy-sensitive" id="nav-details-annualized">—</strong>
+            <small>成立以来复合年化收益率</small>
+          </article>
+          <article>
             <span>最大回撤</span>
             <strong class="privacy-sensitive text-magenta" id="nav-details-drawdown">—</strong>
             <small>历史峰值至后续低点的最大跌幅</small>
           </article>
           <article>
-            <span>平均年化收益率</span>
-            <strong class="privacy-sensitive" id="nav-details-annualized">—</strong>
-            <small>成立以来复合年化收益率（CAGR）</small>
+            <span>最差年度收益</span>
+            <strong class="privacy-sensitive" id="nav-details-worst-year">—</strong>
+            <small>各自然年已记录期间的最低收益率</small>
+          </article>
+          <article>
+            <span>夏普比率</span>
+            <strong class="privacy-sensitive" id="nav-details-sharpe">—</strong>
+            <small>承担整体波动的收益效率</small>
+          </article>
+          <article>
+            <span>索提诺比率</span>
+            <strong class="privacy-sensitive" id="nav-details-sortino">—</strong>
+            <small>承担下行波动的收益效率</small>
           </article>
           <article>
             <span>MAR 比率</span>
             <strong class="privacy-sensitive" id="nav-details-mar">—</strong>
             <small>复合年化收益率 ÷ 最大回撤</small>
           </article>
-          <article>
-            <span>年化波动率</span>
-            <strong class="privacy-sensitive" id="nav-details-volatility">—</strong>
-            <small>月度收益标准差 × √12</small>
-          </article>
-          <article>
-            <span>夏普比率 (Sharpe)</span>
-            <strong class="privacy-sensitive" id="nav-details-sharpe">—</strong>
-            <small>承担整体波动的收益效率</small>
-          </article>
-          <article>
-            <span>Sortino 比率</span>
-            <strong class="privacy-sensitive" id="nav-details-sortino">—</strong>
-            <small>承担下行波动的收益效率</small>
-          </article>
         </div>
-        <p class="return-details-note">按已记录的单位净值计算，不受图表区间筛选影响。未满一年时年化收益仅供参考；没有回撤或不足一天时，MAR 比率显示为 —。</p>
-        <p class="return-details-note">波动率、夏普和 Sortino 按完整月份的末次估值计算，未结束月份与缺失月份不补值。无风险利率与目标收益均为 0%；不足 12 个月收益样本、零波动或无下行波动时，对应比率显示为 —。<span class="privacy-sensitive" id="nav-details-risk-samples">月度收益样本：0 个</span></p>
+        <p class="return-details-note">按已记录的单位净值计算，不受图表区间筛选影响。未满一年时年化收益仅供参考；最差年度收益以 1 月 1 日净值为跨年分界，作为上年终点和本年起点；成立首年从首条记录开始，今年算至最新记录，缺少次年 1 月 1 日记录时取当年末条净值。取各年区间收益中的最低值，不做年化。年度内清仓重置的年份不参与比较，无可计算期间时显示为 —；没有回撤或不足一天时，MAR 比率显示为 —。</p>
+        <p class="return-details-note">夏普比率和索提诺比率按完整月份的末次估值计算，未结束月份与缺失月份不补值。无风险利率与目标收益均为 0%；不足 12 个月收益样本、零波动或无下行波动时，对应比率显示为 —。<span class="privacy-sensitive" id="nav-details-risk-samples">月度收益样本：0 个</span></p>
       </div>
     </div>
   </div>
