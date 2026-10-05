@@ -12,6 +12,23 @@
     const Api = api;
     const { runOnce: submitOnce } = submission;
 
+    const withdrawRemark = '成员部分退出';
+    const transferRemark = '成员间份额转让';
+    const updateTransactionRemark = () => {
+      const type = document.querySelector('input[name="txType"]:checked').value;
+      if (!txRemark.value.trim() || [withdrawRemark, '成员全部退出'].includes(txRemark.value)) {
+        txRemark.value = type === 'withdraw' ? withdrawRemark : '';
+      }
+      txRemark.placeholder = type === 'withdraw'
+        ? '例如：成员部分退出、成员全部退出等'
+        : '例如：首次入金、银行存款等';
+    };
+    formTransaction.addEventListener('change', event => {
+      if (event.target.name === 'txType') updateTransactionRemark();
+    });
+    updateTransactionRemark();
+    if (!tfRemark.value.trim()) tfRemark.value = transferRemark;
+
     const validateSundayDateInput = input => {
       if (!input.value) {
         input.setCustomValidity('');
@@ -98,6 +115,7 @@
         await Api.addTransfer({ fromMember, toMember, amount, cnhRate, date, remark, previewToken: getPreviewToken('tf') });
         showSubmissionSuccess('内部份额转让已提交并保存');
         formTransfer.reset();
+        tfRemark.value = transferRemark;
         resetDefaultDates();
         await loadAllData();
         tfRate.value = (parseFloat(inputCnhRate.value) || 7.2).toFixed(4);
@@ -238,6 +256,7 @@
         await Api.addTransaction({ member, type, amount, cnhAmount, date, remark, previewToken: type === 'withdraw' ? getPreviewToken('tx') : undefined });
         showSubmissionSuccess('交易记录已提交并保存');
         formTransaction.reset();
+        updateTransactionRemark();
         resetDefaultDates();
         await loadAllData();
       } catch (err) {

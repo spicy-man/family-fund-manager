@@ -16,7 +16,7 @@ function harness(demo = null) {
   }
   for (const prefix of ['tx', 'tf']) {
     const form = elements[prefix === 'tx' ? 'form-transaction' : 'form-transfer'] = new Element('form');
-    for (const suffix of ['trial', 'trial-result', 'trial-apply', 'trial-partial', 'trial-full', 'trial-modal', 'trial-view', 'trial-close', 'trial-subtitle', 'trial-cancel', 'date', 'amount', 'member', 'cnh-amount', 'from-member', 'to-member', 'rate']) {
+    for (const suffix of ['trial', 'trial-result', 'trial-apply', 'trial-partial', 'trial-full', 'trial-modal', 'trial-view', 'trial-close', 'trial-subtitle', 'trial-cancel', 'date', 'amount', 'member', 'cnh-amount', 'remark', 'from-member', 'to-member', 'rate']) {
       const el = elements[prefix + '-' + suffix] = new Element(prefix + '-' + suffix);
       el.form = form;
     }

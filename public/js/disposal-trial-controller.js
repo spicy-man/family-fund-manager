@@ -100,7 +100,13 @@
         // it into the same net cash amount shown above on formal submission.
         get('amount').value = data.input.amount;
         get('amount').dispatchEvent(new Event('input', { bubbles: true }));
-        if (prefix === 'tx') get('cnh-amount').value = Number(data.input.cnhAmount).toFixed(2);
+        if (prefix === 'tx') {
+          get('cnh-amount').value = Number(data.input.cnhAmount).toFixed(2);
+          const remark = get('remark');
+          if (!remark.value.trim() || ['成员部分退出', '成员全部退出'].includes(remark.value)) {
+            remark.value = data.fullExit ? '成员全部退出' : '成员部分退出';
+          }
+        }
         preview = data;
         appliedSignature = JSON.stringify(payload());
         render(data);
