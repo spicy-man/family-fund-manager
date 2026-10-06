@@ -1,5 +1,11 @@
 (function () {
   function create({ escapeHtml }) {
+    // The top layer stays above transformed panels and drag previews.
+    const notificationLayer = document.getElementById('toast-container');
+    if (notificationLayer?.showPopover) {
+      notificationLayer.setAttribute('popover', 'manual');
+      notificationLayer.showPopover();
+    }
     // 辅助：可靠关闭 Toast（退场动画 + 300ms超时双重兜底移除）
     function dismissToast(toast) {
       if (!toast || toast.dataset.dismissing === 'true') return;

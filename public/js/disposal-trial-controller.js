@@ -76,17 +76,21 @@
         result.textContent = '正在试算…';
         result.hidden = false;
         result.classList.remove('disposal-trial-error');
-        modal.open(dialog, fullExit ? full : partial);
+        // Match settlement previews: animate only after the final layout is ready.
+        // Opening a short loading dialog first makes it jump when results expand it.
+        const trigger = fullExit ? full : partial;
         try {
           const response = await api.previewDisposal({ ...data, fullExit });
           if (generation !== requestGeneration) return;
           preview = response;
           render(response);
+          modal.open(dialog, trigger);
         } catch (error) {
           if (generation !== requestGeneration) return;
           result.textContent = error.message;
           result.classList.add('disposal-trial-error');
           result.hidden = false;
+          modal.open(dialog, trigger);
         } finally {
           if (generation === requestGeneration) { partial.disabled = false; full.disabled = false; }
         }

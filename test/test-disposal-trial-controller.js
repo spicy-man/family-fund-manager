@@ -45,15 +45,18 @@ const response = input => ({ input: { ...input, previewToken: 'token' }, date: i
   const { elements: e, pending, controller } = harness();
   const first = e['tx-trial-partial'].dispatchEvent({ type: 'click' });
   assert.strictEqual(e['tx-trial-partial'].disabled, true);
+  assert.strictEqual(e['tx-trial-modal'].open, false, 'wait for the complete preview before animating the dialog');
   e['tx-amount'].value = '400';
   e['form-transaction'].dispatchEvent({ type: 'input' });
   pending[0].resolve(response(pending[0].input));
   await first;
   assert.strictEqual(e['tx-trial-result'].hidden, true, 'late response must not restore an estimate for changed inputs');
+  assert.strictEqual(e['tx-trial-modal'].open, false, 'stale results must not reopen the dialog');
   const second = e['tx-trial-partial'].dispatchEvent({ type: 'click' });
   pending[1].resolve(response(pending[1].input));
   await second;
   assert.strictEqual(e['tx-trial-result'].hidden, false);
+  assert.strictEqual(e['tx-trial-modal'].open, true, 'show the populated preview with one entry animation');
   assert.strictEqual(controller.token('tx'), undefined, 'unapplied estimates must not be attached to a different registration');
   e['tx-trial-apply'].dispatchEvent({ type: 'click' });
   assert.strictEqual(controller.token('tx'), 'token');
@@ -72,6 +75,7 @@ const response = input => ({ input: { ...input, previewToken: 'token' }, date: i
   pending[2].reject(new Error('余额不足'));
   await full;
   assert.strictEqual(e['tf-trial-result'].textContent, '余额不足');
+  assert.strictEqual(e['tf-trial-modal'].open, true, 'failed requests must still show the error dialog');
   assert.strictEqual(e['tf-trial-apply'].hidden, true);
   assert.strictEqual(e['tf-trial-full'].disabled, false);
   controller.invalidate();

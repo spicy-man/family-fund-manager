@@ -1,8 +1,5 @@
 /* Member reports use the app palette on screen and a clean paper layout in print. */
-/* Blur a stationary sibling layer, rather than the scrolling report's ancestor. */
-#member-statement-modal { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; isolation: isolate; transition: opacity .2s ease, visibility .2s ease; }
-#member-statement-modal::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: rgba(8, 10, 18, .75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-#member-statement-modal .statement-dialog { position: relative; transform: translateZ(0); transition: none; scrollbar-gutter: stable; contain: paint; }
+/* Share the settlement modal backdrop and enter/exit transitions. */
 #member-statement-modal .statement-dialog { width: min(1080px, 96vw); max-width: 96vw; max-height: 94vh; overflow-y: auto; padding: 32px 40px; background: var(--color-bg, #f8fafc) !important; border: 1px solid var(--color-card-divider) !important; box-shadow: 0 24px 80px rgba(0,0,0,.15) !important; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 18px; color: var(--color-text-main); }
 #member-statement-modal .modal-header { margin-bottom: 24px; }
 #member-statement-modal .modal-header h3 { background: none; -webkit-text-fill-color: currentColor; color: var(--color-primary); font-size: 1.15rem; }
@@ -93,7 +90,6 @@ body.theme-dark .statement-nav strong.statement-negative { color: #ec999c; }
   html.modal-open, body.printing-member-statement { overflow: visible !important; height: auto !important; min-height: 0 !important; background: white !important; }
   body.printing-member-statement::after { display: none; }
   body.printing-member-statement #member-statement-modal { position: static; display: block; opacity: 1; visibility: visible; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
-  body.printing-member-statement #member-statement-modal::before { display: none; }
   body.printing-member-statement #member-statement-modal .statement-dialog { width: 100%; max-width: none; max-height: none; overflow: visible; padding: 0; margin: 0; transform: none; contain: none; background: white !important; box-shadow: none !important; border: none !important; border-radius: 0; --color-text-main: #17212b; --color-text-muted: #596579; --color-card-divider: #e2e6ea; }
   body.printing-member-statement .statement-controls { display: none !important; }
   body.printing-member-statement .statement-paper { zoom: var(--statement-print-scale, 1); }
@@ -243,9 +239,18 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  z-index: 10000;
+  z-index: 20000;
   pointer-events: none;
+  /* Reset browser popover defaults; manual popovers do not move focus. */
+  inset: auto 24px 24px auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
 }
+
+.toast-container::backdrop { background: transparent; pointer-events: none; }
 
 .toast {
   padding: 12px 18px;
