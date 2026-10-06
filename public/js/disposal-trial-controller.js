@@ -1,5 +1,5 @@
 (function () {
-  function init({ api, formatMoney, modal = window.FundModal }) {
+  function init({ api, formatMoney, modal = window.FundModal, animateOperationChange }) {
     if (window.FundDemoMode?.enabled && !window.FundDemoMode.sandbox) {
       return { invalidate() {}, token() { return undefined; } };
     }
@@ -118,8 +118,17 @@
         view.hidden = false;
         modal.close(dialog);
       });
-      form.addEventListener('input', invalidate);
-      form.addEventListener('change', invalidate);
+      form.addEventListener('input', event => {
+        // Radio input precedes change; keep the old layout until animation measures it.
+        if (event.target?.name !== 'txType') invalidate();
+      });
+      form.addEventListener('change', event => {
+        if (prefix === 'tx' && event.target?.name === 'txType' && animateOperationChange) {
+          animateOperationChange(form, invalidate, { slideForm: false });
+        } else {
+          invalidate();
+        }
+      });
       form.addEventListener('reset', invalidate);
       invalidate();
       trials.push({ prefix, invalidate, token() {

@@ -1,7 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
-function harness(demo = null) {
+function harness(demo = null, animateOperationChange) {
   const elements = {};
   class Element {
     constructor(id) { this.id = id; this.value = ''; this.hidden = false; this.disabled = false; this.checked = false; this.handlers = {}; this.classList = { add() {}, remove() {} }; }
@@ -35,7 +35,7 @@ function harness(demo = null) {
     window, document: { getElementById: id => elements[id] }, Event: class { constructor(type, options) { this.type = type; Object.assign(this, options); } }
   });
   const pending = [];
-  const controller = window.FundDisposalTrial.init({ modal: { bindAccessible() {}, open(dialog) { dialog.open = true; }, close(dialog) { dialog.open = false; } }, api: { previewDisposal: input => new Promise((resolve, reject) => pending.push({ input, resolve, reject })) }, formatMoney: n => Number(n).toFixed(2) });
+  const controller = window.FundDisposalTrial.init({ animateOperationChange, modal: { bindAccessible() {}, open(dialog) { dialog.open = true; }, close(dialog) { dialog.open = false; } }, api: { previewDisposal: input => new Promise((resolve, reject) => pending.push({ input, resolve, reject })) }, formatMoney: n => Number(n).toFixed(2) });
   return { elements, pending, controller };
 }
 const account = { currentValue: 1000, remainingPrincipal: 500, lpShares: 500, gpCarryShares: 0 };
@@ -80,6 +80,26 @@ const response = input => ({ input: { ...input, previewToken: 'token' }, date: i
   assert.strictEqual(e['tf-trial-full'].disabled, false);
   controller.invalidate();
   assert.strictEqual(e['tf-trial-result'].hidden, true);
+  // Browsers fire input before change when selecting a direction radio.
+  const transitions = [];
+  let switching;
+  switching = harness(null, (form, update, options) => {
+    const before = switching.elements['tx-trial'].hidden;
+    update();
+    transitions.push([before, switching.elements['tx-trial'].hidden]);
+    assert.strictEqual(options.slideForm, false, 'direction changes must keep the input fields stationary');
+  });
+  const directionForm = switching.elements['form-transaction'];
+  const direction = { name: 'txType' };
+  for (const withdraw of [false, true]) {
+    const before = switching.elements['tx-trial'].hidden;
+    switching.elements['t-select-withdraw'].checked = withdraw;
+    directionForm.dispatchEvent({ type: 'input', target: direction });
+    assert.strictEqual(switching.elements['tx-trial'].hidden, before, 'input must preserve the starting layout for animation');
+    directionForm.dispatchEvent({ type: 'change', target: direction });
+    assert.strictEqual(switching.elements['tx-trial'].hidden, !withdraw);
+  }
+  assert.deepStrictEqual(transitions, [[false, true], [true, false]], 'both directions must animate between different layouts');
   const readonly = harness({ enabled: true, sandbox: false });
   assert.strictEqual(readonly.pending.length, 0);
   assert.strictEqual(readonly.controller.token('tx'), undefined);

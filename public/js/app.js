@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSaveCustomBenchmark = document.getElementById('btn-save-custom-benchmark');
   const btnRemoveCustomBenchmark = document.getElementById('btn-remove-custom-benchmark');
 
-  const { switchTo: switchOperationView } = window.FundOperationPanel.create({
+  const { switchTo: switchOperationView, animateChange: animateOperationChange } = window.FundOperationPanel.create({
     panel: operationPanel,
     tabs: operationTabs,
     forms: [formTransaction, formValuation, formTransfer, formSettlement],
@@ -290,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- 业务控制器初始化 ---
   function initControllers() {
-    disposalTrial = window.FundDisposalTrial.init({ api: Api, formatMoney });
+    disposalTrial = window.FundDisposalTrial.init({ api: Api, formatMoney, animateOperationChange });
     formController = window.FundTransactionController.init({
       elements: {
         txDate, tfDate, valDate, editDate, editEventType,

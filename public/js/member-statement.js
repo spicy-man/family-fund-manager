@@ -54,6 +54,8 @@
     }
     return { ...report, period: period.id, start: period.start, end: period.end,
       ongoing: period.ongoing, periodLabel: period.label,
+      potentialFee: period.ongoing && state.charts.memberPotentialFees?.[memberId]?.asOf === period.end
+        ? state.charts.memberPotentialFees[memberId] : null,
       months: months.map(item => ({ ...buildRange(state, memberId, events, item.startIndex, item.endIndex), month: item.month })) };
   }
 
@@ -115,11 +117,17 @@
         }
       }
     });
+    const highWaterLotsAt = index => index < 0 ? [] :
+      state.charts.memberHighWaterHistory?.[memberId]?.findLast(point => point.eventIndex <= index)?.lots || [];
     const investmentProfit = closing - opening - totals.deposits + totals.withdrawals - totals.transfersIn + totals.transfersOut + totals.feesPaid - totals.feesReceived;
     return {
       memberId, name: state.members[memberId].name, through,
       opening: opening / 100, closing: closing / 100, change: (closing - opening) / 100,
       openingShares, closingShares, openingValuation, closingValuation,
+      openingHighWaterLots: highWaterLotsAt(startIndex),
+      closingHighWaterLots: highWaterLotsAt(endIndex),
+      openingHighWater: startIndex >= 0 ? history[startIndex]?.highWater || null : null,
+      closingHighWater: endIndex >= 0 ? history[endIndex]?.highWater || null : null,
       openingNAV, closingNAV, navChange: closingNAV - openingNAV,
       navReturn: openingNAV > 0 ? (closingNAV / openingNAV - 1) * 100 : null,
       ...Object.fromEntries(Object.entries(totals).map(([key, value]) => [key, value / 100])),

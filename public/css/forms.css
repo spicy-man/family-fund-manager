@@ -21,6 +21,11 @@
   gap: 10px;
 }
 
+.operations-panel .op-form > button[type="submit"],
+.operations-panel #btn-preview-settlement {
+  margin-top: 6px;
+}
+
 .op-form.active {
   display: flex;
 }
@@ -103,8 +108,9 @@
 }
 
 /* The exchange-rate helper needs a little more room than the numeric amount. */
+.operations-panel .transaction-amount-row,
 .operations-panel .transfer-amount-row {
-  grid-template-columns: 0.78fr 1.22fr;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
   gap: 12px;
 }
 
@@ -113,8 +119,9 @@
   gap: 12px;
 }
 
+.operations-panel .transaction-detail-row,
 .operations-panel .transfer-detail-row {
-  grid-template-columns: 0.78fr 1.22fr;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
   gap: 12px;
 }
 
@@ -525,7 +532,7 @@ input:focus,
 }
 
 /* Keep estimates out of the registration form's main visual flow. */
-.disposal-trial { margin: 4px 0 18px; }
+.disposal-trial { margin: 4px 0 0; }
 .disposal-trial[hidden], .disposal-trial [hidden], .disposal-trial-modal [hidden] { display: none !important; }
 .disposal-trial-entry { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.72rem; }
 .disposal-trial-entry > span { color: var(--color-text-muted); }

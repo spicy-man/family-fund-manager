@@ -108,3 +108,85 @@ for (const [initialValue, finalValue] of [[100005, 100014.9], [4, 6]]) {
   assert(Math.abs(preciseReport.months.at(-1).navReturn - preciseReport.navReturn) < 1e-8);
 }
 console.log('Settlement-period selection, NAV, signs, monthly reconciliation, reversals and same-day boundaries passed.');
+
+// High-water snapshots belong to the report boundary, not today's account.
+assert.equal(opening.openingHighWater, null);
+assert.equal(opening.closingHighWater.nav, 1.2);
+assert.equal(closed.openingHighWater.nav, 1.2);
+assert.equal(closed.closingHighWater.nav, 1.5);
+assert.equal(current.openingHighWater.nav, 1.5);
+assert.equal(build(state, 'gp', 's1', asOf).closingHighWater, null, 'GP carry has no LP high-water');
+assert.equal(build(exitedState, 'late', 'since-last-settlement', asOf).closingHighWater, null);
+assert.equal(build(reversed, 'lp', 'since-last-settlement', asOf).openingHighWater.nav, 1.2);
+assert.equal(build(sameDay, 'lp', 's2', asOf).closingHighWater.lotCount, 1);
+assert.equal(build(sameDay, 'lp', 'since-last-settlement', asOf).closingHighWater.lotCount, 2);
+const mixedHighWaterState = calculateStateFromDb({ members: db.members, events: [
+  {id:'hd',type:'deposit',member:'lp',amount:1000,date:'2025-01-01'},
+  {id:'hv',type:'valuation',totalNAV:1200,date:'2025-02-01'},
+  {...first,id:'hs',date:'2025-02-02',feeRate:0},
+  {id:'hloss',type:'valuation',totalNAV:800,date:'2025-03-01'},
+  {id:'hnew',type:'deposit',member:'lp',amount:400,date:'2025-03-02'},
+  {...first,id:'hs2',date:'2025-03-03',feeRate:0},
+  {id:'hrecover',type:'valuation',totalNAV:3000,date:'2025-04-01'},
+  {...first,id:'hs3',date:'2025-04-02',feeRate:0}
+]});
+const mixed = build(mixedHighWaterState,'lp','hs2','2025-04-03');
+assert.equal(mixed.openingHighWater.nav,1.2);
+assert.equal(mixed.closingNAV,0.8);
+assert.equal(mixed.closingHighWater.minNav,0.8);
+assert.equal(mixed.closingHighWater.maxNav,1.2);
+assert.equal(mixed.closingHighWater.lotCount,2);
+assert(Math.abs(mixed.closingHighWater.nav - 1600/1500) < 1e-11);
+assert.equal(build(mixedHighWaterState,'lp','hs3','2025-04-03').closingHighWater.nav,2);
+console.log('Historical high-water, multiple lots, losses, GP carry, exits and same-day boundaries passed.');
+
+assert.deepEqual(opening.openingHighWaterLots, []);
+assert.equal(opening.closingHighWaterLots.length, 1);
+assert.equal(opening.closingHighWaterLots[0].highWaterNav, 1.2);
+assert.equal(opening.closingHighWaterLots[0].startDate, '2026-01-01');
+assert.equal(opening.closingHighWaterLots[0].sourceType, 'settlement_reset');
+assert.equal(opening.closingHighWaterLots[0].sourceEventId, 's1');
+assert.deepEqual(closed.openingHighWaterLots, opening.closingHighWaterLots);
+assert.deepEqual(build(state, 'gp', 's1', asOf).closingHighWaterLots, []);
+assert.deepEqual(build(exitedState, 'late', 'since-last-settlement', asOf).closingHighWaterLots, []);
+assert.deepEqual(mixed.closingHighWaterLots.map(lot => [lot.highWaterNav,lot.shares,lot.basis]), [[1.2,1000,1200],[0.8,500,400]]);
+assert.equal(mixed.openingHighWaterLots[0].basis, 1200, 'Later settlements cannot mutate opening snapshots');
+assert.deepEqual(build(mixedHighWaterState,'lp','hs3','2025-04-03').closingHighWaterLots.map(lot=>lot.highWaterNav), [2]);
+const endedLots = build(sameDay, 'lp', 's2', asOf).closingHighWaterLots;
+const nextLots = build(sameDay, 'lp', 'since-last-settlement', asOf).closingHighWaterLots;
+assert.equal(endedLots.length,1);
+assert.equal(nextLots.length,2);
+assert.equal(nextLots[1].sourceType,'deposit');
+assert.equal(build(reversed,'lp','since-last-settlement',asOf).openingHighWaterLots[0].sourceEventId,'s1');
+console.log('Per-lot high-water history, source dates, historical snapshots, exits and same-day boundaries passed.');
+
+// Fee estimates must match the actual authoritative settlement per lot.
+const feeDb = { members: db.members, performanceFee: {annualRate:0.06,feeRate:0.25}, events: [
+  {id:'fd',type:'deposit',member:'lp',amount:1000,date:'2025-01-01'},
+  {...first,id:'fs',date:'2025-01-02',feeRate:0},
+  {id:'fgain',type:'valuation',totalNAV:1400,date:'2025-02-01'},
+  {id:'fnew',type:'deposit',member:'lp',amount:700,date:'2025-02-02'},
+  {id:'fvalue',type:'valuation',totalNAV:1800,date:'2025-12-01'}
+]};
+const feeAsOf='2026-01-02';
+const feeDbBefore=JSON.stringify(feeDb);
+const estimatedState=calculateStateFromDb(JSON.parse(JSON.stringify(feeDb)),{asOf:feeAsOf});
+const feeReport=build(estimatedState,'lp','since-last-settlement',feeAsOf);
+const actualState=calculateStateFromDb(JSON.parse(JSON.stringify({...feeDb,events:[...feeDb.events,
+  {...first,id:'factual',date:feeAsOf,annualRate:0.06,feeRate:0.25}]})),{asOf:feeAsOf});
+const actualFee=actualState.events.find(event=>event.id==='factual')._breakdown.find(item=>item.member==='lp');
+assert.equal(feeReport.potentialFee.amount,actualFee.fee);
+assert.deepEqual(feeReport.potentialFee.lots,actualFee.lots);
+assert(feeReport.potentialFee.lots[0].fee>0);
+assert.equal(feeReport.potentialFee.lots[1].fee,0,'Underwater lot must not offset profitable lot');
+assert.equal(feeReport.feesPaid,0,'Potential fee must not become settled payment');
+assert.equal(estimatedState.members.lp.shares,1500);
+assert.equal(estimatedState.members.lp.currentValue,1800);
+assert.equal(estimatedState.members.gp.shares,0);
+assert.deepEqual(estimatedState.members.lp.lpLedger.map(lot=>lot.highWaterNav),[1,1.4]);
+assert.equal(estimatedState.charts.memberPotentialFees.gp.amount,0);
+assert.equal(build(estimatedState,'lp','fs',feeAsOf).potentialFee,null);
+assert.equal(JSON.stringify(feeDb),feeDbBefore,'Estimation must not mutate caller data');
+const futureFeeDb={...feeDb,events:[...feeDb.events,{id:'ffuture',type:'valuation',totalNAV:9000,date:'2027-01-01'}]};
+assert.equal(build(calculateStateFromDb(futureFeeDb,{asOf:feeAsOf}),'lp','since-last-settlement',feeAsOf).potentialFee.amount,feeReport.potentialFee.amount,'Future valuation must not leak into estimate');
+console.log('Potential fee equals actual per-lot settlement; GP carry, future data and settled payment isolation passed.');
