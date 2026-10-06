@@ -95,18 +95,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const activeReturnCard = document.getElementById('active-return-card');
   const returnDetailsModal = document.getElementById('return-details-modal');
   const btnCloseReturnDetails = document.getElementById('btn-close-return-details');
-  const returnDetailsActiveRate = document.getElementById('return-details-active-rate');
-  const returnDetailsPrincipal = document.getElementById('return-details-principal');
-  const returnDetailsActiveProfit = document.getElementById('return-details-active-profit');
-  const returnDetailsHistoryRate = document.getElementById('return-details-history-rate');
-  const returnDetailsHistoryProfit = document.getElementById('return-details-history-profit');
-  const returnDetailsTotalDeposit = document.getElementById('return-details-total-deposit');
-  const returnDetailsTotalWithdraw = document.getElementById('return-details-total-withdraw');
-  const returnDetailsCurrentAssets = document.getElementById('return-details-current-assets');
-  const returnDetailsExitedPrincipal = document.getElementById('return-details-exited-principal');
-  const returnDetailsExitedProfit = document.getElementById('return-details-exited-profit');
-  const returnDetailsWithdrawCheck = document.getElementById('return-details-withdraw-check');
-  const returnDetailsProfitCheck = document.getElementById('return-details-profit-check');
+  const assetsDetailsPrincipal = document.getElementById('assets-details-principal');
+  const assetsDetailsActiveProfit = document.getElementById('assets-details-active-profit');
+  const assetsDetailsHistoryProfit = document.getElementById('assets-details-history-profit');
+  const assetsDetailsTotalDeposit = document.getElementById('assets-details-total-deposit');
+  const assetsDetailsTotalWithdraw = document.getElementById('assets-details-total-withdraw');
+  const assetsDetailsExitedPrincipal = document.getElementById('assets-details-exited-principal');
+  const assetsDetailsExitedProfit = document.getElementById('assets-details-exited-profit');
+  const assetsDetailsWithdrawCheck = document.getElementById('assets-details-withdraw-check');
+  const assetsDetailsProfitCheck = document.getElementById('assets-details-profit-check');
 
   // The overview is deliberately terse: one aligned title, one key figure, one supporting fact.
   document.querySelectorAll('.metric-label').forEach((label, index) => {
@@ -361,6 +358,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.FundMetricDetails.bind(activeReturnCard, returnDetailsModal, btnCloseReturnDetails);
     window.FundMetricDetails.bind(
+      document.getElementById('assets-details-card'),
+      document.getElementById('assets-details-popover'),
+      document.getElementById('btn-close-assets-details')
+    );
+    window.FundMetricDetails.bind(
       document.getElementById('nav-details-card'),
       document.getElementById('nav-details-popover'),
       document.getElementById('btn-close-nav-details')
@@ -461,6 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // 同时获取成员列表与基金状态
       membersList = await Api.getMembers();
       appState = await Api.getState();
+      membersList = window.FundMemberRenderer.sortByFirstRecord(membersList, appState.events);
       settingsController.syncBenchmarkPolicy(appState.settings?.benchmarkClosePolicy || 'previous');
       window.FundCustomBenchmark.sync(
         [appState.settings?.customBenchmark || null, appState.settings?.customBenchmark2 || null],
@@ -610,32 +613,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const signedRate = rate => `${rate > 0 ? '+' : ''}${rate.toFixed(2)}%`;
     const signedMoney = amount => `${amount >= 0 ? '+' : '-'}$${formatMoney(Math.abs(amount))}`;
-    returnDetailsActiveRate.textContent = activeRate === null ? '—' : signedRate(activeRate);
-    returnDetailsActiveRate.className = `privacy-sensitive${activeRate === null ? '' : activeRate >= 0 ? ' text-green' : ' text-magenta'}`;
-    returnDetailsPrincipal.textContent = `$${formatMoney(s.remainingPrincipal)}`;
-    returnDetailsActiveProfit.textContent = signedMoney(s.activeProfit);
-    returnDetailsActiveProfit.className = `privacy-sensitive ${s.activeProfit >= 0 ? 'text-green' : 'text-magenta'}`;
-    returnDetailsHistoryRate.textContent = signedRate(s.profitRate);
-    returnDetailsHistoryRate.className = `privacy-sensitive ${s.profitRate >= 0 ? 'text-green' : 'text-magenta'}`;
-    returnDetailsHistoryProfit.textContent = signedMoney(s.profit);
-    returnDetailsHistoryProfit.className = `privacy-sensitive ${s.profit >= 0 ? 'text-green' : 'text-magenta'}`;
-    returnDetailsTotalDeposit.textContent = `$${formatMoney(s.totalDeposit)}`;
-    returnDetailsTotalWithdraw.textContent = `$${formatMoney(s.totalWithdraw)}`;
+    assetsDetailsPrincipal.textContent = `$${formatMoney(s.remainingPrincipal)}`;
+    assetsDetailsActiveProfit.textContent = signedMoney(s.activeProfit);
+    assetsDetailsActiveProfit.className = `privacy-sensitive ${s.activeProfit >= 0 ? 'text-green' : 'text-magenta'}`;
+    document.getElementById('assets-details-total').textContent = `$${formatMoney(s.totalNAV)}`;
+    document.getElementById('assets-details-cnh').textContent = `≈ ¥${formatMoney(s.cnhTotalNAV)}`;
+    document.getElementById('assets-details-rate').textContent = `1 USD = ${s.cnhRate.toFixed(4)} CNH`;
+    document.getElementById('assets-details-valuation-date').textContent = latestValuationDate || '暂无估值';
+    const activeProfitOperator = s.activeProfit >= 0 ? '+' : '−';
+    const assetsDetailsCheck = document.getElementById('assets-details-check');
+    assetsDetailsCheck.textContent = `$${formatMoney(s.totalNAV)} = $${formatMoney(s.remainingPrincipal)} ${activeProfitOperator} $${formatMoney(Math.abs(s.activeProfit))}`;
+    const assetsRoundingCents = Math.round(s.totalNAV * 100) - Math.round(s.remainingPrincipal * 100) - Math.round(s.activeProfit * 100);
+    if (assetsRoundingCents !== 0) {
+      assetsDetailsCheck.textContent += ` ${assetsRoundingCents > 0 ? '+' : '−'} $${formatMoney(Math.abs(assetsRoundingCents) / 100)}（分位舍入差）`;
+    }
+    const renderRate = (id, rate) => {
+      const element = document.getElementById(id);
+      element.textContent = rate === null ? '—' : signedRate(rate);
+      element.className = `privacy-sensitive${rate === null ? '' : rate >= 0 ? ' text-green' : ' text-magenta'}`;
+    };
+    renderRate('return-details-active-rate', activeRate);
+    renderRate('return-details-cnh-active-rate', cnhActiveRate);
+    renderRate('return-details-history-rate', s.totalDeposit > 0 ? s.profitRate : null);
+    renderRate('return-details-cnh-history-rate', s.cnhTotalDeposit > 0 ? s.cnhProfitRate : null);
+    document.getElementById('assets-details-cnh-history-profit').textContent = `CNH累计收益（含汇率）：${s.cnhProfit >= 0 ? '+' : '−'}¥${formatMoney(Math.abs(s.cnhProfit))}`;
+    assetsDetailsHistoryProfit.textContent = signedMoney(s.profit);
+    assetsDetailsHistoryProfit.className = `privacy-sensitive ${s.profit >= 0 ? 'text-green' : 'text-magenta'}`;
+    assetsDetailsTotalDeposit.textContent = `$${formatMoney(s.totalDeposit)}`;
+    assetsDetailsTotalWithdraw.textContent = `$${formatMoney(s.totalWithdraw)}`;
     // Reconcile the displayed cents, avoiding floating-point subtraction noise.
     const exitedPrincipalCents = Math.round(s.totalDeposit * 100) - Math.round(s.remainingPrincipal * 100);
     const exitedProfitCents = Math.round(s.totalWithdraw * 100) - exitedPrincipalCents;
     const exitedPrincipal = exitedPrincipalCents / 100;
     const exitedProfit = exitedProfitCents / 100;
-    returnDetailsCurrentAssets.textContent = `当前资产：$${formatMoney(s.totalNAV)}`;
-    returnDetailsExitedPrincipal.textContent = `$${formatMoney(exitedPrincipal)}`;
-    returnDetailsExitedProfit.textContent = signedMoney(exitedProfit);
-    returnDetailsExitedProfit.className = `privacy-sensitive ${exitedProfit >= 0 ? 'text-green' : 'text-magenta'}`;
+    assetsDetailsExitedPrincipal.textContent = `$${formatMoney(exitedPrincipal)}`;
+    assetsDetailsExitedProfit.textContent = signedMoney(exitedProfit);
+    assetsDetailsExitedProfit.className = `privacy-sensitive ${exitedProfit >= 0 ? 'text-green' : 'text-magenta'}`;
     const profitOperator = exitedProfit >= 0 ? '+' : '−';
-    returnDetailsWithdrawCheck.textContent = `$${formatMoney(s.totalWithdraw)} = $${formatMoney(exitedPrincipal)} ${profitOperator} $${formatMoney(Math.abs(exitedProfit))}`;
-    returnDetailsProfitCheck.textContent = `${signedMoney(s.profit)} = ${signedMoney(s.activeProfit)} ${profitOperator} $${formatMoney(Math.abs(exitedProfit))}`;
+    assetsDetailsWithdrawCheck.textContent = `$${formatMoney(s.totalWithdraw)} = $${formatMoney(exitedPrincipal)} ${profitOperator} $${formatMoney(Math.abs(exitedProfit))}`;
+    assetsDetailsProfitCheck.textContent = `${signedMoney(s.profit)} = ${signedMoney(s.activeProfit)} ${profitOperator} $${formatMoney(Math.abs(exitedProfit))}`;
     const roundingCents = Math.round(s.profit * 100) - Math.round(s.activeProfit * 100) - exitedProfitCents;
     if (roundingCents !== 0) {
-      returnDetailsProfitCheck.textContent += ` ${roundingCents > 0 ? '+' : '−'} $${formatMoney(Math.abs(roundingCents) / 100)}（分位舍入差）`;
+      assetsDetailsProfitCheck.textContent += ` ${roundingCents > 0 ? '+' : '−'} $${formatMoney(Math.abs(roundingCents) / 100)}（分位舍入差）`;
     }
   }
 

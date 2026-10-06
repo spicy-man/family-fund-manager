@@ -3,6 +3,21 @@
  * 保持展示逻辑与全局状态解耦，主应用只传入已计算的账本状态。
  */
 window.FundMemberRenderer = {
+  // State events are already ordered by ledger date and durable event sequence.
+  sortByFirstRecord(members, events = []) {
+    const firstRecord = new Map();
+    events.forEach((event, index) => {
+      const memberIds = [event.member, event.fromMember, event.toMember,
+        event.gpMember, event.performanceFee?.gpMember, ...(event.lpMembers || [])];
+      memberIds.forEach(id => {
+        if (id && !firstRecord.has(id)) firstRecord.set(id, index);
+      });
+    });
+    // Keep the existing member order for ties and members without records.
+    return [...members].sort((a, b) =>
+      (firstRecord.get(a.id) ?? Infinity) - (firstRecord.get(b.id) ?? Infinity));
+  },
+
   renderGrid({ state, members, elements, utils, isDark }) {
     const { grid } = elements;
     const { escapeHtml, formatMoney, getAvatarText, getMemberAvatarColor } = utils;

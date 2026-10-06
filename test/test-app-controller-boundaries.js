@@ -93,7 +93,25 @@ function notificationsTest() {
   assert.strictEqual(timers.filter(timer => timer.delay === 280).length, 1);
   timers.at(-1).fn(); assert.strictEqual(nodes[0].removed, true);
 }
+function memberOrderTest() {
+  const { compareEvents } = require('../lib/event-order');
+  const renderer = load('member-renderer.js', {}).FundMemberRenderer;
+  const members = ['empty', 'late', 'recipient', 'first', 'gp', 'empty2'].map(id => ({ id, name: id }));
+  const events = [
+    { date: '2026-10-02', sequenceNumber: 1, member: 'late' },
+    { date: '2026-10-01', sequenceNumber: 3, fromMember: 'first', toMember: 'recipient', performanceFee: { gpMember: 'gp' } },
+    { date: '2026-10-01', sequenceNumber: 2, member: 'first' }
+  ].sort(compareEvents);
+  const snapshot = JSON.stringify({ members, events });
+  const ids = result => Array.from(result, member => member.id);
+  assert.deepStrictEqual(ids(renderer.sortByFirstRecord(members, events)),
+    ['first', 'recipient', 'gp', 'late', 'empty', 'empty2'],
+    'first ledger record determines member order, including transfer recipients and GP fees');
+  assert.strictEqual(JSON.stringify({ members, events }), snapshot, 'display sorting must not modify ledger data');
+  assert.deepStrictEqual(ids(renderer.sortByFirstRecord(members)), ids(members),
+    'members without records keep their original order');
+}
 (async () => {
-  await membersTest(); editTest(); notificationsTest();
+  await membersTest(); editTest(); notificationsTest(); memberOrderTest();
   console.log('Member editor, ledger edit and notification boundary regressions passed.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

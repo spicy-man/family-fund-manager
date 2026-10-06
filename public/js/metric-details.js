@@ -107,12 +107,39 @@
   }
 
   function bind(card, panel, closeButton) {
+    const surface = panel.querySelector('.modal-content') || panel;
     let hideTimer;
     let suppressFocus = false;
+    let animation = null;
+    let isOpen = false;
+    const canAnimate = () => surface.animate && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const animateDrawer = (opening, duration, onFinish) => {
+      const styles = getComputedStyle(surface);
+      const from = { opacity: Number(styles.opacity),
+        transform: styles.transform || 'none' };
+      animation?.cancel();
+      const current = surface.animate([from, {
+        opacity: opening ? 1 : 0,
+        transform: opening ? 'translateY(0)' : 'translateY(-18px)'
+      }], {
+        duration, easing: 'cubic-bezier(.2, .75, .25, 1)', fill: 'both'
+      });
+      animation = current;
+      current.onfinish = () => {
+        if (animation !== current) return;
+        onFinish?.();
+        current.cancel();
+        animation = null;
+      };
+    };
     const cancelHide = () => clearTimeout(hideTimer);
     const close = (restoreFocus = false) => {
       cancelHide();
-      panel.hidden = true;
+      if (!isOpen) return;
+      isOpen = false;
+      panel.inert = true;
+      if (canAnimate()) animateDrawer(false, 180, () => { panel.hidden = true; });
+      else { animation?.cancel(); animation = null; panel.hidden = true; }
       panel.setAttribute('aria-hidden', 'true');
       card.setAttribute('aria-expanded', 'false');
       if (closeCurrent === close) closeCurrent = null;
@@ -135,12 +162,27 @@
     const show = () => {
       if (suppressFocus) return;
       cancelHide();
+      if (isOpen) { position(); return; }
       if (closeCurrent && closeCurrent !== close) closeCurrent();
       closeCurrent = close;
+      const wasHidden = panel.hidden;
       panel.hidden = false;
+      panel.inert = false;
+      isOpen = true;
       panel.setAttribute('aria-hidden', 'false');
       card.setAttribute('aria-expanded', 'true');
       position();
+      if (canAnimate()) {
+        // Fade the glass surface itself. An ancestor opacity below 1 creates a
+        // backdrop root, leaving the SVG glass filter with an empty black input.
+        if (wasHidden) {
+          surface.style.opacity = '0';
+          surface.style.transform = 'translateY(-18px)';
+        }
+        animateDrawer(true, 280);
+        surface.style.opacity = '';
+        surface.style.transform = '';
+      } else { animation?.cancel(); animation = null; }
     };
     const scheduleHide = () => {
       cancelHide();

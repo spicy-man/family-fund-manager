@@ -34,7 +34,7 @@
       </svg>
       <span>
         <strong>家庭财富账本</strong>
-        <small>WEALTH LEDGER <b class="sidebar-version">v4.5.2</b></small>
+        <small>WEALTH LEDGER <b class="sidebar-version">v4.5.3</b></small>
       </span>
     </a>
 
@@ -117,7 +117,7 @@
         <div class="logo-text">
           <h1>家庭基金账目管理系统</h1>
           <span class="sub-logo">Family Private Wealth &amp; NAV Ledger &nbsp;<span
-              class="version-badge">v4.5.2</span></span>
+              class="version-badge">v4.5.3</span></span>
         </div>
       </div>
       <div class="header-actions">
@@ -223,7 +223,8 @@
       </div>
       <div class="metrics-grid">
         <!-- Total NAV Card -->
-        <div class="metric-card premium-border">
+        <div class="metric-card metric-card--interactive premium-border" id="assets-details-card" role="button" tabindex="0"
+          aria-haspopup="dialog" aria-controls="assets-details-popover" aria-expanded="false" aria-label="查看总资产构成详情">
           <div class="card-glow glow-cyan"></div>
           <div class="metric-info">
             <span class="metric-label">基金总资产 (Total Assets)</span>
@@ -923,65 +924,85 @@
     </div>
   </div>
 
+  <div class="metric-details-popover" id="assets-details-popover" role="dialog" hidden
+    aria-labelledby="assets-details-title" aria-hidden="true">
+    <div class="modal-content premium-border return-details-modal-content glass-tooltip" tabindex="-1">
+      <div class="modal-header">
+        <div>
+          <h3 id="assets-details-title">资产与资金往来</h3>
+          <p class="section-desc">现在有多少钱，累计投入、取回和赚了多少钱。</p>
+        </div>
+        <button class="btn-close" id="btn-close-assets-details" type="button" aria-label="关闭总资产详情">×</button>
+      </div>
+      <div class="modal-body">
+        <h4 class="metric-details-section-title">当前资产构成 · USD</h4>
+        <section class="return-details-lead">
+          <span>当前总资产 · USD</span>
+          <strong class="privacy-sensitive" id="assets-details-total">$0.00</strong>
+          <small class="privacy-sensitive" id="assets-details-cnh">≈ ¥0.00</small>
+        </section>
+        <div class="return-details-grid">
+          <article><span>当前剩余本金</span><strong class="privacy-sensitive" id="assets-details-principal">$0.00</strong></article>
+          <article><span>当前在管收益</span><strong class="privacy-sensitive" id="assets-details-active-profit">$0.00</strong></article>
+        </div>
+        <h4 class="metric-details-section-title">累计资金往来 · USD</h4>
+        <section class="return-details-lead">
+          <span>历史累计收益 · 含已退出收益</span>
+          <strong class="privacy-sensitive" id="assets-details-history-profit">$0.00</strong>
+          <small class="privacy-sensitive" id="assets-details-cnh-history-profit">CNH累计收益（含汇率）：¥0.00</small>
+        </section>
+        <div class="return-details-grid">
+          <article><span>累计入金</span><strong class="privacy-sensitive" id="assets-details-total-deposit">$0.00</strong></article>
+          <article><span>累计出金</span><strong class="privacy-sensitive" id="assets-details-total-withdraw">$0.00</strong></article>
+          <article><span>其中：退出本金</span><strong class="privacy-sensitive" id="assets-details-exited-principal">$0.00</strong></article>
+          <article><span>其中：退出收益（亏损时为负）</span><strong class="privacy-sensitive" id="assets-details-exited-profit">$0.00</strong></article>
+        </div>
+        <details class="nav-calculation-details assets-details-accounting">
+          <summary>资金构成与详细对账</summary>
+          <div class="return-details-reconciliation assets-details-reconciliation" aria-label="总资产构成对账">
+            <p><span>总资产 = 剩余本金 + 在管收益</span><strong class="privacy-sensitive" id="assets-details-check">—</strong></p>
+          </div>
+          <div class="return-details-reconciliation assets-details-reconciliation" aria-label="历史本金与收益对账">
+            <p><span>累计出金 = 退出本金 + 退出收益</span><strong class="privacy-sensitive" id="assets-details-withdraw-check">—</strong></p>
+            <p><span>累计收益 = 在管收益 + 退出收益</span><strong class="privacy-sensitive" id="assets-details-profit-check">—</strong></p>
+          </div>
+        </details>
+        <p class="return-details-note">已退出的本金与收益不计入当前总资产，退出收益仍计入历史累计收益。</p>
+        <div class="assets-details-meta">
+          <span>最近估值 <span class="privacy-sensitive" id="assets-details-valuation-date">暂无估值</span></span>
+          <span>当前汇率 <span class="privacy-sensitive" id="assets-details-rate">—</span></span>
+        </div>
+        <p class="return-details-note">当前人民币资产按当前汇率折算；CNH累计收益按历次人民币入金、出金及当前人民币资产计算，包含汇率影响。</p>
+      </div>
+    </div>
+  </div>
+
   <div class="metric-details-popover" id="return-details-modal" role="dialog" hidden
     aria-labelledby="return-details-modal-title" aria-hidden="true">
     <div class="modal-content premium-border return-details-modal-content glass-tooltip" tabindex="-1">
       <div class="modal-header">
         <div>
-          <h3 id="return-details-modal-title">收益率详情</h3>
-          <p class="section-desc">在管口径用于观察当前资金，历史口径用于保留基金成立以来的完整回报。</p>
+          <h3 id="return-details-modal-title">收益率与计算口径</h3>
+          <p class="section-desc">当前资金与历史累计回报，分别按美元和人民币衡量。</p>
         </div>
         <button class="btn-close" id="btn-close-return-details" type="button" aria-label="关闭收益率详情">×</button>
       </div>
       <div class="modal-body">
-        <section class="return-details-lead">
-          <span>在管本金收益率</span>
-          <strong class="privacy-sensitive" id="return-details-active-rate">—</strong>
-          <small>（当前资产 − 剩余本金）÷ 剩余本金</small>
-          <small class="privacy-sensitive" id="return-details-current-assets">当前资产：$0.00</small>
-        </section>
-        <div class="return-details-reconciliation" aria-label="本金与收益对账">
-          <p><span>出金 = 退出本金 + 退出收益</span><strong class="privacy-sensitive" id="return-details-withdraw-check">—</strong></p>
-          <p><span>历史收益 = 在管收益 + 退出收益</span><strong class="privacy-sensitive" id="return-details-profit-check">—</strong></p>
+        <h4 class="metric-details-section-title">当前在管收益率</h4>
+        <div class="return-details-grid metric-details-rates">
+          <article><span>USD · 美元口径</span><strong class="privacy-sensitive" id="return-details-active-rate">—</strong><small>在管收益 ÷ 剩余本金</small></article>
+          <article><span>CNH · 人民币口径</span><strong class="privacy-sensitive" id="return-details-cnh-active-rate">—</strong><small>在管收益 ÷ 剩余本金</small></article>
         </div>
-        <div class="return-details-grid">
-          <article>
-            <span>当前剩余本金</span>
-            <strong class="privacy-sensitive" id="return-details-principal">$0.00</strong>
-          </article>
-          <article>
-            <span>当前在管收益</span>
-            <strong class="privacy-sensitive" id="return-details-active-profit">$0.00</strong>
-          </article>
-          <article class="return-details-history">
-            <span>历史累计收益率</span>
-            <strong class="privacy-sensitive" id="return-details-history-rate">0.00%</strong>
-            <small>累计收益 ÷ 历史累计入金</small>
-          </article>
-          <article>
-            <span>历史累计收益</span>
-            <strong class="privacy-sensitive" id="return-details-history-profit">$0.00</strong>
-          </article>
-          <article>
-            <span>历史累计入金</span>
-            <strong class="privacy-sensitive" id="return-details-total-deposit">$0.00</strong>
-          </article>
-          <article>
-            <span>历史累计出金</span>
-            <strong class="privacy-sensitive" id="return-details-total-withdraw">$0.00</strong>
-          </article>
-          <article>
-            <span>累计退出本金</span>
-            <strong class="privacy-sensitive" id="return-details-exited-principal">$0.00</strong>
-            <small>历史累计入金 − 当前剩余本金</small>
-          </article>
-          <article>
-            <span>累计退出收益</span>
-            <strong class="privacy-sensitive" id="return-details-exited-profit">$0.00</strong>
-            <small>历史累计出金 − 累计退出本金；亏损时为负</small>
-          </article>
+        <h4 class="metric-details-section-title">历史累计收益率</h4>
+        <div class="return-details-grid metric-details-rates">
+          <article><span>USD · 美元口径</span><strong class="privacy-sensitive" id="return-details-history-rate">—</strong><small>累计收益 ÷ 累计入金</small></article>
+          <article><span>CNH · 人民币口径</span><strong class="privacy-sensitive" id="return-details-cnh-history-rate">—</strong><small>累计收益 ÷ 累计入金</small></article>
         </div>
-        <p class="return-details-note">出金包含本金和收益，不全是本金。退出收益保留在历史累计收益中，不再计入当前在管收益。以上均为美元口径。</p>
+        <div class="metric-details-explanations">
+          <section><h4>为什么当前与累计不同？</h4><p>当前口径衡量仍在基金内的资金；出金后，退出的本金与收益不再参与当前收益率。累计口径保留已退出收益，分母仍为历次累计入金。</p></section>
+          <section><h4>为什么 USD 与 CNH 不同？</h4><p>CNH口径使用历次人民币入金、出金和剩余本金，当前资产按当前汇率折算，因此同时反映投资收益和汇率变化。</p></section>
+        </div>
+        <p class="return-details-note">本金为零时，当前收益率显示“—”；没有累计入金时，累计收益率显示“—”。这些是本金回报比例，不是年化收益率；单位净值表现可在中间的净值详情中查看。</p>
       </div>
     </div>
   </div>
@@ -997,7 +1018,8 @@
         <button class="btn-close" id="btn-close-nav-details" type="button" aria-label="关闭单位净值详情">×</button>
       </div>
       <div class="modal-body">
-        <div class="return-details-grid">
+        <h4 class="metric-details-section-title">收益与风险指标</h4>
+        <div class="return-details-grid metric-details-rates">
           <article>
             <span>年化收益率</span>
             <strong class="privacy-sensitive" id="nav-details-annualized">—</strong>
@@ -1479,6 +1501,7 @@
   <script src="js/ticker-panel.js"></script>
   <script src="js/member-renderer.js"></script>
   <script src="js/ledger-renderer.js"></script>
+  <script src="js/ledger-hover.js"></script>
   <script src="js/chart-renderer.js"></script>
   <script src="js/notifications.js"></script>
   <script src="js/member-editor-controller.js"></script>

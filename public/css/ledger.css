@@ -109,16 +109,24 @@ body:not(.theme-light) .badge-settlement {
   border-left: 3px solid transparent;
   background: linear-gradient(90deg, rgba(124, 58, 237, 0.065), rgba(245, 158, 11, 0.04));
   opacity: 0;
-  transition: max-height 0.25s ease, padding 0.25s ease, opacity 0.18s ease, border-color 0.2s ease;
+  transform: translateY(-6px);
+  /* Change table geometry once; animate only the revealed content. */
+  transition: opacity 0.2s ease-out, transform 0.24s cubic-bezier(.22, 1, .36, 1);
 }
 
-.ledger-row--settlement:hover + .ledger-row--settlement-detail .settlement-breakdown-panel,
-.ledger-row--disposal:hover + .ledger-row--disposal-detail .settlement-breakdown-panel,
-.ledger-row--settlement-detail:hover .settlement-breakdown-panel {
-  max-height: 520px;
+tbody:not(.ledger-hover-animated) .ledger-row--settlement:hover + .ledger-row--settlement-detail .settlement-breakdown-panel,
+tbody:not(.ledger-hover-animated) .ledger-row--disposal:hover + .ledger-row--disposal-detail .settlement-breakdown-panel,
+tbody:not(.ledger-hover-animated) .ledger-row--settlement-detail:hover .settlement-breakdown-panel,
+.ledger-detail-open .settlement-breakdown-panel {
+  max-height: none;
   padding: 14px 18px 16px;
   border-color: rgba(124, 58, 237, 0.24);
   opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settlement-breakdown-panel { transition: none; transform: none; }
 }
 
 .disposal-breakdown-hint {

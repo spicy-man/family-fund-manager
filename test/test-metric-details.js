@@ -8,7 +8,9 @@ const document = { handlers: {}, activeElement: null, addEventListener(type, fn)
 } };
 const window = { innerWidth: 1000, innerHeight: 800, addEventListener() {} };
 vm.runInNewContext(fs.readFileSync(require.resolve('../public/js/metric-details.js'), 'utf8'), {
-  window, document, setTimeout(fn) { timers.set(++timerId, fn); return timerId; }, clearTimeout(id) { timers.delete(id); }
+  window, document, getComputedStyle: node => ({ opacity: node.style.opacity || '1',
+    transform: node.style.transform || 'none', clipPath: node.style.clipPath || 'inset(0)' }),
+  setTimeout(fn) { timers.set(++timerId, fn); return timerId; }, clearTimeout(id) { timers.delete(id); }
 });
 const { calculate, bind } = window.FundMetricDetails;
 const history = [
@@ -118,6 +120,7 @@ assert.strictEqual(nodes['nav-details-worst-year'].textContent, '-38.60%');
 assert.strictEqual(nodes['nav-details-worst-year'].className, 'privacy-sensitive text-magenta');
 function element(bounds = {}) {
   return { handlers: {}, attributes: {}, hidden: true, style: {}, children: [],
+    querySelector() { return null; },
     addEventListener(type, fn) { this.handlers[type] = fn; },
     setAttribute(name, value) { this.attributes[name] = value; },
     contains(node) { return node === this || this.children.includes(node); },
@@ -151,4 +154,46 @@ bind(otherCard, otherPanel, element());
 card.handlers.mouseenter(); otherCard.handlers.mouseenter();
 assert.strictEqual(panel.hidden, true, 'only one metric detail is visible');
 assert.strictEqual(otherPanel.hidden, false);
+const fadeCard = element({ left: 0, top: 100, bottom: 200 });
+const fadePanel = element({ width: 600, height: 400 });
+const fadeSurface = element();
+fadePanel.querySelector = () => fadeSurface;
+const fadeClose = element();
+const fades = [];
+fadePanel.animate = () => { throw new Error('Do not animate the glass ancestor: it isolates the backdrop'); };
+fadeSurface.animate = (frames, options) => {
+  const animation = { frames, options, cancel() { this.cancelled = true; } };
+  fades.push(animation);
+  return animation;
+};
+bind(fadeCard, fadePanel, fadeClose);
+fadeCard.handlers.mouseenter();
+assert.equal(fades[0].frames[0].opacity, 0);
+assert.equal(fades[0].frames[1].opacity, 1);
+assert.equal(fadePanel.style.opacity, undefined, 'Keep the backdrop ancestor fully opaque');
+assert.equal(fadePanel.style.transform, undefined, 'Move only the glass surface');
+assert.equal(fades[0].frames[0].transform, 'translateY(-18px)', 'Start above the final position');
+assert.equal(fades[0].frames[1].transform, 'translateY(0)', 'Slide the whole panel downwards');
+assert(fades[0].frames.every(frame => !('clipPath' in frame)), 'Keep the shadow visible throughout the animation');
+fadeClose.handlers.click();
+assert.equal(fadePanel.hidden, false, 'Keep the panel mounted until its fade-out ends');
+assert.equal(fadePanel.inert, true, 'Closing panels must not accept input');
+assert.equal(fadePanel.attributes['aria-hidden'], 'true');
+const staleExit = fades[1];
+assert.equal(staleExit.frames[1].transform, 'translateY(-18px)', 'Slide upwards when closing');
+assert.equal(staleExit.frames[1].opacity, 0, 'Fade the panel and its shadow out together');
+fadeCard.handlers.mouseenter();
+assert(staleExit.cancelled, 'Re-entering interrupts fade-out');
+staleExit.onfinish();
+assert.equal(fadePanel.hidden, false, 'A stale exit must not hide the reopened panel');
+assert.equal(fadePanel.inert, false);
+fadeClose.handlers.click();
+fades.at(-1).onfinish();
+assert.equal(fadePanel.hidden, true, 'Completed fade-out hides the panel');
+window.matchMedia = () => ({ matches: true });
+const fadeCount = fades.length;
+fadeCard.handlers.mouseenter();
+fadeClose.handlers.click();
+assert.equal(fades.length, fadeCount, 'Reduced-motion preference skips fades');
+assert.equal(fadePanel.hidden, true);
 console.log('Metric detail hover and NAV performance assertions passed.');

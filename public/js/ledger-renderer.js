@@ -184,5 +184,6 @@ window.FundLedgerRenderer = {
       empty.innerHTML = '<td colspan="8" style="text-align:center;color:var(--color-text-muted);padding:40px 0;">未检索到符合过滤条件的交易记录</td>';
       ledgerTbody.appendChild(empty);
     }
+    window.FundLedgerHover?.bind(ledgerTbody);
   }
 };
