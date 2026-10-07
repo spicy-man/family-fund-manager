@@ -1,9 +1,11 @@
+const { generateMemberId } = require('../lib/member-id');
+const { renameMemberIdentifiers } = require('../lib/member-identifiers');
 const { DEFAULT_PERFORMANCE_FEE_CONFIG } = require('../lib/performance-fee-policy');
 
 const { InputError, NotFoundError, ConflictError, handleApiError } = require('../lib/api-errors');
 
 function registerMemberRoutes(app, deps) {
-  const { readDb, writeDb, readSettlements, normalizeMemberName, randomUUID } = deps;
+  const { readDb, writeDb, readSettlements, normalizeMemberName } = deps;
 
 // 7. 家庭成员增删改 API 路由
 
@@ -36,7 +38,7 @@ app.post('/api/members', (req, res, next) => {
     }
 
     const newMember = {
-      id: 'mem_' + randomUUID(),
+      id: generateMemberId(deps.getStoredMemberIds?.() || new Set(db.members.map(member => member.id))),
       name: trimmedName,
       roles: { lp: true, gp: false }
     };
@@ -47,6 +49,45 @@ app.post('/api/members', (req, res, next) => {
   } catch (error) {
     handleApiError(error, req, res, next);
   }
+});
+
+// Validate the final member set before committing all edits together.
+app.put('/api/members', (req, res, next) => {
+  try {
+    const changes = req.body?.changes;
+    if (!Array.isArray(changes) || !changes.length) throw new InputError('请提供成员修改列表。');
+    const db = deps.readBaseDb?.() ?? readDb();
+    const nextMembers = db.members.map(member => ({ ...member }));
+    const mapping = {};
+    const seen = new Set();
+    for (const change of changes) {
+      if (!change || seen.has(change.id)) throw new InputError('成员修改列表重复或无效。');
+      seen.add(change.id);
+      const member = nextMembers.find(item => item.id === change.id);
+      if (!member) throw new NotFoundError('未找到该家庭成员');
+      const id = change.memberId === undefined ? member.id : change.memberId;
+      if (id !== member.id && (typeof id !== 'string' || !/^[0-9]{6}$/.test(id))) {
+        throw new InputError('成员编号须为 6 位数字。');
+      }
+      member.name = normalizeMemberName(change.name);
+      if (id !== member.id) mapping[member.id] = id;
+    }
+    const finalMembers = nextMembers.map(member => ({ ...member,
+      id: Object.hasOwn(mapping, member.id) ? mapping[member.id] : member.id }));
+    if (new Set(finalMembers.map(member => member.id)).size !== finalMembers.length) {
+      throw new InputError('该编号已被本账本其他成员使用。跨账本的同一个人可以使用相同编号。');
+    }
+    if (new Set(finalMembers.map(member => member.name)).size !== finalMembers.length) {
+      throw new InputError('该成员姓名已被使用');
+    }
+    const result = Object.keys(mapping).length
+      ? renameMemberIdentifiers(db, readSettlements(), mapping)
+      : { db, ledger: readSettlements() };
+    result.db.members = finalMembers;
+    deps.writeSnapshot(result.db, deps.readConfig(), result.ledger);
+    res.json({ success: true, data: result.db.members.map(member => ({ ...member,
+      primaryGp: result.db.performanceFee?.gpMemberId === member.id })) });
+  } catch (error) { handleApiError(error, req, res, next); }
 });
 
 // 修改成员重命名
@@ -66,10 +107,23 @@ app.put('/api/members/:id', (req, res, next) => {
       throw new InputError('该成员姓名已被使用');
     }
 
-    db.members[memberIndex].name = trimmedName;
-    writeDb(db);
+    const newId = req.body.memberId === undefined ? memberId : req.body.memberId;
+    if (newId !== memberId && (typeof newId !== 'string' || !/^[0-9]{6}$/.test(newId))) {
+      throw new InputError('成员编号须为 6 位数字。');
+    }
+    if (newId !== memberId) {
+      if (db.members.some(member => member.id === newId)) {
+        throw new InputError('该编号已被本账本其他成员使用。跨账本的同一个人可以使用相同编号。');
+      }
+      const result = renameMemberIdentifiers(deps.readBaseDb?.() ?? db, readSettlements(), { [memberId]: newId });
+      result.db.members[memberIndex].name = trimmedName;
+      deps.writeSnapshot(result.db, deps.readConfig(), result.ledger);
+    } else {
+      db.members[memberIndex].name = trimmedName;
+      writeDb(db);
+    }
 
-    res.json({ success: true, message: '成员姓名修改成功' });
+    res.json({ success: true, message: '成员姓名修改成功', data: { id: newId, name: trimmedName } });
   } catch (error) {
     handleApiError(error, req, res, next);
   }

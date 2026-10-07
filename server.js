@@ -14,7 +14,7 @@ if (launcherChild) {
 const express = require('express');
 const path = require('path');
 const { randomUUID } = require('crypto');
-const storage = require('./lib/storage');
+const defaultStorage = require('./lib/storage');
 const { localRequestPolicy } = require('./lib/local-request-policy');
 const { mergeSettlementLedger, migrateSettlementLedger } = require('./lib/settlement-ledger');
 const { maxSequenceNumber, migrateEventSequences } = require('./lib/event-order');
@@ -26,6 +26,11 @@ const {
   apiErrorHandler
 } = require('./lib/api-errors');
 
+// Market caches are shared, so their background workers must also be shared.
+let benchmarkSyncQueue = Promise.resolve();
+const tickerRefreshState = {};
+
+function createLedgerApplication(storage, { multiLedger = false } = {}) {
 const app = express();
 const PORT = process.env.PORT || 3000;
 const EXTERNAL_SYNC_ENABLED = process.env.FUND_EXTERNAL_SYNC !== '0';
@@ -106,6 +111,7 @@ vendorAssets.forEach(({ url, file }) => {
 app.use('/api', normalizeApiErrorResponses);
 app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+if (multiLedger) require('./lib/ledgers').registerLedgerRoutes(app, { defaultStorage: storage, createLedgerApplication, getDefaultState: getState });
 
 function isValidDate(date) {
   if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
@@ -278,7 +284,10 @@ function writeSettlements(data) {
 }
 
 // 获取全局计算状态（优化：带缓存，仅在数据变更后重新计算）
+let _sharedRevision = -1;
 function getState() {
+  const revision = storage.getSharedRevision?.() ?? 0;
+  if (revision !== _sharedRevision) { _stateDirty = true; _sharedRevision = revision; }
   if (!_stateDirty && _stateCache) return _stateCache;
   _stateCache = calculateState();
   _stateDirty = false;
@@ -339,7 +348,6 @@ const {
 /**
  * 异步更新缺失日期的指数收盘价缓存 (静默后台机制)
  */
-let benchmarkSyncQueue = Promise.resolve();
 
 function ensureIndexCache(dates) {
   const requestedDates = [...(dates || [])];
@@ -439,6 +447,9 @@ registerDemoRoutes(app, {
 const { registerApiRoutes } = require('./routes/api');
 
 registerApiRoutes(app, {
+  tickerRefreshState,
+  readBaseDb: () => storage.readDb(),
+  getStoredMemberIds: () => require('./lib/stored-member-ids').storedMemberIds(path.dirname(defaultStorage.DB_FILE)),
   readDb,
   writeDb,
   readSettlements,
@@ -496,22 +507,32 @@ function startServer({ port = PORT, host = '127.0.0.1', openBrowser = false,
     }
   });
 
-  // 静默自适应对标指数历史同步
-  if (EXTERNAL_SYNC_ENABLED) try {
-    const db = readDb();
-    if (db.events && db.events.length > 0) {
-      const dates = db.events.map(e => e.date);
-      ensureIndexCache(dates);
-    }
-  } catch (err) {
-    console.error('❌ [Yahoo Sync Startup Error]:', err);
-  }
+  syncLedgerBenchmarks();
   if (openBrowser) {
     launchBrowser(`http://localhost:${server.address().port}`);
   }
   });
   return server;
 }
+
+function syncLedgerBenchmarks() {
+  // Existing ledgers opened after startup need the same refresh as the default.
+  if (EXTERNAL_SYNC_ENABLED) try {
+    const db = readDb();
+    if (db.events && db.events.length > 0) {
+      const dates = db.events.map(e => e.date);
+      return ensureIndexCache(dates);
+    }
+  } catch (err) {
+    console.error('❌ [Yahoo Sync Startup Error]:', err);
+  }
+}
+
+return { app, getState, calculateStateFromDb, ensureIndexCache, syncLedgerBenchmarks, startServer };
+}
+
+const { app, calculateStateFromDb, ensureIndexCache, startServer } = createLedgerApplication(defaultStorage, { multiLedger: true });
+const PORT = process.env.PORT || 3000;
 
 if (require.main === module) {
   const server = startServer({ openBrowser: process.argv.includes('--open-browser') });
@@ -549,4 +570,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, calculateStateFromDb, ensureIndexCache, startServer };
+module.exports = { app, calculateStateFromDb, ensureIndexCache, startServer, createLedgerApplication };

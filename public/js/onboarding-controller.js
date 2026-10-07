@@ -1,6 +1,6 @@
 (function () {
   function init({ elements, modal, management, isDemoMode = false }) {
-    const { onboardingModal, btnStartLedger } = elements;
+    const { onboardingModal, btnStartLedger, btnSwitchLedger, ledgerSelect } = elements;
     let dismissed = false;
 
     modal.bindAccessible(onboardingModal);
@@ -9,6 +9,12 @@
       dismissed = true;
       modal.close(onboardingModal);
       window.requestAnimationFrame(() => management.openMembersPanel());
+    });
+
+    btnSwitchLedger?.addEventListener('click', () => {
+      dismissed = true;
+      modal.close(onboardingModal);
+      ledgerSelect?.focus();
     });
 
     function showIfEmpty(state) {

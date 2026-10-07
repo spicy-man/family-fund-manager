@@ -14,6 +14,12 @@ process.env.FUND_DATA_DIR = dataDir;
 process.env.FUND_BACKUP_DIR = path.join(dataDir, 'backups');
 process.env.FUND_EXTERNAL_SYNC = '0';
 
+fs.writeFileSync(path.join(dataDir, 'db.json'), JSON.stringify({
+  benchmarkClosePolicy: 'previous', events: [],
+  members: ['me', 'mother', 'father'].map(id => ({ id, name: id, roles: { lp: true, gp: false } })),
+  performanceFee: { gpMemberId: null, annualRate: 0.06, feeRate: 0.25 }
+}));
+
 const { startServer } = require('../server');
 
 function request(server, method, pathname, body) {

@@ -9,7 +9,7 @@ const entry = fs.readFileSync(entryPath, 'utf8');
 const imports = [...entry.matchAll(/@import\s+url\('([^']+)'\);/g)]
   .map(match => match[1]);
 
-assert.strictEqual(imports.length, 15, 'style.css must load all 15 ordered CSS modules');
+assert.strictEqual(imports.length, 16, 'style.css must load all 16 ordered CSS modules');
 assert.strictEqual(new Set(imports).size, imports.length, 'CSS imports must not contain duplicates');
 imports.forEach(file => {
   assert(fs.existsSync(path.join(cssDirectory, file)), `missing CSS module: ${file}`);

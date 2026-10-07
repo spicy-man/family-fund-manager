@@ -33,7 +33,7 @@ async function requestApi(url, options = {}) {
   try {
     let response;
     try {
-      response = await fetch(resolveApiUrl(url), { ...options, signal: controller.signal });
+      response = await fetch(resolveApiUrl(url), { ...options, signal: controller.signal, headers: { ...options.headers, ...(window.FundLedger ? { 'X-Ledger-Id': window.FundLedger.id } : {}) } });
     } catch (error) {
       if (error.name === 'AbortError') throw new Error('请求超时，请检查网络后重试');
       throw new Error('网络连接失败，请检查服务是否可用');
@@ -76,7 +76,8 @@ const Api = {
   },
   async getMembers() { return (await requestApi('/api/members')).data; },
   async addMember(name) { return (await jsonRequest('/api/members', 'POST', { name })).data; },
-  async updateMember(id, name) { return jsonRequest(`/api/members/${id}`, 'PUT', { name }); },
+  async updateMembers(changes) { return jsonRequest('/api/members', 'PUT', { changes }); },
+  async updateMember(id, name, memberId) { return jsonRequest(`/api/members/${id}`, 'PUT', { name, ...(memberId === undefined ? {} : { memberId }) }); },
   async updateMemberRoles(id, roles) { return jsonRequest(`/api/members/${id}/roles`, 'PUT', roles); },
   async deleteMember(id) { return (await requestApi(`/api/members/${id}`, { method: 'DELETE' })).data; },
   async syncCnhRate() { return (await requestApi('/api/settings/sync-rate', { method: 'POST' })).cnhRate; },

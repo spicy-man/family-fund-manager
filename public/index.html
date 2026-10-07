@@ -20,7 +20,7 @@
 <body class="theme-light">
 
   <aside class="app-sidebar" aria-label="主导航">
-    <a class="sidebar-brand" href="#dashboard-home" aria-label="返回家庭财富账本看板">
+    <div class="sidebar-brand">
       <svg class="sidebar-brand-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
         <defs>
           <linearGradient id="brand-gradient" x1="8" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse">
@@ -36,7 +36,18 @@
         <strong>家庭财富账本</strong>
         <small>WEALTH LEDGER <b class="sidebar-version">v4.6.0</b></small>
       </span>
-    </a>
+    </div>
+
+    <div class="ledger-switcher" id="ledger-switcher">
+      <div class="ledger-switcher-actions">
+      <button type="button" id="ledger-select" class="ledger-trigger" aria-label="切换账本" aria-haspopup="menu" aria-expanded="false" aria-controls="ledger-menu" disabled>
+        <span class="ledger-dot" aria-hidden="true"></span><span id="ledger-current-name">加载中…</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+      </button>
+      <button type="button" id="btn-combined-overview" class="ledger-combine-button" aria-haspopup="dialog" aria-controls="combined-overview-modal" title="汇总所有账本与家庭成员">总览</button>
+      </div>
+      <p id="ledger-switcher-status" role="status"></p>
+    </div>
 
     <nav class="sidebar-nav">
       <a class="sidebar-nav-item theme-button active" href="#dashboard-home">
@@ -786,6 +797,7 @@
         </div>
         <div class="onboarding-actions">
           <a class="btn btn-secondary theme-button theme-button--neutral flex-center" id="btn-view-demo" href="/demo">查看演示数据</a>
+          <button class="btn btn-secondary theme-button" id="btn-onboarding-switch-ledger" type="button">选择其他账本</button>
           <button class="btn btn-primary theme-button flex-center" id="btn-start-ledger" type="button">开始建立账本</button>
         </div>
         <p class="onboarding-note">演示数据与正式账本完全隔离，不会写入你的 data 目录。</p>
@@ -1215,7 +1227,7 @@
         <button class="btn-close" id="btn-close-member-modal" type="button" aria-label="关闭家庭成员管理窗口">×</button>
       </div>
       <div class="modal-body">
-        <p class="section-desc member-modal-desc">管理参与基金的家庭成员，并指定一位主 GP。</p>
+        <p class="section-desc member-modal-desc">管理参与基金的家庭成员，并指定一位主 GP。同一人在不同账本可使用相同成员编号。</p>
         <div id="gp-setup-warning" class="info-alert member-gp-alert" hidden>
           <span class="member-gp-alert-icon" aria-hidden="true">!</span>
           <div><strong>还差一步</strong><span>请选择一位成员担任主 GP</span></div>
@@ -1478,6 +1490,8 @@
   <script src="js/glass-tooltips.js"></script>
   <script src="js/demo-mode.js"></script>
   <script src="js/onboarding-controller.js"></script>
+  <script src="js/ledger-switcher.js"></script>
+  <script src="js/combined-overview.js"></script>
   <script src="js/api.js"></script>
   <script src="js/ui-utils.js"></script>
   <script src="js/modal-manager.js"></script>
@@ -1537,6 +1551,56 @@
       <footer class="statement-controls statement-actions">
         <button id="btn-print-statement" class="btn btn-primary theme-button" type="button" disabled>导出 / 打印</button>
       </footer>
+    </div>
+  </div>
+  <div id="ledger-menu" class="ledger-menu" role="menu" aria-label="账本" hidden>
+    <div id="ledger-menu-list"></div>
+    <div class="ledger-menu-divider"></div>
+    <button id="btn-manage-ledgers" class="ledger-menu-action" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6M16 14v6" /></svg>管理账本</button>
+  </div>
+  <div id="combined-overview-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content glass-panel premium-border combined-overview" role="dialog" aria-modal="true" aria-labelledby="combined-overview-title" tabindex="-1">
+      <div class="modal-header"><div><h3 id="combined-overview-title">合并总览</h3><p class="section-desc">全部账本 · 成员按编号合并</p></div><div class="settlement-preview-header-actions">
+          <button id="btn-overview-privacy-toggle" class="btn btn-secondary flex-center" type="button"
+            title="切换总览隐私模式" aria-label="切换总览隐私模式">
+            <svg class="btn-icon icon-eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <svg class="btn-icon icon-eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
+              <path
+                d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
+          </button>
+<button id="btn-close-combined-overview" class="btn-close" type="button" aria-label="关闭合并总览">×</button></div></div>
+      <div class="modal-body">
+        <p id="combined-overview-status" role="status"></p>
+        <div id="combined-overview-content"></div>
+      </div>
+    </div>
+  </div>
+  <div id="manage-ledgers-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content glass-panel premium-border member-modal-content ledger-management" role="dialog" aria-modal="true" aria-labelledby="manage-ledgers-title" tabindex="-1">
+      <div class="modal-header"><h3 id="manage-ledgers-title">账本管理</h3><button id="btn-close-manage-ledgers" class="btn-close" type="button" aria-label="关闭账本管理窗口">×</button></div>
+      <div class="modal-body">
+        <p class="section-desc member-modal-desc">管理不同账本，基准与标的设置保持共用。</p>
+        <form id="new-ledger-form" class="member-add-form">
+          <div class="form-group"><label for="new-ledger-name" class="member-section-label">添加账本</label>
+            <div class="input-inline-btn"><input type="text" id="new-ledger-name" maxlength="50" required placeholder="输入账本名称" autocomplete="off"><button type="submit" class="btn btn-primary theme-button">添加账本</button></div>
+          </div>
+          <p id="new-ledger-status" role="status"></p>
+        </form>
+        <hr class="modal-divider">
+        <div class="members-edit-section">
+          <div class="member-list-heading"><label class="member-section-label">当前账本</label><span class="member-list-hint">点击编辑图标修改名称</span></div>
+          <div id="manage-ledgers-list" class="members-edit-list"></div>
+        </div>
+        <p id="manage-ledgers-status" role="status"></p>
+        <div class="member-modal-footer"><button type="button" id="btn-save-ledger-settings" class="btn btn-primary theme-button btn-block"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8V3"/></svg>保存账本设置</button></div>
+      </div>
     </div>
   </div>
   <script src="js/member-statement.js"></script>
