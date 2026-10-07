@@ -1,5 +1,5 @@
 (function () {
-  function init({ elements, modal, segmentedControl, navigation, switchOperationView, formController, management, getAllocationChart }) {
+  function init({ elements, modal, segmentedControl, navigation, switchOperationView, formController, management, getAllocationChart, saveMemberSettings = async () => true }) {
     const {
       backupModal, btnCloseModal, principlesModal, btnClosePrinciplesModal,
       memberModal, btnCloseMemberModal, btnSaveMemberSettings,
@@ -13,7 +13,13 @@
     modal.bindAccessible(backupModal, btnCloseModal);
     modal.bindAccessible(principlesModal, btnClosePrinciplesModal);
     modal.bindAccessible(memberModal, btnCloseMemberModal);
-    btnSaveMemberSettings?.addEventListener('click', () => modal.close(memberModal));
+    btnSaveMemberSettings?.addEventListener('click', async () => {
+      if (btnSaveMemberSettings.disabled) return;
+      btnSaveMemberSettings.disabled = true;
+      try {
+        if (await saveMemberSettings()) modal.close(memberModal);
+      } finally { btnSaveMemberSettings.disabled = false; }
+    });
     modal.bindAccessible(editEventModal, btnCloseEditModal);
     modal.bindAccessible(tickerConfigModal, btnCloseTickerConfigModal);
     modal.bindAccessible(settlementPreviewModal, btnCloseSettlementPreview);

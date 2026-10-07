@@ -507,3 +507,16 @@ select:focus-visible {
 .trial-notes p { margin-top: 8px; }
 .trial-sheet-footer { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 18px; }
 .disposal-trial-error { color: var(--color-negative); font-size: .85rem; line-height: 1.7; }
+
+.ledger-management .input-inline-btn input { min-width: 0; width: 100%; }
+.ledger-management .input-inline-btn button { white-space: nowrap; flex-shrink: 0; }
+.ledger-management .member-edit-left { display: flex; align-items: center; flex: 1; min-width: 0; }
+.ledger-management-avatar { display: grid; place-items: center; border-radius: 50%; background: rgba(var(--color-primary-rgb), .08); color: var(--color-primary); flex-shrink: 0; }
+.ledger-management .ledger-name-display { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ledger-management .member-edit-identity input { min-width: 0; width: 100%; }
+.ledger-management .member-edit-identity [hidden] { display: none; }
+.ledger-management .ledger-edit-button { border: 0; background: transparent; color: var(--color-primary); cursor: pointer; padding: 8px; border-radius: 8px; }
+.ledger-management .ledger-edit-button:hover { background: rgba(var(--color-primary-rgb), .08); }
+.ledger-management .ledger-edit-button svg { width: 18px; height: 18px; }
+#new-ledger-status:empty, #manage-ledgers-status:empty { display: none; }
+@media (max-width: 420px) { .ledger-management .member-list-heading { align-items: flex-start; flex-direction: column; gap: 5px; } }

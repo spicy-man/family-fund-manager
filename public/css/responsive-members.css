@@ -555,7 +555,14 @@ body.theme-light .member-edit-item.is-primary-gp:hover {
   height: 30px;
   padding: 0;
   place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
+}
+
+.member-edit-actions button svg {
+  display: block;
+  flex-shrink: 0;
 }
 
 .member-modal-footer {
@@ -597,3 +604,38 @@ body.theme-light .member-edit-item.is-primary-gp:hover {
     margin-left: 50px;
   }
 }
+
+/* Member rows keep their content height inside the scrollable list. */
+#members-edit-list { max-height: 330px; }
+#members-edit-list .member-edit-item { flex-shrink: 0; min-height: 72px; padding: 10px 12px; }
+#members-edit-list .member-edit-left { flex: 1; min-width: 0; }
+#members-edit-list .member-edit-identity { display: grid; gap: 8px; align-content: center; }
+.member-identity-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.member-id-editor { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.member-id-label { color: var(--color-text-muted); font-size: .68rem; white-space: nowrap; }
+.member-id-value { font-size: .75rem; font-variant-numeric: tabular-nums; color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; }
+.member-id-input { width: 76px; min-width: 0; padding: 4px 6px; border: 1px solid var(--color-panel-border); border-radius: 6px; background: transparent; color: var(--color-text-main); font-size: .75rem; }
+.member-id-edit { border: 0; padding: 2px; background: transparent; color: var(--color-cyan); font-size: .68rem; cursor: pointer; }
+@media (max-width: 540px) {
+  #members-edit-list .member-edit-left { flex-wrap: nowrap; gap: 8px; }
+  #members-edit-list .primary-gp-choice { margin-left: 0; padding: 6px; gap: 4px; }
+  #members-edit-list .member-edit-item { gap: 4px; padding: 12px 8px; }
+  #members-edit-list .member-edit-avatar { width: 30px; height: 30px; flex-shrink: 0; }
+}
+.member-id-value { min-width: 0; white-space: nowrap; }
+.member-id-edit { flex-shrink: 0; white-space: nowrap; }
+@media (max-width: 540px) {
+  #members-edit-list .member-edit-item { position: relative; }
+  #members-edit-list .primary-gp-choice { position: absolute; right: 8px; top: 8px; }
+  #members-edit-list .member-edit-actions { position: absolute; right: 8px; bottom: 9px; }
+  #members-edit-list .member-identity-heading { padding-right: 78px; }
+  #members-edit-list .member-id-editor { padding-right: 58px; }
+}
+#member-modal .member-modal-content { display: flex; flex-direction: column; }
+#member-modal .member-modal-content .modal-header { flex-shrink: 0; }
+#member-modal .member-modal-content .modal-body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+#member-modal .member-modal-content .modal-body > * { flex-shrink: 0; }
+#members-edit-list { flex: 1 1 auto; min-height: 0; }
+#member-modal .member-modal-content #members-edit-list { flex: 1 1 auto; min-height: 0; }
+#member-modal .member-modal-content .members-edit-section { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+#member-modal .members-edit-section > :first-child { flex-shrink: 0; }

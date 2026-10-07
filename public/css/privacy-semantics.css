@@ -3,7 +3,7 @@
  * --------------------------------- */
 /* 隐私模式切换按钮在激活状态下的色彩 */
 body.privacy-mode-active #btn-privacy-toggle,
-body.privacy-mode-active :is(#btn-settlement-privacy-toggle, #btn-statement-privacy-toggle, #tx-trial-privacy-toggle, #tf-trial-privacy-toggle) {
+body.privacy-mode-active :is(#btn-overview-privacy-toggle, #btn-settlement-privacy-toggle, #btn-statement-privacy-toggle, #tx-trial-privacy-toggle, #tf-trial-privacy-toggle) {
   background: rgba(0, 242, 254, 0.1);
   border-color: rgba(0, 242, 254, 0.25);
   color: var(--color-cyan);
@@ -11,12 +11,12 @@ body.privacy-mode-active :is(#btn-settlement-privacy-toggle, #btn-statement-priv
 }
 
 body.privacy-mode-active #btn-privacy-toggle .icon-eye-open,
-body.privacy-mode-active :is(#btn-settlement-privacy-toggle, #btn-statement-privacy-toggle, #tx-trial-privacy-toggle, #tf-trial-privacy-toggle) .icon-eye-open {
+body.privacy-mode-active :is(#btn-overview-privacy-toggle, #btn-settlement-privacy-toggle, #btn-statement-privacy-toggle, #tx-trial-privacy-toggle, #tf-trial-privacy-toggle) .icon-eye-open {
   display: none !important;
 }
 
 body.privacy-mode-active #btn-privacy-toggle .icon-eye-closed,
-body.privacy-mode-active :is(#btn-settlement-privacy-toggle, #btn-statement-privacy-toggle, #tx-trial-privacy-toggle, #tf-trial-privacy-toggle) .icon-eye-closed {
+body.privacy-mode-active :is(#btn-overview-privacy-toggle, #btn-settlement-privacy-toggle, #btn-statement-privacy-toggle, #tx-trial-privacy-toggle, #tf-trial-privacy-toggle) .icon-eye-closed {
   display: block !important;
 }
 
@@ -116,7 +116,7 @@ body.theme-dark {
 }
 
 body.privacy-mode-active #btn-privacy-toggle,
-body.privacy-mode-active :is(#btn-settlement-privacy-toggle, #btn-statement-privacy-toggle, #tx-trial-privacy-toggle, #tf-trial-privacy-toggle) {
+body.privacy-mode-active :is(#btn-overview-privacy-toggle, #btn-settlement-privacy-toggle, #btn-statement-privacy-toggle, #tx-trial-privacy-toggle, #tf-trial-privacy-toggle) {
   background: rgba(var(--color-primary-rgb), 0.10);
   border-color: rgba(var(--color-primary-rgb), 0.25);
   color: var(--color-primary);

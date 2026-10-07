@@ -12,6 +12,7 @@
 
     formAddMember.addEventListener('submit', async event => {
       event.preventDefault();
+      if (newMemberName.disabled) return;
       const name = newMemberName.value.trim();
       if (!name) return;
       try {

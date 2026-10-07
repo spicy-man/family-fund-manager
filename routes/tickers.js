@@ -9,11 +9,12 @@ function registerTickerRoutes(app, deps) {
 const TICKER_CLOSE_RETRY_DURATION = 10 * 60 * 1000;
 const TICKER_MISSING_DAY_RETRY_DURATION = 2 * 60 * 60 * 1000;
 const TICKER_WEEKEND_RETRY_DURATION = 6 * 60 * 60 * 1000;
-let tickerRefreshPromise = null;
-let queuedTickerConfig = null;
-let activeTickerConfigSignature = null;
-const tickerRefreshAttempts = new Map();
-const tickerRefreshOutcomes = new Map();
+const refreshState = deps.tickerRefreshState || {};
+refreshState.tickerRefreshPromise ??= null;
+refreshState.queuedTickerConfig ??= null;
+refreshState.activeTickerConfigSignature ??= null;
+refreshState.tickerRefreshAttempts ??= new Map();
+refreshState.tickerRefreshOutcomes ??= new Map();
 
 function selectTickerData(cache, config, includeMissing = false) {
   const selected = {};
@@ -72,12 +73,12 @@ function isTickerCacheStale(cache, config, now = getNow()) {
   return config.tickers.some(({ ticker }) => {
     const cachedTicker = cache.tickers?.[ticker];
     if (!cachedTicker || cachedTicker.priceBasis !== 'adjusted-close') {
-      const lastAttemptAt = tickerRefreshAttempts.get(ticker);
+      const lastAttemptAt = refreshState.tickerRefreshAttempts.get(ticker);
       return !lastAttemptAt || nowMs - lastAttemptAt >= retryDuration;
     }
     if (cachedTicker.regularCloseDate >= expectedCloseDate) return false;
     const updatedAt = Date.parse(cachedTicker.updatedAt || '');
-    const lastAttemptAt = tickerRefreshAttempts.get(ticker) || 0;
+    const lastAttemptAt = refreshState.tickerRefreshAttempts.get(ticker) || 0;
     const lastCheckedAt = Math.max(Number.isFinite(updatedAt) ? updatedAt : 0, lastAttemptAt);
     return lastCheckedAt === 0 || nowMs - lastCheckedAt >= retryDuration;
   });
@@ -87,8 +88,8 @@ async function refreshTickerCache(config) {
   const cache = readTickerCache();
   const attemptedAt = getNow().getTime();
   config.tickers.forEach(({ ticker }) => {
-    tickerRefreshAttempts.set(ticker, attemptedAt);
-    tickerRefreshOutcomes.set(ticker, false);
+    refreshState.tickerRefreshAttempts.set(ticker, attemptedAt);
+    refreshState.tickerRefreshOutcomes.set(ticker, false);
   });
   const fetched = await fetchTickerAthData(config, cache.tickers || {});
   let changed = false;
@@ -96,7 +97,7 @@ async function refreshTickerCache(config) {
     const candidate = fetched[ticker];
     if (candidate && !candidate.error) {
       cache.tickers[ticker] = candidate;
-      tickerRefreshOutcomes.set(ticker, true);
+      refreshState.tickerRefreshOutcomes.set(ticker, true);
       changed = true;
     }
   }
@@ -109,20 +110,20 @@ async function refreshTickerCache(config) {
 
 function queueTickerRefresh(config) {
   const configSignature = JSON.stringify(config.tickers);
-  if (tickerRefreshPromise) {
-    if (configSignature !== activeTickerConfigSignature) {
-      queuedTickerConfig = JSON.parse(JSON.stringify(config));
+  if (refreshState.tickerRefreshPromise) {
+    if (configSignature !== refreshState.activeTickerConfigSignature) {
+      refreshState.queuedTickerConfig = JSON.parse(JSON.stringify(config));
     }
-    return tickerRefreshPromise;
+    return refreshState.tickerRefreshPromise;
   }
-  queuedTickerConfig = JSON.parse(JSON.stringify(config));
+  refreshState.queuedTickerConfig = JSON.parse(JSON.stringify(config));
 
-  tickerRefreshPromise = (async () => {
+  refreshState.tickerRefreshPromise = (async () => {
     let latest = readTickerCache();
-    while (queuedTickerConfig) {
-      const nextConfig = queuedTickerConfig;
-      queuedTickerConfig = null;
-      activeTickerConfigSignature = JSON.stringify(nextConfig.tickers);
+    while (refreshState.queuedTickerConfig) {
+      const nextConfig = refreshState.queuedTickerConfig;
+      refreshState.queuedTickerConfig = null;
+      refreshState.activeTickerConfigSignature = JSON.stringify(nextConfig.tickers);
       try {
         latest = await refreshTickerCache(nextConfig);
       } catch (error) {
@@ -131,10 +132,10 @@ function queueTickerRefresh(config) {
     }
     return latest;
   })().finally(() => {
-    tickerRefreshPromise = null;
-    activeTickerConfigSignature = null;
+    refreshState.tickerRefreshPromise = null;
+    refreshState.activeTickerConfigSignature = null;
   });
-  return tickerRefreshPromise;
+  return refreshState.tickerRefreshPromise;
 }
 
 app.get('/api/ticker-ath', async (req, res, next) => {
@@ -146,7 +147,7 @@ app.get('/api/ticker-ath', async (req, res, next) => {
     const stale = isTickerCacheStale(cache, config);
 
     if (hasEveryTicker) {
-      const refreshing = Boolean(tickerRefreshPromise) || stale;
+      const refreshing = Boolean(refreshState.tickerRefreshPromise) || stale;
       res.json({
         success: true,
         data: selectTickerData(cache, config),
@@ -229,7 +230,7 @@ app.post('/api/ticker-ath/refresh', async (req, res, next) => {
     const cache = await queueTickerRefresh(config);
     const failedTickers = config.tickers
       .map(({ ticker }) => ticker)
-      .filter(ticker => tickerRefreshOutcomes.get(ticker) !== true);
+      .filter(ticker => refreshState.tickerRefreshOutcomes.get(ticker) !== true);
     res.json({
       success: true,
       data: selectTickerData(cache, config, true),

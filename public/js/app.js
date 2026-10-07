@@ -261,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
     elements: {
       benchmarkPolicyGroup,
       benchmarkPolicyButtons,
-      privacyButtons: [btnPrivacyToggle, btnSettlementPrivacyToggle, document.getElementById('btn-statement-privacy-toggle'), document.getElementById('tx-trial-privacy-toggle'), document.getElementById('tf-trial-privacy-toggle')]
+      privacyButtons: [document.getElementById('btn-overview-privacy-toggle'), btnPrivacyToggle, btnSettlementPrivacyToggle, document.getElementById('btn-statement-privacy-toggle'), document.getElementById('tx-trial-privacy-toggle'), document.getElementById('tf-trial-privacy-toggle')]
     },
     api: Api,
     segmentedControl: window.FundSegmentedControl,
@@ -317,6 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
       elements: { gpSetupWarning, elMembersEditList },
       api: Api,
       getMembers: () => membersList,
+      setMembers: value => { membersList = value; },
       getState: () => appState,
       checkIfDark,
       loadAllData,
@@ -350,7 +351,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     const { openMembersPanel, openBackupPanel } = managementController;
     onboardingController = window.FundOnboarding.init({
-      elements: { onboardingModal, btnStartLedger },
+      elements: { onboardingModal, btnStartLedger,
+        btnSwitchLedger: document.getElementById('btn-onboarding-switch-ledger'),
+        ledgerSelect: document.getElementById('ledger-select') },
       modal: window.FundModal,
       management: managementController,
       isDemoMode: window.FundDemoMode?.enabled === true
@@ -379,6 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formTransaction, formValuation, formTransfer, formSettlement,
         inputCnhRate, tfRate
       },
+      saveMemberSettings: () => memberEditor.savePendingNames(),
       modal: window.FundModal,
       segmentedControl: window.FundSegmentedControl,
       navigation: window.FundNavigation,
@@ -399,6 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
       modal: window.FundModal,
       submission: window.FundSubmission,
       getMembers: () => membersList,
+      setMembers: value => { membersList = value; },
       getState: () => appState,
       loadAllData,
       showToast,
@@ -482,6 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
       memberStatement.sync();
       renderLedger();
       renderCharts();
+      window.FundLedger?.restorePosition();
       const onboardingShown = onboardingController?.showIfEmpty(appState) === true;
       if (!onboardingShown && !hasPromptedGpSetup && membersList.length && !membersList.some(member => member.primaryGp)) {
         hasPromptedGpSetup = true;

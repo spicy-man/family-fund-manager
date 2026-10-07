@@ -15,4 +15,11 @@ function timingSafeEqual(a, b) {
   for (let i = 0; i < a.length; i++) difference |= a[i] ^ b[i];
   return difference === 0;
 }
-module.exports = { randomBytes, createHmac, timingSafeEqual };
+function randomInt(min, max) {
+  const range = max - min;
+  const limit = Math.floor(0x100000000 / range) * range;
+  let value;
+  do { value = globalThis.crypto.getRandomValues(new Uint32Array(1))[0]; } while (value >= limit);
+  return min + value % range;
+}
+module.exports = { randomBytes, randomInt, createHmac, timingSafeEqual };

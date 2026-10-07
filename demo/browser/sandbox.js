@@ -79,6 +79,7 @@ function createSandbox(seed, storage) {
     fetchCnhRateFromApi: async () => seed.cnhRate,
     fetchTickerAthData: async config => Object.fromEntries(config.tickers.map(({ ticker }) =>
       [ticker, { ...clone(seed.tickerCache.tickers[ticker]), updatedAt: new Date().toISOString() }])),
+    readBaseDb: () => clone(state.db),
     randomUUID: () => globalThis.crypto.randomUUID(),
     now: () => new Date()
   };
