@@ -12,6 +12,7 @@
     '.operations-panel .op-form button',
     '[data-sidebar-action="members"]',
     '[data-sidebar-action="backup"]',
+    '#btn-manage-ledgers',
     '#btn-sync-rate',
     '#input-cnh-rate',
     '#btn-config-tickers',
@@ -67,7 +68,12 @@
       reset.textContent = '重置样例';
       reset.addEventListener('click', async () => {
         if (!confirm('重置当前标签页的体验数据？所有体验修改都会清除，恢复初始样例账本。')) return;
-        try { await window.FundDemoSandbox.reset(); window.location.reload(); }
+        try {
+          await window.FundDemoSandbox.reset();
+          const url = new URL(window.location.href);
+          url.searchParams.delete('ledger');
+          window.location.assign(url.href);
+        }
         catch (error) { alert(error.message); }
       });
       const actions = document.createElement('div');

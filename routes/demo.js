@@ -23,6 +23,15 @@ function registerDemoRoutes(app, { calculateStateFromDb, publicDirectory }) {
     next();
   });
 
+  app.get('/api/demo/ledgers', (_req, res) => {
+    res.json({ success: true, data: [{ id: 'default', name: '样例账本', isDefault: true }] });
+  });
+  app.get('/api/demo/ledgers/combined', (_req, res) => {
+    res.json({ success: true, data: require('../lib/combined-overview').combineLedgers([
+      { id: 'default', name: '样例账本', state: calculateStateFromDb(clone(demoLedger)) }
+    ]) });
+  });
+
   app.get('/api/demo/state', (_req, res) => {
     const state = calculateStateFromDb(clone(demoLedger));
     res.json({ success: true, data: state });

@@ -2,8 +2,11 @@ const { registerApiRoutes } = require('../../routes/api');
 const { calculateStateFromDb } = require('../../lib/calculator');
 const { mergeSettlementLedger } = require('../../lib/settlement-ledger');
 const { materializeBenchmarkCaches } = require('../../lib/market-history');
-const { InputError } = require('../../lib/api-errors');
+const { InputError, NotFoundError } = require('../../lib/api-errors');
+const { combineLedgers } = require('../../lib/combined-overview');
+const { DEFAULT_PERFORMANCE_FEE_CONFIG } = require('../../lib/performance-fee-policy');
 const { version } = require('../../package.json');
+const { generateMemberId } = require('../../lib/member-id');
 const clone = value => JSON.parse(JSON.stringify(value));
 const STORAGE_KEY = 'family_fund_demo_sandbox_v1';
 
@@ -14,16 +17,35 @@ function createSandbox(seed, storage) {
     if (saved?.version === version && saved.state?.db && saved.state?.settlements && saved.state?.config) {
       state = saved.state;
       calculateStateFromDb(mergeSettlementLedger(state.db, state.settlements));
+      for (const [id, entry] of Object.entries(state.ledgers || {})) {
+        if (!/^ledger-[2-9]$|^ledger-[1-9][0-9]{1,2}$/.test(id) || typeof entry.name !== 'string' ||
+            !entry.name.trim() || entry.name.length > 50) throw new Error('Invalid saved ledger');
+        calculateStateFromDb(mergeSettlementLedger(entry.db, entry.settlements));
+      }
     }
   } catch (_) { state = clone(seed); }
+  state.ledgers ||= {};
+  state.defaultName ||= '样例账本';
+  let activeId = 'default';
+  const ledger = () => {
+    if (activeId === 'default') return state;
+    if (!Object.hasOwn(state.ledgers, activeId)) throw new NotFoundError('账本不存在。');
+    return state.ledgers[activeId];
+  };
+  const listLedgers = () => [{ id: 'default', name: state.defaultName, isDefault: true },
+    ...Object.entries(state.ledgers).map(([id, value]) => ({ id, name: value.name, isDefault: false }))];
   function save() {
     try { storage.setItem(STORAGE_KEY, JSON.stringify({ version, state })); }
     catch (_) { throw new InputError('浏览器无法保存体验数据，请释放当前站点存储空间或允许会话存储。'); }
   }
   const readConfig = () => clone(state.config);
-  const readDb = () => mergeSettlementLedger(clone({ ...state.db, ...state.config,
-    cnhRate: state.cnhRate, indexCache: state.indexCache,
-    customBenchmarkCache: state.customBenchmarkCache, marketHistory: state.marketHistory }), clone(state.settlements));
+  const readDb = () => {
+    const current = ledger();
+    const caches = materializeBenchmarkCaches(current.db.events.map(event => event.date), state.marketHistory,
+      [state.config.customBenchmark, state.config.customBenchmark2], current.db.benchmarkClosePolicy || 'previous');
+    return mergeSettlementLedger(clone({ ...current.db, ...state.config, ...caches,
+      cnhRate: state.cnhRate, marketHistory: state.marketHistory }), clone(current.settlements));
+  };
   const supported = new Set(Object.keys(seed.tickerCache.tickers));
   function validateConfig(config) {
     const tickers = [...config.tickers.map(item => item.ticker),
@@ -51,12 +73,12 @@ function createSandbox(seed, storage) {
     getState: () => calculateStateFromDb(readDb()),
     writeDb: db => {
       const { members, performanceFee, benchmarkClosePolicy, lastEventSequence } = db;
-      state.db = clone({ members, performanceFee, benchmarkClosePolicy, lastEventSequence,
+      ledger().db = clone({ members, performanceFee, benchmarkClosePolicy, lastEventSequence,
         events: db.events.filter(event => !['performance_settlement', 'performance_settlement_reversal'].includes(event.type)) });
       save();
     },
-    readSettlements: () => clone(state.settlements),
-    writeSettlements: ledger => { state.settlements = clone(ledger); save(); },
+    readSettlements: () => clone(ledger().settlements),
+    writeSettlements: value => { ledger().settlements = clone(value); save(); },
     writeConfig: config => { validateConfig(config); state.config = clone(config); save(); },
     readTickerCache: () => clone(state.tickerCache),
     writeTickerCache: cache => { state.tickerCache = clone(cache); save(); },
@@ -66,8 +88,10 @@ function createSandbox(seed, storage) {
     writeCustomBenchmarkCache: cache => { state.customBenchmarkCache = clone(cache); save(); },
     writeCnhRate: rate => { state.cnhRate = rate; save(); },
     writeSnapshot: (db, config, settlements) => {
-      validateConfig(config);
-      state.db = clone(db); state.config = clone(config); state.settlements = clone(settlements); save();
+      if (activeId === 'default') validateConfig(config);
+      ledger().db = clone(db);
+      if (activeId === 'default') state.config = clone(config);
+      ledger().settlements = clone(settlements); save();
     },
     ensureIndexCache, isValidDate,
     normalizeRemark: (text, fallback) => normalizeText(text, 500, fallback),
@@ -79,23 +103,68 @@ function createSandbox(seed, storage) {
     fetchCnhRateFromApi: async () => seed.cnhRate,
     fetchTickerAthData: async config => Object.fromEntries(config.tickers.map(({ ticker }) =>
       [ticker, { ...clone(seed.tickerCache.tickers[ticker]), updatedAt: new Date().toISOString() }])),
-    readBaseDb: () => clone(state.db),
+    readBaseDb: () => clone(ledger().db),
     randomUUID: () => globalThis.crypto.randomUUID(),
     now: () => new Date()
   };
-  const routes = [];
-  const app = {};
-  for (const method of ['get', 'post', 'put', 'delete']) {
-    app[method] = (pattern, ...handlers) => routes.push({ method: method.toUpperCase(), pattern, handlers });
+  // Each ledger gets its own sequence/token context; requests are serialized.
+  const applications = new Map();
+  function routesFor(id) {
+    if (!applications.has(id)) {
+      const routes = []; const app = {};
+      for (const method of ['get', 'post', 'put', 'delete']) {
+        app[method] = (pattern, ...handlers) => routes.push({ method: method.toUpperCase(), pattern, handlers });
+      }
+      registerApiRoutes(app, deps); applications.set(id, routes);
+    }
+    return applications.get(id);
   }
-  registerApiRoutes(app, deps);
+  function ledgerOperation(pathname, method, body) {
+    if (pathname === '/api/ledgers' && method === 'GET') return listLedgers();
+    if (pathname === '/api/ledgers/combined' && method === 'GET') {
+      const selected = activeId;
+      try {
+        return combineLedgers(listLedgers().map(entry => {
+          activeId = entry.id;
+          return { ...entry, state: deps.getState() };
+        }));
+      } finally { activeId = selected; }
+    }
+    if (method !== 'POST' && method !== 'PATCH') throw new InputError('体验版不支持此操作。');
+    const name = body?.name;
+    if (typeof name !== 'string' || !name.trim() || name.trim().length > 50) {
+      throw new InputError('账本名称长度必须在 1 到 50 个字符之间。');
+    }
+    if (pathname === '/api/ledgers' && method === 'POST') {
+      if (listLedgers().length >= 100) throw new InputError('最多可创建 100 个账本。');
+      let number = 2; while (Object.hasOwn(state.ledgers, 'ledger-' + number)) number++;
+      const id = 'ledger-' + number;
+      const used = new Set();
+      state.ledgers[id] = { name: name.trim(), db: {
+        benchmarkClosePolicy: 'previous', performanceFee: clone(DEFAULT_PERFORMANCE_FEE_CONFIG),
+        members: ['我', '母亲', '父亲'].map(name => ({ id: generateMemberId(used), name, roles: { lp: true, gp: false } })),
+        events: [], lastEventSequence: 0
+      }, settlements: { version: 1, records: [] } };
+      return { id, name: name.trim(), isDefault: false };
+    }
+    const id = pathname.slice('/api/ledgers/'.length);
+    if (method !== 'PATCH' || !listLedgers().some(entry => entry.id === id)) throw new NotFoundError('账本不存在。');
+    if (id === 'default') state.defaultName = name.trim(); else state.ledgers[id].name = name.trim();
+    return listLedgers().find(entry => entry.id === id);
+  }
   let queue = Promise.resolve();
   function request(url, options = {}) {
     const task = queue.then(async () => {
       const parsed = new URL(url, 'https://demo.invalid');
       const method = (options.method || 'GET').toUpperCase();
+      const header = Object.entries(options.headers || {}).find(([key]) => key.toLowerCase() === 'x-ledger-id')?.[1];
+      const query = parsed.searchParams.get('ledger');
+      if (header !== undefined && query !== null && header !== query) throw new InputError('账本选择不一致。');
+      activeId = header ?? query ?? 'default';
+      const management = parsed.pathname === '/api/ledgers' || parsed.pathname.startsWith('/api/ledgers/');
+      if (!management) ledger();
       let params;
-      const route = routes.find(candidate => {
+      const route = management ? null : routesFor(activeId).find(candidate => {
         if (candidate.method !== method) return false;
         const actual = parsed.pathname.split('/'); const expected = candidate.pattern.split('/');
         if (actual.length !== expected.length) return false;
@@ -106,7 +175,7 @@ function createSandbox(seed, storage) {
         }
         params = values; return true;
       });
-      if (!route) throw new InputError('体验版不支持此操作。');
+      if (!management && !route) throw new InputError('体验版不支持此操作。');
       const before = clone(state);
       try {
         let body = options.body;
@@ -114,6 +183,11 @@ function createSandbox(seed, storage) {
           if (body.size > 10 * 1024 * 1024) throw new InputError('ZIP 备份最大为 10MB。');
           body = Buffer.from(await body.arrayBuffer());
         } else if (typeof body === 'string') body = JSON.parse(body);
+        if (management) {
+          const data = ledgerOperation(parsed.pathname, method, body);
+          if (method !== 'GET') save();
+          return { success: true, data };
+        }
         const req = { method, originalUrl: url, params, query: Object.fromEntries(parsed.searchParams), body: body || {} };
         let result; const headers = {};
         const res = { json: value => { result = value; }, send: value => { result = { binary: value, headers }; },
@@ -138,7 +212,7 @@ function createSandbox(seed, storage) {
     return task;
   }
   return { request, reset: () => { storage.removeItem(STORAGE_KEY); },
-    exportBackup: () => request('/api/backup/export'),
+    exportBackup: (id = 'default') => request('/api/backup/export', { headers: { 'X-Ledger-Id': id } }),
     snapshot: () => clone(state) };
 }
 
@@ -149,6 +223,6 @@ if (typeof window !== 'undefined' && document.querySelector('meta[name="fund-dem
   // Avoid an unhandled rejection while the page finishes loading.
   ready.catch(() => {});
   window.FundDemoSandbox = { ready, request: async (...args) => (await ready).request(...args),
-    reset: async () => (await ready).reset(), exportBackup: async () => (await ready).exportBackup() };
+    reset: async () => (await ready).reset(), exportBackup: async () => (await ready).exportBackup(window.FundLedger?.id || 'default') };
 }
 module.exports = { createSandbox };

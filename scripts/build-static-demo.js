@@ -51,6 +51,10 @@ function buildStaticDemo(output = defaultOutput) {
   fs.writeFileSync(path.join(output, 'demo-data/seed.json'), JSON.stringify(buildSandboxSeed()));
   const db = buildDemoLedger();
   const payloads = {
+    'ledgers.json': { success: true, data: [{ id: 'default', name: '样例账本', isDefault: true }] },
+    'combined.json': { success: true, data: require('../lib/combined-overview').combineLedgers([
+      { id: 'default', name: '样例账本', state: calculateStateFromDb(db) }
+    ]) },
     'state.json': { success: true, data: calculateStateFromDb(db) },
     'members.json': { success: true, data: db.members.map(member => ({
       ...member, primaryGp: member.id === db.performanceFee.gpMemberId

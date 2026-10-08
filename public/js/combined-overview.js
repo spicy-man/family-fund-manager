@@ -50,7 +50,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     const button = document.getElementById('btn-combined-overview');
     const modal = document.getElementById('combined-overview-modal');
-    if (!button || !modal || window.FundDemoMode?.enabled) return;
+    if (!button || !modal) return;
     const status = document.getElementById('combined-overview-status');
     const content = document.getElementById('combined-overview-content');
     window.FundModal.bindAccessible(modal, document.getElementById('btn-close-combined-overview'));
