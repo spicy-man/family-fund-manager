@@ -21,6 +21,7 @@ let persisted = {
 };
 let fetchCalls = 0;
 let writes = 0;
+let failWrite = false;
 let finishFetch;
 let currentNow = new Date('2026-08-05T16:00:00.000Z'); // Wednesday noon ET
 
@@ -31,7 +32,7 @@ registerApiRoutes(app, {
   readConfig: () => ({ tickers: [{ ticker: 'VOO' }] }),
   writeConfig: () => {},
   readTickerCache: () => JSON.parse(JSON.stringify(persisted)),
-  writeTickerCache: value => { writes++; persisted = JSON.parse(JSON.stringify(value)); },
+  writeTickerCache: value => { if (failWrite) throw new Error("simulated ticker disk failure"); writes++; persisted = JSON.parse(JSON.stringify(value)); },
   writeSnapshot: () => {},
   ensureIndexCache: () => {},
   calculateStateFromDb: () => ({ events: [] }),
@@ -141,16 +142,42 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   assert.strictEqual(manualResult.body.refreshSuccess, true);
   assert.deepStrictEqual(manualResult.body.failedTickers, []);
 
+  const writesBeforeUnchangedRefresh = writes;
+  const snapshotBeforeUnchangedRefresh = JSON.parse(JSON.stringify(persisted));
+  const unchangedRefresh = requestManualTickerRefresh();
+  await nextTurn();
+  finishFetch({ VOO: { ...persisted.tickers.VOO, updatedAt: '2026-08-06T00:06:00.000Z' } });
+  const unchangedResult = await unchangedRefresh;
+  assert.strictEqual(unchangedResult.body.refreshSuccess, true);
+  assert.strictEqual(writes, writesBeforeUnchangedRefresh, 'unchanged quotes must not rewrite the cache');
+  assert.deepStrictEqual(persisted, snapshotBeforeUnchangedRefresh, 'unchanged checks preserve cache timestamps');
+
   // A fresh legacy price-only cache must still bootstrap adjusted data.
   persisted.tickers.VOO.priceBasis = 'close';
   const migrated = requestTicker();
   await nextTurn();
-  assert.strictEqual(fetchCalls, 4, 'legacy source must refresh even when its close date is current');
+  assert.strictEqual(fetchCalls, 5, 'legacy source must refresh even when its close date is current');
   finishFetch({ VOO: { ...persisted.tickers.VOO, priceBasis: 'adjusted-close', ath: 99 } });
   const migratedResult = await migrated;
   assert.strictEqual(migratedResult.body.data.VOO.priceBasis, 'adjusted-close');
   assert.strictEqual(migratedResult.body.data.VOO.ath, 99);
 
+  const beforeDiskFailure = JSON.parse(JSON.stringify(persisted));
+  failWrite = true;
+  const failedRefresh = requestManualTickerRefresh();
+  await nextTurn();
+  finishFetch({ VOO: { ...persisted.tickers.VOO, regularClose: 123 } });
+  const failedResult = await failedRefresh;
+  assert.strictEqual(failedResult.body.refreshSuccess, false, 'failed disk writes cannot report a successful refresh');
+  assert.deepStrictEqual(failedResult.body.failedTickers, ['VOO']);
+  assert.deepStrictEqual(persisted, beforeDiskFailure, 'failed writes preserve the persisted snapshot');
+  failWrite = false;
+  const retryRefresh = requestManualTickerRefresh();
+  await nextTurn();
+  finishFetch({ VOO: { ...persisted.tickers.VOO, regularClose: 123 } });
+  const retryResult = await retryRefresh;
+  assert.strictEqual(retryResult.body.refreshSuccess, true);
+  assert.strictEqual(persisted.tickers.VOO.regularClose, 123);
   console.log('Ticker persistent stale-while-revalidate and adjusted-cache migration assertions passed.');
 })().catch(error => {
   console.error(error);

@@ -151,18 +151,16 @@
     };
     const position = () => {
       const anchor = card.getBoundingClientRect();
-      const bounds = panel.getBoundingClientRect();
-      const left = Math.max(12, Math.min(anchor.left, window.innerWidth - bounds.width - 12));
-      const below = anchor.bottom + 8;
-      const top = below + bounds.height <= window.innerHeight - 12 ? below
-        : Math.max(12, Math.min(anchor.top - bounds.height - 8, window.innerHeight - bounds.height - 12));
-      panel.style.left = `${left}px`;
-      panel.style.top = `${top}px`;
+      // Details belong to their card, even when part of the panel is offscreen.
+      // Do not flip or clamp against the viewport: that breaks the visual anchor.
+      panel.style.left = `${anchor.left}px`;
+      panel.style.top = `${anchor.bottom + 8}px`;
     };
     const show = () => {
       if (suppressFocus) return;
       cancelHide();
-      if (isOpen) { position(); return; }
+      // Repeated hover/focus events must not reposition an already visible panel.
+      if (isOpen) return;
       if (closeCurrent && closeCurrent !== close) closeCurrent();
       closeCurrent = close;
       const wasHidden = panel.hidden;

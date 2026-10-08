@@ -1,6 +1,9 @@
 const assert = require('assert');
 const {
   emptyMarketHistory,
+  roundMarketPrice,
+  normalizeMarketHistory,
+  replaceAdjustedTickerPrices,
   mergeTickerPrices,
   previousWeekday,
   historyRequestStart,
@@ -25,6 +28,79 @@ const benchmark2 = normalizeCustomBenchmark({
   name: 'BRK-B',
   components: [{ ticker: 'BRK-B', weight: 100 }]
 });
+// Prices must be quantized before comparing refreshes and generating snapshots.
+const precisionHistory = emptyMarketHistory();
+const precisionCoverage = { from: '2025-06-20', through: '2025-06-20', priceBasis: 'adjusted-close' };
+for (const ticker of ['VOO', 'QQQM', 'VGT', 'BRK-B']) {
+  assert.strictEqual(replaceAdjustedTickerPrices(precisionHistory, ticker,
+    { '2025-06-20': 166.059235 }, precisionCoverage), true);
+  assert.strictEqual(precisionHistory.tickers[ticker].prices['2025-06-20'], 166.059);
+  assert.strictEqual(replaceAdjustedTickerPrices(precisionHistory, ticker,
+    { '2025-06-20': 166.059219 }, precisionCoverage), false,
+    'provider noise below stored precision must not change adjusted history');
+  assert.strictEqual(mergeTickerPrices(precisionHistory, ticker,
+    { '2025-06-20': 166.059219 }, precisionCoverage), false);
+}
+const legacyPrecisionHistory = { tickers: { VOO: { ...precisionHistory.tickers.VOO,
+  prices: { '2025-06-20': 166.059235 } } } };
+assert.strictEqual(replaceAdjustedTickerPrices(normalizeMarketHistory(legacyPrecisionHistory), 'VOO',
+  { '2025-06-20': 166.059219 }, precisionCoverage), true,
+  'the next refresh must migrate existing high-precision history even when quotes are unchanged');
+const preciseCaches = materializeBenchmarkCaches(['2025-06-21'], precisionHistory, [benchmark, benchmark2]);
+assert.strictEqual(preciseCaches.indexCache['2025-06-21'].spx, 166.059);
+assert.strictEqual(preciseCaches.indexCache['2025-06-21'].ndx, 166.059);
+assert.strictEqual(preciseCaches.customBenchmarkCache['2025-06-21'].components.VGT.price, 166.059);
+assert.strictEqual(preciseCaches.customBenchmarkCache['2025-06-21'].secondary.components['BRK-B'].price, 166.059);
+assert.strictEqual(normalizeMarketHistory({ tickers: { VOO: { prices: { '2025-06-20': 166.059235 } } } }, { roundPrices: true })
+  .tickers.VOO.prices['2025-06-20'], 166.059);
+assert.strictEqual(replaceAdjustedTickerPrices(precisionHistory, 'VOO',
+  { '2025-06-20': 166.060235 }, precisionCoverage), true, 'a real three-decimal price change still updates');
+assert.strictEqual(precisionHistory.tickers.VOO.prices['2025-06-20'], 166.06);
+
+// Fixed decimals cannot flatten real returns in low-price split-adjusted history.
+for (const price of [0.00149, 0.00449, 0.01234, 0.04999, 0.12345, 0.9999]) {
+  assert(Math.abs(roundMarketPrice(price) / price - 1) < 0.005,
+    'price rounding must not introduce a material relative error: ' + price);
+  assert.strictEqual(roundMarketPrice(roundMarketPrice(price)), roundMarketPrice(price));
+}
+const lowHistory = emptyMarketHistory();
+replaceAdjustedTickerPrices(lowHistory, 'VGT', { '1981-01-02': 0.0014, '1981-01-05': 0.00149 }, { priceBasis: 'adjusted-close' });
+const lowCaches = materializeBenchmarkCaches(['1981-01-03', '1981-01-06'], lowHistory, [benchmark]);
+const lowStart = lowCaches.customBenchmarkCache['1981-01-03'].components.VGT.price;
+const lowEnd = lowCaches.customBenchmarkCache['1981-01-06'].components.VGT.price;
+assert(Math.abs((lowEnd / lowStart - 1) - (0.00149 / 0.0014 - 1)) < 0.001,
+  'a real low-price return must survive persistence and benchmark materialization');
+// Low split-adjusted closes must survive rounding, reload and snapshot replay.
+assert.strictEqual(roundMarketPrice(0.000123456), 0.000123);
+assert.strictEqual(roundMarketPrice(Number.MIN_VALUE), Number.MIN_VALUE);
+for (const price of [0.00049999, 0.0005, 0.00099999, 0.001, 166.059235]) {
+  assert(roundMarketPrice(price) > 0);
+  assert.strictEqual(roundMarketPrice(roundMarketPrice(price)), roundMarketPrice(price),
+    'normalization must be idempotent across merge, persistence and materialization');
+}
+const tinyHistory = emptyMarketHistory();
+const tinyCoverage = { from: '1981-01-02', through: '1981-01-05', priceBasis: 'adjusted-close' };
+const tinyPrices = { '1981-01-02': 0.000123456, '1981-01-05': 0.000246912 };
+for (const ticker of ['VOO', 'QQQM', 'VGT', 'BRK-B']) {
+  assert.strictEqual(replaceAdjustedTickerPrices(tinyHistory, ticker, tinyPrices, tinyCoverage), true);
+  assert.strictEqual(replaceAdjustedTickerPrices(tinyHistory, ticker,
+    { ...tinyPrices, '1981-01-02': 0.000123459 }, tinyCoverage), false);
+  assert.strictEqual(mergeTickerPrices(tinyHistory, ticker, tinyPrices, tinyCoverage), false);
+  assert.strictEqual(replaceAdjustedTickerPrices(tinyHistory, ticker,
+    Object.fromEntries(Object.entries(tinyPrices).reverse()), tinyCoverage), false,
+    'unchanged prices in a different provider order must not dirty history');
+  assert.strictEqual(replaceAdjustedTickerPrices(tinyHistory, ticker,
+    { '1981-01-02': tinyPrices['1981-01-02'] }, tinyCoverage), false,
+    'incomplete adjusted history still cannot erase a trading day');
+}
+const tinyReload = normalizeMarketHistory(JSON.parse(JSON.stringify(
+  normalizeMarketHistory(tinyHistory, { roundPrices: true }))));
+assert.strictEqual(tinyReload.tickers.VGT.prices['1981-01-02'], 0.000123);
+const tinyCaches = materializeBenchmarkCaches(['1981-01-03'], tinyReload, [benchmark, benchmark2]);
+assert.strictEqual(tinyCaches.indexCache['1981-01-03'].spx, 0.000123);
+assert.strictEqual(tinyCaches.customBenchmarkCache['1981-01-03'].components.VGT.price, 0.000123);
+assert.strictEqual(tinyCaches.customBenchmarkCache['1981-01-03'].secondary.components['BRK-B'].price, 0.000123);
+
 const history = emptyMarketHistory();
 const daily = {
   'VOO': { '2026-08-27': 7730.99, '2026-08-28': 7711.76 },

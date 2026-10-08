@@ -92,18 +92,28 @@ async function refreshTickerCache(config) {
     refreshState.tickerRefreshOutcomes.set(ticker, false);
   });
   const fetched = await fetchTickerAthData(config, cache.tickers || {});
-  let changed = false;
+  const changedTickers = [];
   for (const { ticker } of config.tickers) {
     const candidate = fetched[ticker];
     if (candidate && !candidate.error) {
-      cache.tickers[ticker] = candidate;
-      refreshState.tickerRefreshOutcomes.set(ticker, true);
-      changed = true;
+      // A successful check alone must not rewrite the cache timestamps.
+      const { updatedAt: previousUpdatedAt, ...previousData } = cache.tickers[ticker] || {};
+      const { updatedAt: candidateUpdatedAt, ...candidateData } = candidate;
+      const keys = Object.keys(candidateData);
+      if (keys.length !== Object.keys(previousData).length ||
+          keys.some(key => candidateData[key] !== previousData[key])) {
+        cache.tickers[ticker] = candidate;
+        changedTickers.push(ticker);
+      } else {
+        refreshState.tickerRefreshOutcomes.set(ticker, true);
+      }
     }
   }
-  if (changed) {
-    cache.updatedAt = new Date().toISOString();
+  if (changedTickers.length) {
+    cache.updatedAt = getNow().toISOString();
     writeTickerCache(cache);
+    // New data is successful only after its atomic write has completed.
+    changedTickers.forEach(ticker => refreshState.tickerRefreshOutcomes.set(ticker, true));
   }
   return cache;
 }
