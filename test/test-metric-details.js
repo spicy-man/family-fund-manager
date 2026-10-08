@@ -6,7 +6,9 @@ let timerId = 0;
 const document = { handlers: {}, activeElement: null, addEventListener(type, fn) {
   (this.handlers[type] ||= []).push(fn);
 } };
-const window = { innerWidth: 1000, innerHeight: 800, addEventListener() {} };
+const window = { innerWidth: 1000, innerHeight: 800, handlers: {}, addEventListener(type, fn) {
+  (this.handlers[type] ||= []).push(fn);
+} };
 vm.runInNewContext(fs.readFileSync(require.resolve('../public/js/metric-details.js'), 'utf8'), {
   window, document, getComputedStyle: node => ({ opacity: node.style.opacity || '1',
     transform: node.style.transform || 'none', clipPath: node.style.clipPath || 'inset(0)' }),
@@ -135,7 +137,8 @@ bind(card, panel, close);
 card.handlers.mouseenter();
 assert.strictEqual(panel.hidden, false, 'hover opens without a click');
 assert.strictEqual(card.attributes['aria-expanded'], 'true');
-assert.strictEqual(panel.style.left, '388px', 'popover stays within viewport');
+assert.strictEqual(panel.style.left, '800px', 'popover remains aligned with its card even at the viewport edge');
+assert.strictEqual(panel.style.top, '208px', 'popover stays below its card');
 card.handlers.mouseleave(); panel.handlers.mouseenter();
 assert.strictEqual(timers.size, 0, 'moving into details cancels dismissal');
 panel.handlers.mouseleave();
@@ -196,4 +199,40 @@ fadeCard.handlers.mouseenter();
 fadeClose.handlers.click();
 assert.equal(fades.length, fadeCount, 'Reduced-motion preference skips fades');
 assert.equal(fadePanel.hidden, true);
+// All three cards keep the same card-relative position, including clipping,
+// content growth, scrolling, viewport resize and reopening.
+for (const name of ['assets', 'nav', 'return']) {
+  window.innerWidth = 1000; window.innerHeight = 500;
+  const anchor = { left: 800, top: 100, bottom: 200 };
+  const bounds = { width: 480, height: 476 };
+  const trigger = element(anchor);
+  const details = element(bounds);
+  const dismiss = element();
+  bind(trigger, details, dismiss);
+  trigger.handlers.mouseenter();
+  const initial = { ...details.style };
+  assert.strictEqual(initial.left, '800px', `${name}: do not shift away from the card at the right edge`);
+  assert.strictEqual(initial.top, '208px', `${name}: do not lift tall details above the card`);
+  bounds.width = 600; bounds.height = 650;
+  for (let repeat = 0; repeat < 6; repeat++) {
+    trigger.handlers.mouseenter();
+    trigger.handlers.focusin();
+    trigger.handlers.click();
+    assert.deepStrictEqual(details.style, initial, `${name}: clipping/reflow must not cause drift`);
+  }
+  window.innerWidth = 700; window.innerHeight = 300;
+  for (const fn of window.handlers.resize) fn();
+  assert.deepStrictEqual(details.style, initial, `${name}: smaller viewport must not shift details away from the card`);
+  anchor.left = 650; anchor.top = 50; anchor.bottom = 150;
+  for (const fn of window.handlers.scroll) fn({ target: document });
+  assert.strictEqual(details.style.left, '650px', `${name}: follow the card horizontally on scroll`);
+  assert.strictEqual(details.style.top, '158px', `${name}: preserve the vertical gap on scroll`);
+  const scrolled = { ...details.style };
+  for (const fn of window.handlers.scroll) fn({ target: details });
+  assert.deepStrictEqual(details.style, scrolled, `${name}: internal scrolling must not move the panel`);
+  dismiss.handlers.click();
+  trigger.handlers.mouseenter();
+  assert.deepStrictEqual(details.style, scrolled, `${name}: reopening preserves the card relationship`);
+  dismiss.handlers.click();
+}
 console.log('Metric detail hover and NAV performance assertions passed.');

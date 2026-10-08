@@ -93,6 +93,21 @@ const yearBoundary = mergeTickerAthRecord('AAPL', null, {
 }, new Date('2026-01-03T12:00:00Z'));
 assert.strictEqual(yearBoundary.previousYearCloseDate, '2025-12-31');
 assert.strictEqual(yearBoundary.ytdChange, 5);
+const preciseAnchor = mergeTickerAthRecord('AAPL', null, {
+  timestamp: ['2025-12-31', '2026-01-02'].map(date => Date.parse(date + 'T15:00:00Z') / 1000),
+  indicators: { quote: [{ close: [100, 105], high: [101, 106] }],
+    adjclose: [{ adjclose: [90.123456789, 94.5] }] }
+}, new Date('2026-01-03T12:00:00Z'));
+assert.strictEqual(preciseAnchor.previousYearClose, 90.123);
+assert.strictEqual(preciseAnchor.ytdChange, Number(((94.5 / 90.123456789 - 1) * 100).toFixed(2)),
+  'YTD must be calculated before rounding the persisted year-end anchor');
+const tinyAnchor = mergeTickerAthRecord('AAPL', null, {
+  timestamp: ['2025-12-31', '2026-01-02'].map(date => Date.parse(date + 'T15:00:00Z') / 1000),
+  indicators: { quote: [{ close: [0.000123456, 0.000246912] }],
+    adjclose: [{ adjclose: [0.000123456, 0.000246912] }] }
+}, new Date('2026-01-03T12:00:00Z'));
+assert.strictEqual(tinyAnchor.previousYearClose, 0.000123);
+assert.strictEqual(tinyAnchor.ytdChange, 100);
 const withoutAnchor = mergeTickerAthRecord('AAPL', { previousYear: 2025, previousYearClose: 80 }, {
   timestamp: [Date.parse('2026-06-01T15:00:00Z') / 1000],
   indicators: { quote: [{ close: [100], high: [101] }], adjclose: [{ adjclose: [90] }] }

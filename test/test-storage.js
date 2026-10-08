@@ -426,21 +426,26 @@ try {
   fs.mkdirSync(splitCacheDataDir, { recursive: true });
   const legacyCustomEntry = {
     signature: 'VOO:100.0000',
-    components: { VOO: { price: 612.5, priceDate: '2026-08-03' } }
+    components: { VOO: { price: 612.512345, priceDate: '2026-08-03' } }
   };
   fs.writeFileSync(path.join(splitCacheDataDir, 'index-cache.json'), JSON.stringify({
     '2026-08-04': { ...indexCache['2026-08-04'], custom: legacyCustomEntry }
   }, null, 2));
   const splitCacheStorage = loadStorage(splitCacheDataDir, splitCacheBackupDir);
-  assert.deepStrictEqual(splitCacheStorage.readCustomBenchmarkCache(), {
-    '2026-08-04': legacyCustomEntry
-  });
+  const expectedMigratedCustom = { '2026-08-04': {
+    ...legacyCustomEntry, components: { VOO: { ...legacyCustomEntry.components.VOO, price: 612.512 } }
+  } };
+  const firstMigratedCustom = splitCacheStorage.readCustomBenchmarkCache();
+  assert.deepStrictEqual(firstMigratedCustom, expectedMigratedCustom,
+    'the first migration read must return the normalized persisted quotes');
+  assert.deepStrictEqual(splitCacheStorage.readCustomBenchmarkCache(), firstMigratedCustom,
+    'migration cannot change the returned quotes between consecutive reads');
   assert.deepStrictEqual(splitCacheStorage.readIndexCache(), {
     '2026-08-04': indexCache['2026-08-04']
   });
   assert.deepStrictEqual(
     JSON.parse(fs.readFileSync(splitCacheStorage.CUSTOM_BENCHMARK_CACHE_FILE, 'utf8')),
-    { '2026-08-04': legacyCustomEntry }
+    expectedMigratedCustom
   );
 
   // A corrupt disposable cache degrades to an in-memory empty cache once per
@@ -468,10 +473,42 @@ try {
   const marketBackupDir = path.join(testRoot, 'backups-market-isolation');
   const marketStorage = loadStorage(marketDataDir, marketBackupDir);
   const marketDb = marketStorage.readDb();
+  marketStorage.writeIndexCache({ '2026-03-03': { spx: 166.059235, ndx: 259.462646 } });
+  assert.deepStrictEqual(JSON.parse(fs.readFileSync(marketStorage.INDEX_CACHE_FILE, 'utf8')),
+    { '2026-03-03': { spx: 166.059, ndx: 259.463 } });
+  marketStorage.writeCustomBenchmarkCache({ '2026-03-03': {
+    components: { VGT: { price: 166.059235 } },
+    secondary: { components: { BOXX: { price: 112.550003 } } }
+  } });
+  const roundedCustom = JSON.parse(fs.readFileSync(marketStorage.CUSTOM_BENCHMARK_CACHE_FILE, 'utf8'));
+  assert.strictEqual(roundedCustom['2026-03-03'].components.VGT.price, 166.059);
+  assert.strictEqual(roundedCustom['2026-03-03'].secondary.components.BOXX.price, 112.55);
+  marketStorage.writeIndexCache({ '1981-01-03': { spx: 0.00049999, ndx: 0.000123456 } });
+  const tinyIndex = marketStorage.readIndexCache();
+  marketStorage.writeIndexCache(tinyIndex);
+  assert.deepStrictEqual(marketStorage.readIndexCache(), tinyIndex, 'repeated index writes must preserve tiny prices');
+  assert.strictEqual(tinyIndex['1981-01-03'].spx, 0.0005);
+  marketStorage.writeCustomBenchmarkCache({ '1981-01-03': {
+    components: { VGT: { price: 0.00049999, weight: 33.3333 } },
+    secondary: { components: { BOXX: { price: 0.000123456 } } }
+  } });
+  const tinyCustom = marketStorage.readCustomBenchmarkCache();
+  marketStorage.writeCustomBenchmarkCache(tinyCustom);
+  assert.deepStrictEqual(marketStorage.readCustomBenchmarkCache(), tinyCustom);
+  assert.strictEqual(tinyCustom['1981-01-03'].components.VGT.price, 0.0005);
+  assert.strictEqual(tinyCustom['1981-01-03'].components.VGT.weight, 33.3333);
+  marketStorage.writeMarketHistory({ tickers: { VGT: { priceBasis: 'adjusted-close',
+    prices: { '1981-01-02': 0.00049999 } } } });
+  const tinyHistoryBytes = fs.readFileSync(marketStorage.MARKET_HISTORY_FILE, 'utf8');
+  marketStorage.writeMarketHistory(marketStorage.readMarketHistory());
+  assert.strictEqual(fs.readFileSync(marketStorage.MARKET_HISTORY_FILE, 'utf8'), tinyHistoryBytes);
+  marketStorage.clearDbCache();
+  assert.strictEqual(marketStorage.readMarketHistory().tickers.VGT.prices['1981-01-02'], 0.0005);
   marketStorage.writeMarketHistory({ version: 1, tickers: {
-    VOO: { prices: { '2026-03-02': 500 }, fetchedFrom: '2026-03-02', fetchedThrough: '2026-03-02' }
+    VOO: { prices: { '2026-03-02': 500.123456 }, fetchedFrom: '2026-03-02', fetchedThrough: '2026-03-02' }
   } });
   const historyBytes = fs.readFileSync(marketStorage.MARKET_HISTORY_FILE, 'utf8');
+  assert.strictEqual(JSON.parse(historyBytes).tickers.VOO.prices['2026-03-02'], 500.123);
   fs.writeFileSync(marketStorage.DB_FILE, JSON.stringify({ ...marketDb, marketHistory: { stale: true } }));
   marketStorage.clearDbCache();
   assert.strictEqual(marketStorage.readDb().marketHistory, undefined, 'startup removes stale embedded market data');
