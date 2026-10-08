@@ -41,6 +41,18 @@ function openTab(store) {
     assert.strictEqual(initial.settings.customBenchmarkCacheReady, true);
     assert.strictEqual(initial.settings.customBenchmark2CacheReady, true);
     assert.deepStrictEqual(clone((await get('/api/members')).data.map(member => member.name)), ['John Titor', 'Alice Liddell', 'Giovanni Giorgio']);
+    const sampleSecond = (await get('/api/state?ledger=ledger-2')).data;
+    const seededCombined = (await get('/api/ledgers/combined')).data;
+    assert.strictEqual((await get('/api/ledgers')).data.length, 2);
+    assert(sampleSecond.events.length > 200);
+    assert(sampleSecond.summary.totalNAV > 0 && sampleSecond.summary.totalNAV !== initial.summary.totalNAV);
+    assert(Object.keys(initial.members).every(id => /^[1-9][0-9]{5}$/.test(id)));
+    assert(Object.keys(sampleSecond.members).every(id => /^[1-9][0-9]{5}$/.test(id)));
+    const gp = seededCombined.members.find(member => member.id === '100001');
+    assert.strictEqual(gp.breakdown.length, 2);
+    assert(gp.breakdown.every(account => account.gpCarryValue > 0));
+    assert.strictEqual(seededCombined.members.length, 4);
+    assert.strictEqual(seededCombined.summary.totalNAV, initial.summary.totalNAV + sampleSecond.summary.totalNAV);
     const afterCutoff = days => new Date(Date.parse(weeklyMarket.endDate) + days * 86400000).toISOString().slice(0, 10);
     const sunday = afterCutoff(2); const friday = afterCutoff(7);
     const tracked = (await get('/api/ticker-ath')).data;
@@ -54,10 +66,10 @@ function openTab(store) {
     await assert.rejects(post('/api/transaction', { member: member.id, type: 'withdraw', amount: 999999, date: sunday }), /余额不足/);
     assert.strictEqual(JSON.stringify((await get('/api/state')).data), beforeFailure);
     await post('/api/transaction', { member: member.id, type: 'withdraw', amount: 100, date: sunday });
-    await post('/api/transfer', { fromMember: member.id, toMember: 'lin', amount: 100, cnhRate: 7, date: sunday });
+    await post('/api/transfer', { fromMember: member.id, toMember: '100002', amount: 100, cnhRate: 7, date: sunday });
     const valuation = (await post('/api/valuation', { totalNAV: 300000, date: friday, remark: 'sandbox valuation' })).data;
     await mutate('PUT', '/api/event/' + valuation.id, { totalNAV: 310000, date: friday, remark: 'updated valuation' });
-    const previewBody = { date: friday, remark: 'sandbox settlement', gpMember: 'alex' };
+    const previewBody = { date: friday, remark: 'sandbox settlement', gpMember: '100001' };
     let preview = (await post('/api/performance-settlement/preview', previewBody)).data;
     await mutate('PUT', '/api/members/' + member.id, { name: 'Miku' });
     await assert.rejects(post('/api/performance-settlement', { ...previewBody, previewToken: preview.previewToken }), /预览已失效/);
@@ -103,7 +115,7 @@ function openTab(store) {
     assert.strictEqual((await get('/api/state')).data.summary.totalNAV, restored.summary.totalNAV);
     const firstLedgerState = clone((await get('/api/state')).data);
     const second = (await post('/api/ledgers', { name: '第二账本' })).data;
-    assert.strictEqual(second.id, 'ledger-2');
+    assert.strictEqual(second.id, 'ledger-3');
     const selected = (url, method = 'GET', body) => sandbox.request(url, {
       method, headers: { 'X-Ledger-Id': second.id }, body: body && JSON.stringify(body)
     });
@@ -121,8 +133,8 @@ function openTab(store) {
     await assert.rejects(selected('/api/state?ledger=default'), /选择不一致/);
     await assert.rejects(get('/api/state?ledger=missing'), /不存在/);
     const combined = (await get('/api/ledgers/combined')).data;
-    assert.strictEqual(combined.ledgers.length, 2);
-    assert.strictEqual(combined.summary.totalNAV, firstLedgerState.summary.totalNAV + 1000);
+    assert.strictEqual(combined.ledgers.length, 3);
+    assert.strictEqual(combined.summary.totalNAV, firstLedgerState.summary.totalNAV + sampleSecond.summary.totalNAV + 1000);
     assert.strictEqual(combined.members.find(item => item.id === member.id).breakdown.length, 2);
     // Shared benchmarks must stay ready for both ledgers after either one changes them.
     await selected('/api/settings/custom-benchmark', 'POST', { slot: 1, customBenchmark: { components: [{ ticker: 'AAPL', weight: 100 }] } });
@@ -137,14 +149,14 @@ function openTab(store) {
     assert.strictEqual((await get('/api/state')).data.summary.totalNAV, firstLedgerState.summary.totalNAV);
     assert.strictEqual((await get('/api/state')).data.settings.customBenchmark2.components[0].ticker, 'AAPL');
     const reloaded = await openTab(store);
-    assert.strictEqual((await reloaded.request('/api/ledgers')).data[1].name, '第二账本已改名');
-    assert.strictEqual((await reloaded.request('/api/state?ledger=ledger-2')).data.summary.totalNAV, beforeBackup.summary.totalNAV);
+    assert.strictEqual((await reloaded.request('/api/ledgers')).data[2].name, '第二账本已改名');
+    assert.strictEqual((await reloaded.request('/api/state?ledger=ledger-3')).data.summary.totalNAV, beforeBackup.summary.totalNAV);
     assert.strictEqual((await reloaded.request('/api/members')).data.find(item => item.id === member.id).name, 'Miku');
     const isolated = await openTab(storage());
     assert.strictEqual((await isolated.request('/api/members')).data.length, 3);
     sandbox.reset();
     const reset = await openTab(store);
-    assert.strictEqual((await reset.request('/api/ledgers')).data.length, 1);
+    assert.strictEqual((await reset.request('/api/ledgers')).data.length, 2);
     assert.strictEqual((await reset.request('/api/members')).data.length, 3);
     assert.strictEqual((await reset.request('/api/state')).data.summary.totalNAV, initial.summary.totalNAV);
     console.log('Browser bundle: deposits, withdrawals, transfers, editing, settlement tokens, locks, reversal, ZIP restore, reload, isolation and reset passed.');
