@@ -54,7 +54,7 @@ function request(server, pathname, method = 'GET') {
     assert.strictEqual(JSON.parse(demoLedgers.body).data[0].id, 'default');
     const combinedResponse = await request(server, '/api/demo/ledgers/combined');
     assert.strictEqual(combinedResponse.status, 200);
-    assert.strictEqual(JSON.parse(combinedResponse.body).data.ledgers.length, 1);
+    assert.strictEqual(JSON.parse(combinedResponse.body).data.ledgers.length, 2);
     assert.strictEqual((await request(server, '/api/demo/ledgers', 'POST')).status, 405);
     const membersResponse = await request(server, '/api/demo/members');
     assert.strictEqual(membersResponse.status, 200);
@@ -66,6 +66,17 @@ function request(server, pathname, method = 'GET') {
     assert.strictEqual(stateResponse.status, 200);
     assert.strictEqual(stateResponse.headers['cache-control'], 'no-store');
     const state = JSON.parse(stateResponse.body).data;
+    assert(members.every(member => /^[1-9][0-9]{5}$/.test(member.id)));
+    const secondResponse = await request(server, '/api/demo/state?ledger=ledger-2');
+    assert.strictEqual(secondResponse.status, 200);
+    const second = JSON.parse(secondResponse.body).data;
+    assert(second.summary.totalNAV > 0 && second.summary.totalNAV !== state.summary.totalNAV);
+    const secondMembersResponse = await request(server, '/api/demo/members?ledger=ledger-2');
+    const secondGp = JSON.parse(secondMembersResponse.body).data.find(member => member.primaryGp);
+    assert.strictEqual(secondGp.id, members.find(member => member.primaryGp).id);
+    const combined = JSON.parse(combinedResponse.body).data;
+    assert.strictEqual(combined.members.find(member => member.id === secondGp.id).breakdown.length, 2);
+    assert.strictEqual((await request(server, '/api/demo/state?ledger=missing')).status, 404);
     assert(state.summary.totalNAV > 180000, 'demo should present a populated fund');
     assert(state.events.some(event => event.type === 'performance_settlement'));
     assert.strictEqual(state.settings.benchmarkCacheReady, true);

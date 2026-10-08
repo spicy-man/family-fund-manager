@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { buildDemoLedger } = require('../demo/build-ledger');
+const { buildDemoLedgers } = require('../demo/build-ledger');
 const { calculateStateFromDb } = require('../lib/calculator');
 const weeklyMarket = require('../demo/weekly-market.json');
 const { dependencies } = require('../package.json');
@@ -49,12 +49,12 @@ function buildStaticDemo(output = defaultOutput) {
   bundleSandbox(output);
   fs.mkdirSync(path.join(output, 'demo-data'), { recursive: true });
   fs.writeFileSync(path.join(output, 'demo-data/seed.json'), JSON.stringify(buildSandboxSeed()));
-  const db = buildDemoLedger();
+  const entries = buildDemoLedgers();
+  const db = entries[0].ledger;
   const payloads = {
-    'ledgers.json': { success: true, data: [{ id: 'default', name: '样例账本', isDefault: true }] },
-    'combined.json': { success: true, data: require('../lib/combined-overview').combineLedgers([
-      { id: 'default', name: '样例账本', state: calculateStateFromDb(db) }
-    ]) },
+    'ledgers.json': { success: true, data: entries.map(({ ledger, ...entry }) => entry) },
+    'combined.json': { success: true, data: require('../lib/combined-overview').combineLedgers(entries.map(({ ledger, ...entry }) =>
+      ({ ...entry, state: calculateStateFromDb(ledger) }))) },
     'state.json': { success: true, data: calculateStateFromDb(db) },
     'members.json': { success: true, data: db.members.map(member => ({
       ...member, primaryGp: member.id === db.performanceFee.gpMemberId
@@ -65,6 +65,12 @@ function buildStaticDemo(output = defaultOutput) {
     'custom-benchmark-0.json': { success: true, data: db.customBenchmark },
     'custom-benchmark-1.json': { success: true, data: db.customBenchmark2 }
   };
+  for (const { id, ledger } of entries.slice(1)) {
+    payloads[id + '/state.json'] = { success: true, data: calculateStateFromDb(ledger) };
+    payloads[id + '/members.json'] = { success: true, data: ledger.members.map(member => ({
+      ...member, primaryGp: member.id === ledger.performanceFee.gpMemberId
+    })) };
+  }
   for (const [file, payload] of Object.entries(payloads)) {
     const target = path.join(output, 'demo-data', file);
     fs.mkdirSync(path.dirname(target), { recursive: true });

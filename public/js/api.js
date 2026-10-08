@@ -19,7 +19,10 @@ function resolveApiUrl(url) {
     };
     const file = files[request.pathname];
     if (!file) throw new Error('演示模式为只读，此操作不可用。');
-    return new URL('demo-data/' + file, window.location.href).href;
+    const id = window.FundLedger?.id || new URL(window.location.href).searchParams.get('ledger') || 'default';
+    if (!['default', 'ledger-2'].includes(id)) throw new Error('账本不存在。');
+    const directory = id !== 'default' && ['state.json', 'members.json'].includes(file) ? id + '/' : '';
+    return new URL('demo-data/' + directory + file, window.location.href).href;
   }
   return url.startsWith('/api/') ? `${API_PREFIX}${url.slice(4)}` : url;
 }

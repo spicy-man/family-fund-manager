@@ -1,8 +1,18 @@
 const path = require('path');
-const { buildDemoLedger } = require('../demo/build-ledger');
+const { buildDemoLedgers } = require('../demo/build-ledger');
+const { InputError, NotFoundError } = require('../lib/api-errors');
 const weeklyMarket = require('../demo/weekly-market.json');
 
-const demoLedger = buildDemoLedger();
+const demoLedgers = buildDemoLedgers();
+const demoLedger = demoLedgers[0].ledger;
+function selectedLedger(req) {
+  const header = req.get('X-Ledger-Id');
+  const query = req.query.ledger;
+  if (header !== undefined && query !== undefined && header !== query) throw new InputError('账本选择不一致。');
+  const entry = demoLedgers.find(entry => entry.id === (header ?? query ?? 'default'));
+  if (!entry) throw new NotFoundError('账本不存在。');
+  return entry.ledger;
+}
 const demoMarket = weeklyMarket.tickers;
 
 function clone(value) {
@@ -24,20 +34,20 @@ function registerDemoRoutes(app, { calculateStateFromDb, publicDirectory }) {
   });
 
   app.get('/api/demo/ledgers', (_req, res) => {
-    res.json({ success: true, data: [{ id: 'default', name: '样例账本', isDefault: true }] });
+    res.json({ success: true, data: demoLedgers.map(({ ledger, ...entry }) => entry) });
   });
   app.get('/api/demo/ledgers/combined', (_req, res) => {
-    res.json({ success: true, data: require('../lib/combined-overview').combineLedgers([
-      { id: 'default', name: '样例账本', state: calculateStateFromDb(clone(demoLedger)) }
-    ]) });
+    res.json({ success: true, data: require('../lib/combined-overview').combineLedgers(demoLedgers.map(({ ledger, ...entry }) =>
+      ({ ...entry, state: calculateStateFromDb(clone(ledger)) }))) });
   });
 
-  app.get('/api/demo/state', (_req, res) => {
-    const state = calculateStateFromDb(clone(demoLedger));
+  app.get('/api/demo/state', (req, res) => {
+    const state = calculateStateFromDb(clone(selectedLedger(req)));
     res.json({ success: true, data: state });
   });
 
-  app.get('/api/demo/members', (_req, res) => {
+  app.get('/api/demo/members', (req, res) => {
+    const demoLedger = selectedLedger(req);
     const members = demoLedger.members.map(member => ({
       ...clone(member),
       primaryGp: demoLedger.performanceFee.gpMemberId === member.id

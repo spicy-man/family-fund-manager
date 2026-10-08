@@ -1,10 +1,9 @@
 const { calculateStateFromDb } = require('../lib/calculator');
-const { buildDemoLedger } = require('./build-ledger');
+const { buildDemoLedgers } = require('./build-ledger');
 const weeklyMarket = require('./weekly-market.json');
 const { migrateSettlementLedger } = require('../lib/settlement-ledger');
 const { mergeTickerPrices } = require('../lib/market-history');
-function buildSandboxSeed() {
-  const ledger = buildDemoLedger();
+function splitLedger(ledger) {
   const db = { members: ledger.members, performanceFee: ledger.performanceFee,
     benchmarkClosePolicy: 'previous', lastEventSequence: Math.max(...ledger.events.map(event => event.sequenceNumber)),
     events: ledger.events.filter(event => event.type !== 'performance_settlement') };
@@ -16,6 +15,14 @@ function buildSandboxSeed() {
   }
   const settlements = migrateSettlementLedger(db, { version: 1,
     records: ledger.events.filter(event => event.type === 'performance_settlement') }).ledger;
+  return { db, settlements };
+}
+function buildSandboxSeed() {
+  const entries = buildDemoLedgers();
+  const ledger = entries[0].ledger;
+  const { db, settlements } = splitLedger(ledger);
+  const ledgers = Object.fromEntries(entries.slice(1).map(entry =>
+    [entry.id, { name: entry.name, ...splitLedger(entry.ledger) }]));
   const marketHistory = { version: 2, tickers: {}, updatedAt: weeklyMarket.endDate };
   for (const [ticker, prices] of Object.entries(weeklyMarket.historyPrices || {})) {
     mergeTickerPrices(marketHistory, ticker, prices, { priceBasis: weeklyMarket.priceBasis || 'close' });
@@ -26,7 +33,7 @@ function buildSandboxSeed() {
       .map(row => [row.priceDate, row[field]]));
     mergeTickerPrices(marketHistory, ticker, prices, { priceBasis: weeklyMarket.priceBasis || 'close' });
   }
-  return { db, settlements, marketHistory,
+  return { db, settlements, marketHistory, ledgers, defaultName: entries[0].name,
     config: { tickers: Object.values(weeklyMarket.tickers).map(({ ticker, longName }) => ({ ticker, name: longName })),
       customBenchmark: ledger.customBenchmark, customBenchmark2: ledger.customBenchmark2 },
     cnhRate: ledger.cnhRate, indexCache: ledger.indexCache, customBenchmarkCache: ledger.customBenchmarkCache,

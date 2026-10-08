@@ -12,12 +12,12 @@ const portfolio2 = {
 };
 
 const members = [
-  { id: 'alex', name: 'John Titor', roles: { lp: true, gp: true } },
-  { id: 'lin', name: 'Alice Liddell', roles: { lp: true, gp: false } },
-  { id: 'zhou', name: 'Giovanni Giorgio', roles: { lp: true, gp: false } }
+  { id: '100001', name: 'John Titor', roles: { lp: true, gp: true } },
+  { id: '100002', name: 'Alice Liddell', roles: { lp: true, gp: false } },
+  { id: '100003', name: 'Giovanni Giorgio', roles: { lp: true, gp: false } }
 ];
 
-const performanceFee = { gpMemberId: 'alex', annualRate: 0.06, feeRate: 0.25 };
+const performanceFee = { gpMemberId: '100001', annualRate: 0.06, feeRate: 0.25 };
 const signature1 = customBenchmarkSignature(portfolio1);
 const signature2 = customBenchmarkSignature(portfolio2);
 
@@ -35,7 +35,11 @@ function customCacheEntry(row) {
   return mergeCustomEntryForSlot(primary, 1, secondary);
 }
 
-function buildDemoLedger() {
+function buildDemoLedger({ secondary = false } = {}) {
+  const ledgerMembers = members.map(member => ({ ...member, roles: { ...member.roles } }));
+  if (secondary) ledgerMembers[2] = { id: '100004', name: 'Makise Kurisu', roles: { lp: true, gp: false } };
+  const memberId = id => secondary && id === '100003' ? '100004' : id;
+  const capitalScale = secondary ? 0.4 : 1;
   const events = [];
   const indexCache = {};
   const customBenchmarkCache = {};
@@ -47,33 +51,40 @@ function buildDemoLedger() {
 
   const push = event => events.push({
     ...event,
+    ...(event.member ? { member: memberId(event.member) } : {}),
+    ...(event.fromMember ? { fromMember: memberId(event.fromMember), toMember: memberId(event.toMember) } : {}),
+    ...(event.lpMembers ? { lpMembers: ledgerMembers.map(member => member.id) } : {}),
     createdAt: Date.parse(`${event.date}T12:00:00Z`) + sequenceNumber,
     sequenceNumber: ++sequenceNumber
   });
   const historicalCnhAmount = (amount, date) => Number((amount * marketByDate[date].cnh).toFixed(2));
   const deposit = (id, member, amount, date, remark) => {
+    amount *= capitalScale;
     const cnhAmount = historicalCnhAmount(amount, date);
     push({ id, type: 'deposit', member, amount, cnhAmount, date, remark });
     totalShares += amount / currentNav;
   };
   const withdraw = (id, member, amount, date, remark) => {
+    amount *= capitalScale;
     const cnhAmount = historicalCnhAmount(amount, date);
     push({
       id, type: 'withdraw', member, amount, cnhAmount, date, remark,
-      performanceFee: { gpMember: 'alex', annualRate: 0.06, feeRate: 0.25 }
+      performanceFee: { gpMember: '100001', annualRate: 0.06, feeRate: 0.25 }
     });
     totalShares -= amount / currentNav;
   };
 
-  deposit('demo_deposit_alex', 'alex', 60000, first.date, '发起人首期入金');
-  deposit('demo_deposit_lin', 'lin', 40000, first.date, '家庭成员首期入金');
+  deposit('demo_deposit_alex', '100001', 60000, first.date, '发起人首期入金');
+  deposit('demo_deposit_lin', '100002', 40000, first.date, '家庭成员首期入金');
 
   weeklyMarket.weeks.forEach((row, index) => {
     // Value the existing holdings before issuing or redeeming shares that day.
     const aaplReturn = row.aapl / first.aapl;
     const googlReturn = row.googl / first.googl;
     const vgtReturn = row.vgt / first.vgt;
-    const grossFundNav = 0.2 * aaplReturn + 0.2 * googlReturn + 0.6 * vgtReturn;
+    const grossFundNav = secondary
+      ? 0.7 * row.spx / first.spx + 0.3 * row.ndx / first.ndx
+      : 0.2 * aaplReturn + 0.2 * googlReturn + 0.6 * vgtReturn;
     const annualCostFactor = Math.max(0.98, 1 - (0.0015 * index / 52));
     const targetNav = grossFundNav * annualCostFactor;
     push({
@@ -87,23 +98,23 @@ function buildDemoLedger() {
 
 
     if (row.date === '2022-06-10') {
-      deposit('demo_deposit_zhou', 'zhou', 25000, row.date, '新增合伙人入金');
+      deposit('demo_deposit_zhou', '100003', 25000, row.date, '新增合伙人入金');
     }
     if (row.date === '2023-07-14') {
       push({
-        id: 'demo_transfer', type: 'transfer', fromMember: 'lin', toMember: 'zhou',
-        amount: 8000, cnhRate: row.cnh, date: row.date, remark: '成员间份额转让',
-        performanceFee: { gpMember: 'alex', annualRate: 0.06, feeRate: 0.25 }
+        id: 'demo_transfer', type: 'transfer', fromMember: '100002', toMember: '100003',
+        amount: 8000 * capitalScale, cnhRate: row.cnh, date: row.date, remark: '成员间份额转让',
+        performanceFee: { gpMember: '100001', annualRate: 0.06, feeRate: 0.25 }
       });
     }
     if (row.date === '2024-04-12') {
-      withdraw('demo_withdraw_lin', 'lin', 5000, row.date, '成员部分退出');
+      withdraw('demo_withdraw_lin', '100002', 5000, row.date, '成员部分退出');
     }
     if (row.date === '2025-02-14') {
-      deposit('demo_deposit_alex_2', 'alex', 18000, row.date, '发起人追加投资');
+      deposit('demo_deposit_alex_2', '100001', 18000, row.date, '发起人追加投资');
     }
     if (row.date === '2026-06-12') {
-      withdraw('demo_withdraw_zhou', 'zhou', 3500, row.date, '成员部分退出');
+      withdraw('demo_withdraw_zhou', '100003', 3500, row.date, '成员部分退出');
     }
 
 
@@ -114,7 +125,7 @@ function buildDemoLedger() {
         id: `demo_settlement_${row.date.slice(0, 4)}`,
         type: 'performance_settlement',
         date: row.date,
-        gpMember: 'alex',
+        gpMember: '100001',
         lpMembers: members.map(member => member.id),
         annualRate: 0.06,
         feeRate: 0.25,
@@ -139,8 +150,8 @@ function buildDemoLedger() {
   });
 
   return {
-    members,
-    performanceFee,
+    members: ledgerMembers,
+    performanceFee: { ...performanceFee },
     cnhRate: weeklyMarket.latestCnh.rate,
     events,
     indexCache,
@@ -150,4 +161,10 @@ function buildDemoLedger() {
   };
 }
 
-module.exports = { buildDemoLedger, portfolio1, portfolio2 };
+function buildDemoLedgers() {
+  return [
+    { id: 'default', name: '成长账本', isDefault: true, ledger: buildDemoLedger() },
+    { id: 'ledger-2', name: '稳健账本', isDefault: false, ledger: buildDemoLedger({ secondary: true }) }
+  ];
+}
+module.exports = { buildDemoLedger, buildDemoLedgers, portfolio1, portfolio2 };
