@@ -8,6 +8,8 @@ function resolveApiUrl(url) {
   if (window.FundDemoMode?.staticDemo) {
     const request = new URL(url, window.location.href);
     const files = {
+      '/api/ledgers': 'ledgers.json',
+      '/api/ledgers/combined': 'combined.json',
       '/api/state': 'state.json',
       '/api/members': 'members.json',
       '/api/ticker-ath': 'ticker-ath.json',
@@ -23,7 +25,9 @@ function resolveApiUrl(url) {
 }
 
 async function requestApi(url, options = {}) {
-  if (window.FundDemoMode?.sandbox) return window.FundDemoSandbox.request(url, options);
+  if (window.FundDemoMode?.sandbox) return window.FundDemoSandbox.request(url, {
+    ...options, headers: { ...options.headers, ...(window.FundLedger ? { 'X-Ledger-Id': window.FundLedger.id } : {}) }
+  });
   if (window.FundDemoMode?.staticDemo && (options.method || 'GET').toUpperCase() !== 'GET') {
     throw new Error('演示模式为只读，此操作不可用。');
   }

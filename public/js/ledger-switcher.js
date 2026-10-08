@@ -34,7 +34,8 @@
   document.addEventListener('DOMContentLoaded', async () => {
     const switcher = document.getElementById('ledger-switcher');
     if (!switcher) return;
-    if (window.FundDemoMode?.enabled) { switcher.hidden = true; return; }
+    const readOnly = window.FundDemoMode?.enabled && !window.FundDemoMode.sandbox;
+    if (readOnly) document.getElementById('btn-manage-ledgers').hidden = true;
     const trigger = document.getElementById('ledger-select');
     const menu = document.getElementById('ledger-menu');
     const list = document.getElementById('ledger-menu-list');

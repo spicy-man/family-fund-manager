@@ -49,6 +49,13 @@ function request(server, pathname, method = 'GET') {
     assert.strictEqual(caseRedirect.status, 308);
     assert.strictEqual(caseRedirect.headers.location, '/demo?source=review');
 
+    const demoLedgers = await request(server, '/api/demo/ledgers');
+    assert.strictEqual(demoLedgers.status, 200);
+    assert.strictEqual(JSON.parse(demoLedgers.body).data[0].id, 'default');
+    const combinedResponse = await request(server, '/api/demo/ledgers/combined');
+    assert.strictEqual(combinedResponse.status, 200);
+    assert.strictEqual(JSON.parse(combinedResponse.body).data.ledgers.length, 1);
+    assert.strictEqual((await request(server, '/api/demo/ledgers', 'POST')).status, 405);
     const membersResponse = await request(server, '/api/demo/members');
     assert.strictEqual(membersResponse.status, 200);
     const members = JSON.parse(membersResponse.body).data;

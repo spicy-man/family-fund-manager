@@ -14,6 +14,9 @@ const read = file => fs.readFileSync(path.join(output, file), 'utf8');
   try {
     buildStaticDemo(output);
     assert.deepStrictEqual(JSON.parse(read('demo-data/state.json')).data, JSON.parse(JSON.stringify(calculateStateFromDb(buildDemoLedger()))));
+    const demoLedgers = JSON.parse(read('demo-data/ledgers.json')).data;
+    assert.strictEqual(demoLedgers[0].id, 'default');
+    assert.strictEqual(JSON.parse(read('demo-data/combined.json')).data.ledgers.length, 1);
     const ledger = buildDemoLedger();
     const history = calculateStateFromDb(ledger).charts.navHistory;
     for (const event of ledger.events.filter(event => ['deposit', 'withdraw', 'transfer'].includes(event.type))) {
@@ -67,6 +70,8 @@ const read = file => fs.readFileSync(path.join(output, file), 'utf8');
       vm.runInContext(fs.readFileSync(path.join(root, 'public/js/api.js'), 'utf8') + '\nglobalThis.client = Api;', context);
       const state = await context.client.getState();
       assert(state.events.length > 200);
+      assert.strictEqual((await vm.runInContext("requestApi('/api/ledgers')", context)).data.length, 1);
+      assert.strictEqual((await vm.runInContext("requestApi('/api/ledgers/combined')", context)).data.ledgers.length, 1);
       await context.client.getMembers();
       await context.client.getTickerAth();
       await context.client.getTickers();
@@ -83,6 +88,14 @@ const read = file => fs.readFileSync(path.join(output, file), 'utf8');
       await assert.rejects(context.client.previewSettlement({}), /只读/);
       assert.strictEqual(requests.length, before, 'Writes must be rejected before network access');
     }
+    const sandboxRequests = [];
+    const sandboxContext = vm.createContext({ window: {
+      FundDemoMode: { enabled: true, sandbox: true }, FundLedger: { id: 'ledger-2' },
+      FundDemoSandbox: { request: async (url, options) => { sandboxRequests.push({ url, options }); return { success: true, data: {} }; } }
+    } });
+    vm.runInContext(fs.readFileSync(path.join(root, 'public/js/api.js'), 'utf8'), sandboxContext);
+    await vm.runInContext("requestApi('/api/state')", sandboxContext);
+    assert.strictEqual(sandboxRequests[0].options.headers['X-Ledger-Id'], 'ledger-2');
     for (const demo of [false, true]) {
       const context = vm.createContext({ window: { FundDemoMode: { enabled: demo }, location: { href: 'http://localhost:3000/' } } });
       vm.runInContext(fs.readFileSync(path.join(root, 'public/js/api.js'), 'utf8'), context);

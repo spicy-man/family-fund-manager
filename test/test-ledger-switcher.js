@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-async function setup({ failFirstLoad = false, privacyMode = true, positionTransfer = null, scrollY = 0 } = {}) {
+async function setup({ failFirstLoad = false, privacyMode = true, positionTransfer = null, scrollY = 0, demoMode = undefined } = {}) {
   const nodes = {};
   let document;
   class Element {
@@ -85,6 +85,7 @@ async function setup({ failFirstLoad = false, privacyMode = true, positionTransf
       else ledgers.find(item => item.id === url.split('/').at(-1)).name = body.name.trim();
     },
     window: {
+      FundDemoMode: demoMode,
       location: { search: '?ledger=ledger-2', href: 'http://localhost/?ledger=ledger-2', assign(url) { destination = url; } },
       sessionStorage: { setItem: (key, value) => storage.set(key, value), getItem: key => storage.get(key), removeItem: key => storage.delete(key) },
       scrollY, scrollTo: options => scrolls.push(options), requestAnimationFrame: callback => frames.push(callback),
@@ -103,6 +104,15 @@ async function setup({ failFirstLoad = false, privacyMode = true, positionTransf
 }
 
 (async () => {
+  const sandbox = await setup({ demoMode: { enabled: true, sandbox: true } });
+  assert.strictEqual(sandbox.nodes['ledger-switcher'].hidden, false);
+  assert.strictEqual(sandbox.getRequests(), 1);
+  await sandbox.nodes['btn-manage-ledgers'].dispatch('click');
+  assert.strictEqual(sandbox.isOpen(), true);
+  const readOnly = await setup({ demoMode: { enabled: true, sandbox: false } });
+  assert.strictEqual(readOnly.nodes['ledger-switcher'].hidden, false);
+  assert.strictEqual(readOnly.nodes['btn-manage-ledgers'].hidden, true);
+  assert.strictEqual(readOnly.getRequests(), 1);
   const { nodes, writes, exportLink, isOpen } = await setup();
   assert.strictEqual(nodes['ledger-current-name'].textContent, '账本2');
   assert.strictEqual(exportLink.href, '/api/backup/export?ledger=ledger-2');
