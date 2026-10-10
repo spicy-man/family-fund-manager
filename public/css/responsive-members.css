@@ -37,8 +37,12 @@
 
   .layout-right {
     position: static;
+    top: auto;
+    bottom: auto;
     width: auto;
     overflow: visible;
+    /* The fixed desktop rail reserves space for its bottom controls. */
+    padding-bottom: 0;
   }
 
   .ticker-ath-bar {

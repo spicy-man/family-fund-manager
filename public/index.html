@@ -34,7 +34,7 @@
       </svg>
       <span>
         <strong>家庭财富账本</strong>
-        <small>WEALTH LEDGER <b class="sidebar-version">v4.7.2</b></small>
+        <small>WEALTH LEDGER <b class="sidebar-version">v4.7.3</b></small>
       </span>
     </div>
 
@@ -128,7 +128,7 @@
         <div class="logo-text">
           <h1>家庭基金账目管理系统</h1>
           <span class="sub-logo">Family Private Wealth &amp; NAV Ledger &nbsp;<span
-              class="version-badge">v4.7.2</span></span>
+              class="version-badge">v4.7.3</span></span>
         </div>
       </div>
       <div class="header-actions">
@@ -699,7 +699,7 @@
     </main>
 
     <!-- Ledger Block - Full width Transaction Log -->
-    <section class="glass-panel premium-border surface-primary ledger-section" id="ledger-section">
+    <section class="glass-panel premium-border surface-primary ledger-section ledger-section--collapsed" id="ledger-section">
       <div class="panel-header">
         <h2 class="panel-title">
           <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -711,7 +711,8 @@
           </svg>
           流水日志
         </h2>
-        <div class="ledger-filters">
+        <button type="button" class="ledger-section-toggle" id="ledger-section-toggle" aria-expanded="false" aria-controls="ledger-filters ledger-content">展开流水</button>
+        <div class="ledger-filters" id="ledger-filters">
           <select id="filter-member" class="select-input">
             <option value="all">所有流水对象</option>
             <!-- 动态加载成员选项 -->
@@ -729,7 +730,7 @@
         </div>
       </div>
 
-      <div class="table-container">
+      <div class="table-container" id="ledger-content">
         <table class="ledger-table">
           <thead>
             <tr>
@@ -1510,6 +1511,7 @@
   <script src="js/settings-controller.js"></script>
   <script src="js/management-controller.js"></script>
   <script src="js/metric-details.js"></script>
+  <script src="js/count-up.js"></script>
   <script src="js/app-shell-controller.js"></script>
   <script src="js/custom-select.js"></script>
   <script src="js/ticker-panel.js"></script>

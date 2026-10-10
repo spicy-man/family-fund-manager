@@ -570,15 +570,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // 1. 仪表盘指标渲染 (USD 币种重构 & CNH 人民币对比核算)
+  let hasRenderedDashboardMetrics = false;
   function renderDashboard() {
     const s = appState.summary;
+    const animateMetrics = !hasRenderedDashboardMetrics;
 
     // 自动更新汇率框数值（若当前没有被焦点选中）
     if (document.activeElement !== inputCnhRate) {
       inputCnhRate.value = s.cnhRate.toFixed(4);
     }
 
-    elFundNavPerShare.textContent = s.navPerShare.toFixed(4);
+    window.FundCountUp.render(elFundNavPerShare, s.navPerShare, value => value.toFixed(4), animateMetrics);
     // 根据单位净值更新颜色指示器
     elFundNavPerShare.className = 'metric-value font-outfit privacy-sensitive';
 
@@ -595,6 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Three-card overview: assets, NAV and the return on capital still managed.
     elFundTotalNav.innerHTML = `<span>$${formatMoney(s.totalNAV)}</span><span class="metric-inline metric-profit-inline ${s.profit >= 0 ? 'text-green' : 'text-magenta'}">${s.profit >= 0 ? '+' : ''}$${formatMoney(s.profit)}</span>`;
+    window.FundCountUp.render(elFundTotalNav.firstElementChild, s.totalNAV, value => `$${formatMoney(value)}`, animateMetrics);
     const formatCnhTenThousands = amount => Number(amount / 10000).toLocaleString('zh-CN', {
       minimumFractionDigits: 1,
       maximumFractionDigits: 1
@@ -609,6 +612,9 @@ document.addEventListener('DOMContentLoaded', () => {
     elFundActiveProfitRate.innerHTML = `<span>${activeRate === null ? '—' : `${activeRate > 0 ? '+' : ''}${activeRate.toFixed(2)}%`}</span>`;
     const activeRateTone = activeRate === null ? '' : activeRate > 0 ? ' text-green' : activeRate < 0 ? ' text-magenta' : '';
     elFundActiveProfitRate.className = `metric-value font-outfit privacy-sensitive${activeRateTone}`;
+    window.FundCountUp.render(elFundActiveProfitRate.firstElementChild, activeRate,
+      value => value === null ? '—' : `${value > 0 ? '+' : ''}${value.toFixed(2)}%`, animateMetrics);
+    hasRenderedDashboardMetrics = true;
     const cnhActiveRateText = cnhActiveRate === null
       ? '—'
       : `${cnhActiveRate >= 0 ? '+' : ''}${cnhActiveRate.toFixed(2)}%`;

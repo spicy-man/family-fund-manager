@@ -30,8 +30,11 @@ window.FundLedgerRenderer = {
       if (event.type === 'performance_settlement') row.className = 'ledger-row--settlement';
       if (event.type === 'performance_settlement_reversal') row.className = 'ledger-row--settlement-reversal';
       if (['withdraw', 'transfer'].includes(event.type) && event._disposedLots?.length) row.className = 'ledger-row--disposal';
+      row.classList.add('ledger-card');
+      const labels = ['时间', '流水明细', '类型', '出资/估值金额', '成交净值', '结算份额', '结算市值'];
       const append = (html, className = '') => {
         const cell = document.createElement('td');
+        cell.dataset.label = labels[row.children.length];
         if (className) cell.className = className;
         cell.innerHTML = html;
         row.appendChild(cell);
@@ -124,6 +127,21 @@ window.FundLedgerRenderer = {
         remove.addEventListener('click', () => onDelete(event.id, actor, event.type, event.amount || event.totalNAV));
       }
       actions.appendChild(actionBox);
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'ledger-card-toggle';
+      toggle.textContent = '展开详情';
+      toggle.setAttribute('aria-expanded', 'false');
+      const setLabel = () => toggle.setAttribute('aria-label', event.date + ' ' + actor + ' ' + typeMeta[1] + '，' + toggle.textContent);
+      setLabel();
+      toggle.addEventListener('click', () => {
+        const open = row.classList.toggle('ledger-card--open');
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.textContent = open ? '收起详情' : '展开详情';
+        setLabel();
+      });
+      actions.appendChild(toggle);
+      actions.dataset.label = '操作';
       row.appendChild(actions);
       ledgerTbody.appendChild(row);
       if (event.type === 'performance_settlement') {
@@ -187,3 +205,21 @@ window.FundLedgerRenderer = {
     window.FundLedgerHover?.bind(ledgerTbody);
   }
 };
+
+// Compact screens keep the full log available on demand.
+document.addEventListener('DOMContentLoaded', () => {
+  const section = document.getElementById('ledger-section');
+  const toggle = document.getElementById('ledger-section-toggle');
+  if (!section || !toggle) return;
+  const compact = window.matchMedia('(max-width: 720px)');
+  let expanded = false;
+  const sync = () => {
+    const open = !compact.matches || expanded;
+    section.classList.toggle('ledger-section--collapsed', !open);
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.textContent = open ? '收起流水' : '展开流水';
+  };
+  toggle.addEventListener('click', () => { expanded = !expanded; sync(); });
+  compact.addEventListener('change', sync);
+  sync();
+});
