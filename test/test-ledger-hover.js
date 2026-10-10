@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 function checkFollowingPosition(followingY) {
-  let reduced = false, closeCallback;
+  let reduced = false, mobile = false, closeCallback;
   const animated = [];
   const row = (kind, y) => {
     const classes = new Set(kind ? [kind] : []);
@@ -18,7 +18,7 @@ function checkFollowingPosition(followingY) {
   const offscreen = row('', 1200);
   detail.previousElementSibling = trigger;
   const tbody = { children: [trigger, detail, following, offscreen], classList: { add() {} } };
-  const window = { innerHeight: 800, matchMedia: () => ({ matches: reduced }) };
+  const window = { innerHeight: 800, matchMedia: query => ({ matches: query === '(width < 480px)' ? mobile : reduced }) };
   vm.runInNewContext(fs.readFileSync('public/js/ledger-hover.js', 'utf8'), {
     window, Element: { prototype: { animate() {} } },
     setTimeout: callback => { closeCallback = callback; }, clearTimeout() {}
@@ -44,6 +44,10 @@ function checkFollowingPosition(followingY) {
   assert.equal(animated.length, 2, 'Reduced motion must skip row animations');
   window.FundLedgerHover.bind(tbody);
   assert(trigger.handlers.mouseenter, 'Re-render must replace the hover binding');
+  closeCallback();
+  mobile = true;
+  trigger.handlers.mouseenter();
+  assert(!detail.classList.contains('ledger-detail-open'), 'Small-screen details must be controlled by the card button, not hover');
 }
 checkFollowingPosition(80);
 checkFollowingPosition(700); // Expanded: 860px, below viewport; collapsed: 700px, visible again.

@@ -219,9 +219,8 @@ body.theme-dark .glass-panel {
  */
 :root {
   --surface-1-border: rgba(72, 94, 119, 0.105);
-  --surface-1-background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(246, 249, 253, 0.62)),
-    rgba(255, 255, 255, 0.66);
+  --surface-1-background: rgba(253, 254, 255, 0.91);
+  --surface-2-background: rgba(253, 254, 255, 0.34);
   --surface-1-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.46),
     0 0 28px rgba(43, 65, 91, 0.075),
@@ -260,9 +259,8 @@ body.theme-dark .glass-panel {
 @media (prefers-color-scheme: dark) {
   body:not(.theme-light) {
     --surface-1-border: rgba(255, 255, 255, 0.1);
-    --surface-1-background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
-      rgba(15, 18, 30, 0.72);
+    --surface-1-background: rgba(27, 30, 41, 0.73);
+    --surface-2-background: rgba(42, 44, 55, 0.45);
     --surface-1-shadow:
       0 0 24px rgba(0, 0, 0, 0.25),
       0 18px 42px -24px rgba(var(--color-primary-rgb), 0.24),
@@ -283,9 +281,8 @@ body.theme-dark .glass-panel {
 
 body.theme-dark {
   --surface-1-border: rgba(255, 255, 255, 0.1);
-  --surface-1-background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
-    rgba(15, 18, 30, 0.72);
+  --surface-1-background: rgba(27, 30, 41, 0.73);
+  --surface-2-background: rgba(42, 44, 55, 0.45);
   --surface-1-shadow:
     0 0 24px rgba(0, 0, 0, 0.25),
     0 18px 42px -24px rgba(var(--color-primary-rgb), 0.24),
@@ -395,7 +392,7 @@ body.theme-light .header-meta .cnh-rate-config {
   }
 }
 
-/* Persistent surfaces keep their gradients and borders without resampling the
+/* Persistent surfaces keep their tints and borders without resampling the
    moving page beneath them. Transient dialogs and tooltips retain their blur. */
 body .app-sidebar,
 body .surface-primary,
@@ -407,6 +404,16 @@ body .ticker-ath-cards,
 body .ledger-section .table-container {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+/* Uniform tints avoid diagonal colour bands in large, subtle gradients.
+   Keep this after the theme rules so dark mode cannot restore the gradients. */
+body .metrics-grid,
+body .member-card,
+body .chart-controls-dock,
+body .ticker-ath-cards,
+body .ledger-section .table-container {
+  background: var(--surface-2-background);
 }
 
 /* Keep the welcome header compact while preserving the toolbar control height. */

@@ -45,12 +45,14 @@
 
     function init() {
       document.body.classList.toggle('privacy-mode-active', privacyMode);
+      if (privacyMode) window.FundCountUp?.finishAll();
       privacyButtons.forEach(button => {
         if (!button) return;
         button.setAttribute('aria-pressed', String(privacyMode));
         button.addEventListener('click', () => {
           privacyMode = !privacyMode;
           document.body.classList.toggle('privacy-mode-active', privacyMode);
+          if (privacyMode) window.FundCountUp?.finishAll();
           privacyButtons.forEach(item => item?.setAttribute('aria-pressed', String(privacyMode)));
           showToast(privacyMode ? '隐私模式已开启，敏感财务数据已模糊隐藏' : '隐私模式已关闭', privacyMode ? 'success' : 'warning');
         });

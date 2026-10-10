@@ -13,12 +13,13 @@ const sessionStorage = {
 
 function load(ledger, { demo = false, store = sessionStorage } = {}) {
   const classes = new Set();
+  let finishes = 0;
   const buttons = Array.from({ length: 5 }, () => ({
     attributes: {},
     setAttribute(key, value) { this.attributes[key] = value; },
     addEventListener(_type, handler) { this.click = handler; }
   }));
-  const window = { sessionStorage: store, FundDemoMode: { enabled: demo }, FundLedger: { id: ledger } };
+  const window = { FundCountUp: { finishAll() { finishes++; } }, sessionStorage: store, FundDemoMode: { enabled: demo }, FundLedger: { id: ledger } };
   const document = { body: { classList: {
     toggle(name, active) { if (active) classes.add(name); else classes.delete(name); }
   } } };
@@ -27,7 +28,7 @@ function load(ledger, { demo = false, store = sessionStorage } = {}) {
     elements: { benchmarkPolicyButtons: [], privacyButtons: buttons }, showToast() {}
   }).init();
   return {
-    buttons,
+    buttons, finishCount: () => finishes,
     assertPrivacy(active) {
       assert.strictEqual(classes.has('privacy-mode-active'), active);
       buttons.forEach(button => assert.strictEqual(button.attributes['aria-pressed'], String(active)));
@@ -37,10 +38,12 @@ function load(ledger, { demo = false, store = sessionStorage } = {}) {
 
 const first = load('default');
 first.assertPrivacy(true);
+assert.equal(first.finishCount(), 1, 'Private initialization must finish pending CountUp animations');
 first.buttons[0].click();
 first.assertPrivacy(false);
 const second = load('ledger-2');
 second.assertPrivacy(true);
+assert.equal(second.finishCount(), 1);
 second.buttons[3].click();
 second.assertPrivacy(false);
 load('ledger-2').assertPrivacy(true);
@@ -58,6 +61,7 @@ load('default').assertPrivacy(true);
 load('ledger-3').assertPrivacy(true);
 second.buttons[3].click();
 second.assertPrivacy(true);
+assert.equal(second.finishCount(), 2, 'Enabling privacy must finish animations immediately');
 load('default').assertPrivacy(true);
 load('ledger-3').assertPrivacy(true);
 const demo = load('demo', { demo: true });

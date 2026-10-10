@@ -4,8 +4,8 @@ const { fetchYahooPrices, createPriceLookup, mergeTickerAthRecord } = require('.
 const { createJsonFetcher } = require('../lib/http-json');
 
 const TRACKED_TICKERS = [
-  'VOO', 'QQQM', 'AAPL', 'MSFT', 'GOOGL', 'META', 'AMZN', 'NVDA', 'BRK-B',
-  'KO', 'PG', 'BAC', 'JPM', 'V', 'MA', 'COST', 'WMT', 'JNJ', 'XOM', 'VGT'
+  'VOO', 'QQQM', 'VGT', 'SMH', 'AAPL', 'MSFT', 'GOOGL', 'META', 'AMZN', 'NVDA', 'BRK-B',
+  'KO', 'PG', 'BAC', 'JPM', 'V', 'MA', 'COST', 'WMT', 'JNJ', 'XOM'
 ];
 
 const TICKERS = ['AAPL', 'GOOGL', 'VGT', 'VOO', 'QQQM', 'CNY=X'];

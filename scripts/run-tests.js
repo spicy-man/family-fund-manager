@@ -54,6 +54,7 @@ const tests = [
   "test/test-chart-renderer.js",
   "test/test-ledger-renderer.js",
   "test/test-ledger-hover.js",
+  "test/test-count-up.js",
   "test/test-governance-principles.js",
   "test/test-segmented-control.js",
   "test/test-custom-select.js",

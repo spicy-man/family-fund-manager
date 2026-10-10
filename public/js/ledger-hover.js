@@ -46,8 +46,12 @@
     for (const detail of rows.filter(row => row.classList.contains('ledger-row--settlement-detail'))) {
       const trigger = detail.previousElementSibling;
       if (!trigger) continue;
-      const enter = () => { clearTimeout(closeTimer); change(detail); };
+      const enter = () => {
+        if (window.matchMedia('(width < 480px)').matches) return;
+        clearTimeout(closeTimer); change(detail);
+      };
       const leave = event => {
+        if (window.matchMedia('(width < 480px)').matches) return;
         if (trigger.contains(event.relatedTarget) || detail.contains(event.relatedTarget)) return;
         clearTimeout(closeTimer);
         // Allow crossing from the trigger into its detail without closing it.
