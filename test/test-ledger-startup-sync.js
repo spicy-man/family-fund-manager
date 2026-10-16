@@ -10,7 +10,8 @@ process.env.FUND_BACKUP_DIR = path.join(root, 'backups');
 process.env.FUND_EXTERNAL_SYNC = '1';
 const fetched = [];
 const yahoo = require('../lib/yahoo');
-yahoo.fetchCnhRateFromApi = async () => null;
+let finishRate;
+yahoo.fetchCnhRateFromApi = () => new Promise(resolve => { finishRate = resolve; });
 yahoo.fetchYahooPrices = async ticker => {
   fetched.push(ticker);
   return { '2026-03-02': 100 };
@@ -39,6 +40,10 @@ function state() {
   try {
     await new Promise(resolve => server.listening ? resolve() : server.once('listening', resolve));
     assert.deepStrictEqual(fetched, [], 'an empty default ledger has no benchmark dates');
+    storage.writeCnhRateCache(7.6543, { source: 'manual' });
+    finishRate(7.1);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.strictEqual(storage.readCnhRateCache().rate, 7.6543, 'pending startup fetch must not overwrite a manual exchange rate');
     assert.strictEqual((await state()).status, 200);
     await new Promise(resolve => setImmediate(resolve));
     assert.deepStrictEqual(fetched.sort(), ['QQQM', 'VOO'], 'opening an existing child ledger must refresh its benchmarks');

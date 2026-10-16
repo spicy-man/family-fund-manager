@@ -2,7 +2,7 @@ const { registerApiRoutes } = require('../../routes/api');
 const { calculateStateFromDb } = require('../../lib/calculator');
 const { mergeSettlementLedger } = require('../../lib/settlement-ledger');
 const { materializeBenchmarkCaches } = require('../../lib/market-history');
-const { InputError, NotFoundError } = require('../../lib/api-errors');
+const { ApiError, InputError, NotFoundError } = require('../../lib/api-errors');
 const { combineLedgers } = require('../../lib/combined-overview');
 const { DEFAULT_PERFORMANCE_FEE_CONFIG } = require('../../lib/performance-fee-policy');
 const { version } = require('../../package.json');
@@ -34,6 +34,8 @@ function createSandbox(seed, storage) {
   };
   const listLedgers = () => [{ id: 'default', name: state.defaultName, isDefault: true },
     ...Object.entries(state.ledgers).map(([id, value]) => ({ id, name: value.name, isDefault: false }))];
+  const storedMemberIds = () => new Set([state, ...Object.values(state.ledgers)]
+    .flatMap(entry => entry.db.members.map(member => member.id)));
   function save() {
     try { storage.setItem(STORAGE_KEY, JSON.stringify({ version, state })); }
     catch (_) { throw new InputError('浏览器无法保存体验数据，请释放当前站点存储空间或允许会话存储。'); }
@@ -69,7 +71,7 @@ function createSandbox(seed, storage) {
     return value.trim();
   }
   const deps = {
-    readDb, readConfig, calculateStateFromDb,
+    readDb, readConfig, calculateStateFromDb, getStoredMemberIds: storedMemberIds,
     getState: () => calculateStateFromDb(readDb()),
     writeDb: db => {
       const { members, performanceFee, benchmarkClosePolicy, lastEventSequence } = db;
@@ -115,7 +117,7 @@ function createSandbox(seed, storage) {
       for (const method of ['get', 'post', 'put', 'delete']) {
         app[method] = (pattern, ...handlers) => routes.push({ method: method.toUpperCase(), pattern, handlers });
       }
-      registerApiRoutes(app, deps); applications.set(id, routes);
+      registerApiRoutes(app, { ...deps, restoreSharedSettings: id === 'default' }); applications.set(id, routes);
     }
     return applications.get(id);
   }
@@ -139,7 +141,7 @@ function createSandbox(seed, storage) {
       if (listLedgers().length >= 100) throw new InputError('最多可创建 100 个账本。');
       let number = 2; while (Object.hasOwn(state.ledgers, 'ledger-' + number)) number++;
       const id = 'ledger-' + number;
-      const used = new Set();
+      const used = storedMemberIds();
       state.ledgers[id] = { name: name.trim(), db: {
         benchmarkClosePolicy: 'previous', performanceFee: clone(DEFAULT_PERFORMANCE_FEE_CONFIG),
         members: ['我', '母亲', '父亲'].map(name => ({ id: generateMemberId(used), name, roles: { lp: true, gp: false } })),
@@ -189,16 +191,18 @@ function createSandbox(seed, storage) {
           return { success: true, data };
         }
         const req = { method, originalUrl: url, params, query: Object.fromEntries(parsed.searchParams), body: body || {} };
-        let result; const headers = {};
+        let result; let status = 200; const headers = {};
         const res = { json: value => { result = value; }, send: value => { result = { binary: value, headers }; },
           set: (name, value) => { headers[name] = value; return res; }, setHeader: (name, value) => { headers[name] = value; },
-          status: () => res };
+          status: value => { status = value; return res; } };
         async function run(index) {
           const handler = route.handlers[index]; if (!handler) return;
           return handler(req, res, error => { if (error) throw error; return run(index + 1); });
         }
         await run(0);
-        if (!result?.success && !result?.binary) throw new InputError(result?.message || '体验操作未完成。');
+        if (!result?.success && !result?.binary) throw new ApiError(result?.message || '体验操作未完成。', {
+          status: status >= 400 ? status : 400, code: result?.code || 'INPUT_ERROR', expose: true
+        });
         if (parsed.pathname === '/api/settings/sync-rate') result.message = '已重新载入演示汇率快照。';
         if (method !== 'GET') save();
         return result;

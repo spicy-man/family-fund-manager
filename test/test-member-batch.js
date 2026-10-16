@@ -8,9 +8,11 @@ const { calculateStateFromDb } = require('../lib/calculator');
     events: [{ id: 'd', type: 'deposit', member: '123456', amount: 100,
       cnhAmount: 700, date: '2025-01-01' }]
   };
+  let migrated = false;
   let db = clone(original), ledger = { version: 1, records: [] }, writes = 0, fail = false;
   const api = makeApi(undefined, db, {
-    readBaseDb: () => clone(db), readDb: () => clone(db), readSettlements: () => clone(ledger),
+    readBaseDb: () => { assert(migrated, 'base snapshot must follow legacy migration'); return clone(db); },
+    readDb: () => { migrated = true; return clone(db); }, readSettlements: () => clone(ledger),
     normalizeMemberName: value => { if (typeof value !== 'string' || !value.trim()) throw new Error('姓名无效'); return value.trim(); },
     writeSnapshot: (next, config, settlements) => {
       if (fail) throw new Error('disk unavailable');
@@ -18,6 +20,15 @@ const { calculateStateFromDb } = require('../lib/calculator');
     }
   });
   const save = changes => request(api.routes['put:/api/members'], { changes });
+  for (const memberId of ['000000', '012345', '12345', '1234567', 123456]) {
+    const response = await save([{ id: '123456', name: 'A2', memberId }]);
+    assert.strictEqual(response.status, 400, 'batch update rejects invalid member IDs');
+    assert.match(response.body.message, /首位不能为 0/);
+    const single = await request(api.routes['put:/api/members/:id'], { name: 'A2', memberId }, { id: '123456' });
+    assert.strictEqual(single.status, 400, 'single update rejects invalid member IDs');
+    assert.deepStrictEqual(db, original);
+    assert.strictEqual(writes, 0, 'invalid IDs must not reach persistence');
+  }
   const edits = [{ id: '123456', name: 'A2', memberId: '345678' },
     { id: '234567', name: 'B2', memberId: 'bad' }];
   assert.strictEqual((await save(edits)).body.success, false);

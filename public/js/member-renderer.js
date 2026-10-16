@@ -8,7 +8,7 @@ window.FundMemberRenderer = {
     const firstRecord = new Map();
     events.forEach((event, index) => {
       const memberIds = [event.member, event.fromMember, event.toMember,
-        event.gpMember, event.performanceFee?.gpMember, ...(event.lpMembers || [])];
+        event.gpMember, event.performanceFee?.gpMember];
       memberIds.forEach(id => {
         if (id && !firstRecord.has(id)) firstRecord.set(id, index);
       });

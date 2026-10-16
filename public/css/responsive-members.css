@@ -1,7 +1,30 @@
 /* 响应式适配 */
 @media (max-width: 1180px) {
   .app-sidebar {
+    position: relative;
+    inset: auto;
+    width: auto;
+    margin: 16px 20px 0;
+    padding: 8px;
+    border-radius: 16px;
+  }
+  .app-sidebar .sidebar-brand,
+  .app-sidebar .sidebar-nav {
     display: none;
+  }
+  .app-sidebar .sidebar-footer {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    gap: 4px;
+  }
+  .app-sidebar .sidebar-action {
+    flex: 1 1 auto;
+    justify-content: center;
+    font-size: 0.8rem;
+    gap: 6px;
   }
   .app-container {
     padding-left: 40px;

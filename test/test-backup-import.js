@@ -27,7 +27,7 @@ function archive(db = baseDb, ledger, config = { tickers: [{ ticker: 'VOO' }] })
   if (ledger) zip.addFile('data/settlements.json', Buffer.from(JSON.stringify(ledger)));
   return zip.toBuffer();
 }
-async function restore(buffer) {
+async function restore(buffer, overrides = {}) {
   let handler;
   let saved;
   let writes = 0;
@@ -36,7 +36,7 @@ async function restore(buffer) {
     readDb: () => structuredClone(baseDb), readConfig: () => ({}), readSettlements: () => ({ version: 1, records: [] }),
     writeSnapshot: (db, config, ledger) => { writes++; saved = structuredClone({ db, config, ledger }); },
     writeCnhRate: () => { cacheWrites++; }, writeIndexCache: () => { cacheWrites++; }, ensureIndexCache() {},
-    normalizeRemark, isValidDate
+    normalizeRemark, isValidDate, ...overrides
   }, {
     toFiniteNumber: Number, findLedgerIssue: db => { calculateStateFromDb(structuredClone(db)); return null; },
     rejectLedgerIssue() {}, rejectFutureSettlementDate() {}
@@ -66,6 +66,39 @@ async function rejected(buffer) {
   const clean = await restore(archive());
   assert.strictEqual(clean.status, 200);
   assert.deepStrictEqual(clean.saved.db.events, baseDb.events);
+
+  let restoredCache;
+  const legacyCache = { '2026-01-01': { spx: 100, ndx: 200 } };
+  const existingCache = { '2026-02-01': { spx: 110, ndx: 220 } };
+  const legacyRestore = await restore(archive({ ...baseDb, indexCache: legacyCache }), {
+    readDb: () => ({ ...structuredClone(baseDb), indexCache: existingCache }),
+    writeIndexCache: cache => { restoredCache = cache; }
+  });
+  assert.strictEqual(legacyRestore.status, 200);
+  assert.deepStrictEqual(restoredCache, { ...existingCache, ...legacyCache });
+  for (const cache of [null, [], { invalid: { spx: 1, ndx: 2 } },
+    { '2026-01-01': null }, { '2026-01-01': { spx: '100', ndx: 200 } }]) {
+    await rejected(archive({ ...baseDb, indexCache: cache }));
+  }
+
+  const legacyEmptyDb = { ...structuredClone(baseDb), events: [
+    { id: 'legacy-deposit', type: 'deposit', member: 'a', amount: 100, date: '2025-01-01', createdAt: 1 },
+    { id: 'legacy-withdraw', type: 'withdraw', member: 'a', amount: 100, date: '2025-01-02', createdAt: 2,
+      performanceFee: { gpMember: 'b', annualRate: 0.06, feeRate: 0.25, disposalVersion: 1 } },
+    { id: 'legacy-redeposit', type: 'deposit', member: 'a', amount: 200, date: '2025-01-03', createdAt: 3 }
+  ] };
+  const legacyEmptySettlement = { id: 'legacy-settlement', type: 'performance_settlement', date: '2026-01-01',
+    createdAt: 4, gpMember: 'b', lpMembers: ['a'], algorithmVersion: 1, annualRate: 0.06, feeRate: 0.25 };
+  const legacyEmptyComputed = calculateStateFromDb({ ...structuredClone(legacyEmptyDb),
+    events: [...structuredClone(legacyEmptyDb.events), legacyEmptySettlement] }).events.at(-1);
+  legacyEmptySettlement.snapshot = { breakdown: legacyEmptyComputed._breakdown, totalFee: legacyEmptyComputed._totalFee,
+    feeShares: legacyEmptyComputed._feeShares, navPerShare: legacyEmptyComputed._navAtTx };
+  assert.strictEqual(legacyEmptySettlement.snapshot.breakdown[0].lots[0].entryNav, null);
+  const legacyEmptyRestored = await restore(archive(legacyEmptyDb, { version: 1, records: [legacyEmptySettlement] }));
+  assert.strictEqual(legacyEmptyRestored.status, 200, JSON.stringify(legacyEmptyRestored.body));
+  const invalidNullNav = structuredClone(legacyEmptySettlement);
+  invalidNullNav.snapshot.breakdown[0].lots[1].entryNav = null;
+  await rejected(archive(legacyEmptyDb, { version: 1, records: [invalidNullNav] }));
 
   const noisyDb = structuredClone(baseDb);
   noisyDb.events[0].remark = '  deposit  ';

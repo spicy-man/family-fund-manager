@@ -65,6 +65,23 @@ for (const version of [1, 2]) {
   assert.strictEqual(migrated.ledger.records[0].algorithmVersion, version);
 }
 
+// A legacy full disposal leaves a zero-share audit lot. A later deposit and
+// v1 settlement must still match its snapshot after a JSON save/load cycle.
+const exhaustedDb = baseDb();
+exhaustedDb.events = [
+  { id: 'old-d', type: 'deposit', member: 'lp', amount: 100, date: '2025-01-01', createdAt: 1 },
+  { id: 'old-w', type: 'withdraw', member: 'lp', amount: 100, date: '2025-01-02', createdAt: 2,
+    performanceFee: { gpMember: 'gp', annualRate: 0.06, feeRate: 0.25, disposalVersion: 1 } },
+  { id: 'new-d', type: 'deposit', member: 'lp', amount: 200, date: '2025-01-03', createdAt: 3 }
+];
+const exhaustedRecord = withSnapshot(exhaustedDb, settlement(1, 'after-exhausted-lot'));
+assert.strictEqual(exhaustedRecord.snapshot.breakdown[0].lots[0].entryNav, null);
+const exhaustedLedger = { version: 1, records: [clone(exhaustedRecord)] };
+assert.doesNotThrow(() => migrateSettlementLedger(exhaustedDb, exhaustedLedger));
+const exhaustedMetrics = {};
+calculateStateFromDb(exhaustedDb, { metrics: exhaustedMetrics });
+assert.strictEqual(exhaustedMetrics.finalActiveLotCount, 1, 'exhausted audit lots are not active lots');
+
 const currentDb = baseDb();
 const currentSettlement = withSnapshot(currentDb, settlement(3, 'period-high-water'));
 const currentMigration = migrateSettlementLedger(currentDb, {

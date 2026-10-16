@@ -92,7 +92,11 @@
       else document.querySelector('.sidebar-nav')?.before(switcher);
     };
     place(); media.addEventListener('change', place); window.addEventListener('resize', () => closeMenu());
-    const navigate = next => {
+    const navigate = async next => {
+      if (window.FundLedgerActions?.hasPending?.()) {
+        try { await window.FundLedgerActions.flushPending(); }
+        catch (error) { status.textContent = error.message; return; }
+      }
       const url = new URL(window.location.href);
       if (next === 'default') url.searchParams.delete('ledger'); else url.searchParams.set('ledger', next);
       try {
@@ -127,7 +131,7 @@
         if (ledger.id === id) {
           const check = document.createElement('span'); check.className = 'ledger-check'; check.textContent = '✓'; check.setAttribute('aria-label','当前账本'); button.append(check);
         }
-        button.addEventListener('click', () => { closeMenu(true); if (ledger.id !== id) navigate(ledger.id); });
+        button.addEventListener('click', () => { closeMenu(true); if (ledger.id !== id) return navigate(ledger.id); });
         return button;
       }));
     }

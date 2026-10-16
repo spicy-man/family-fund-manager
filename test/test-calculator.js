@@ -193,4 +193,21 @@ assert.strictEqual(deprecatedSameDayPolicyState.settings.benchmarkCacheReady, fa
 assert.strictEqual(benchmarkState.charts.navHistory[1].ndx, 220);
 assert.strictEqual(benchmarkState.charts.navHistory[1].ndxPriceDate, '2026-07-06');
 
+// Historical underfunded events may be replayed for display, but cannot invent
+// CNH flows when the USD amount is capped (including an empty sender).
+for (const type of ['withdraw', 'transfer']) {
+  for (const balance of [0, 100]) {
+    const capped = calculateStateFromDb({ cnhRate: 7.2,
+      members: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }],
+      events: [
+        ...(balance ? [{ id: 'd', type: 'deposit', member: 'a', date: '2026-01-04', amount: balance }] : []),
+        { id: 'out', type, date: '2026-01-11', amount: 200, cnhAmount: 1440,
+          ...(type === 'withdraw' ? { member: 'a' } : { fromMember: 'a', toMember: 'b', cnhRate: 7.2 }) }
+      ]
+    });
+    assert.strictEqual(capped.events.at(-1)._actualAmount, balance);
+    assert.strictEqual(capped.events.at(-1)._cnhAmountComputed, balance * 7.2);
+    if (type === 'transfer') assert.strictEqual(capped.members.b.cnhDeposit, balance * 7.2);
+  }
+}
 console.log('Production calculateStateFromDb assertions passed.');

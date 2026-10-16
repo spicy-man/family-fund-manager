@@ -39,6 +39,24 @@ async function membersTest() {
   controller.render();
   assert(list.innerHTML.includes('&lt;LP>'));
   assert.strictEqual(warning.hidden, false);
+  nodes['member-id-save-lp'].handlers.click();
+  const idInput = nodes['member-id-input-lp'];
+  assert.strictEqual(nodes['btn-rename-save-lp'].style.display, 'grid', 'ID editing must expose Save');
+  for (const invalidId of ['012345', '000000']) {
+    idInput.value = invalidId;
+    await nodes['btn-rename-save-lp'].handlers.click();
+    assert.strictEqual(requests.length, 0, 'invalid IDs must not be submitted by the row Save');
+    assert.match(notices.at(-1)[0], /首位不能为 0/);
+    assert.strictEqual(await controller.savePendingNames(), false, 'footer Save must reject leading zero IDs');
+    assert.strictEqual(idInput.value, invalidId, 'validation retains the draft for correction');
+  }
+  idInput.value = '123456';
+  controller.render();
+  assert.strictEqual(nodes['btn-rename-save-lp'].style.display, 'grid', 'refresh must retain ID Save');
+  idInput.handlers.keyup({ key: 'Escape' });
+  assert.strictEqual(idInput.value, 'lp');
+  assert.strictEqual(idInput.style.display, 'none');
+  assert.strictEqual(nodes['member-id-save-lp'].style.display, 'inline');
   const input = nodes['member-name-input-lp'];
   nodes['btn-rename-edit-lp'].handlers.click();
   assert.strictEqual(input.style.display, 'block');
@@ -152,9 +170,13 @@ function editTest() {
   assert.strictEqual(elements.editCnhAmount.value, '700.00');
   control.edit({ id: 't', type: 'transfer', date: '2026-09-27', fromMember: 'lp', toMember: 'other', amount: 100, cnhAmount: 650 });
   assert.strictEqual(elements.editCnhRate.value, 6.5);
+  control.edit({ id: 't2', type: 'transfer', amount: 217, cnhAmount: 1562.5 });
+  assert.strictEqual(elements.editCnhRate.value, 1562.5 / 217, 'legacy rates must retain their full historical precision');
+  const html = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
+  assert(html.includes('id="edit-cnh-rate" step="any"'), 'editing historical rates must allow their original precision');
   assert.strictEqual(groups['edit-group-member'].style.display, 'none');
   assert.strictEqual(groups['edit-group-transfer-members'].style.display, 'flex');
-  assert.deepStrictEqual(calls.slice(-3), [['prepare', 't'], ['refresh'], ['open']]);
+  assert.deepStrictEqual(calls.slice(-3), [['prepare', 't2'], ['refresh'], ['open']]);
 }
 function notificationsTest() {
   const nodes = [], timers = [];

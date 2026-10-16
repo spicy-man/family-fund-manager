@@ -77,6 +77,9 @@ function request(server, pathname, method = 'GET') {
     const combined = JSON.parse(combinedResponse.body).data;
     assert.strictEqual(combined.members.find(member => member.id === secondGp.id).breakdown.length, 2);
     assert.strictEqual((await request(server, '/api/demo/state?ledger=missing')).status, 404);
+    assert.strictEqual((await request(server, '/api/demo/settings/custom-benchmark?ledger=missing')).status, 404);
+    const secondBenchmark = JSON.parse((await request(server, '/api/demo/settings/custom-benchmark?ledger=ledger-2')).body).data;
+    assert.deepStrictEqual(secondBenchmark, second.settings.customBenchmark);
     assert(state.summary.totalNAV > 180000, 'demo should present a populated fund');
     assert(state.events.some(event => event.type === 'performance_settlement'));
     assert.strictEqual(state.settings.benchmarkCacheReady, true);

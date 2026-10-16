@@ -521,6 +521,72 @@ try {
   }
   assert.strictEqual(fs.readFileSync(marketStorage.MARKET_HISTORY_FILE, 'utf8'), historyBytes);
 
+  // Repeated failures after archiving a candidate must not evict the last
+  // confirmed recovery point. Cover each core writer, including rollback.
+  const retainedStorage = loadStorage(path.join(testRoot, 'data-retained'), path.join(testRoot, 'backups-retained'));
+  const retainedDb = retainedStorage.readDb();
+  retainedStorage.writeDb(retainedDb);
+  const failedDb = { ...retainedDb, members: retainedDb.members.map(member => ({ ...member, name: 'uncommitted' })) };
+  const confirmedBackup = fs.readdirSync(retainedStorage.BACKUP_DIR).find(name => name.endsWith('.zip'));
+  const renameForRetention = fs.renameSync;
+  const unlinkForRetention = fs.unlinkSync;
+  const errorForRetention = console.error;
+  try {
+    console.error = () => {};
+    for (const [target, write] of [
+      [retainedStorage.DB_FILE, () => retainedStorage.writeDb(failedDb)],
+      [path.join(path.dirname(retainedStorage.DB_FILE), 'config.json'), () => retainedStorage.writeConfig({ tickers: [] })],
+      [retainedStorage.SETTLEMENTS_FILE, () => retainedStorage.writeSettlements({ version: 1, records: [] })],
+      [retainedStorage.DB_FILE, () => retainedStorage.writeSnapshot(failedDb, { tickers: [] })]
+    ]) {
+      fs.renameSync = (from, to) => {
+        if (to === target) throw new Error('injected live commit failure');
+        return renameForRetention(from, to);
+      };
+      for (let attempt = 0; attempt < 16; attempt++) assert.throws(write, /injected live commit failure/);
+      assert(fs.existsSync(path.join(retainedStorage.BACKUP_DIR, confirmedBackup)), 'failed writes retain confirmed archives');
+      assert.deepStrictEqual(fs.readdirSync(retainedStorage.BACKUP_DIR), [confirmedBackup], 'failed candidates are cleaned up');
+    }
+    // A candidate that cannot be deleted must still never count as confirmed.
+    fs.unlinkSync = file => {
+      if (path.basename(file).startsWith('pending_backup_')) throw new Error('injected candidate cleanup failure');
+      return unlinkForRetention(file);
+    };
+    assert.throws(() => retainedStorage.writeDb(failedDb), /injected live commit failure/);
+    fs.unlinkSync = unlinkForRetention;
+    assert.strictEqual(fs.readdirSync(retainedStorage.BACKUP_DIR).filter(name => name.startsWith('pending_backup_')).length, 1);
+    fs.renameSync = renameForRetention;
+    fs.unlinkSync = file => {
+      if (path.dirname(file) === retainedStorage.BACKUP_DIR && file.endsWith('.zip')) throw new Error('injected archive cleanup failure');
+      return unlinkForRetention(file);
+    };
+    assert.doesNotThrow(() => retainedStorage.writeDb(retainedDb), 'archive cleanup must not turn a committed write into a reported failure');
+    fs.unlinkSync = unlinkForRetention;
+    retainedStorage.writeDb(retainedDb);
+    const confirmedFiles = () => fs.readdirSync(retainedStorage.BACKUP_DIR).filter(name => name.startsWith('snapshot_backup_'));
+    assert.strictEqual(confirmedFiles().length, 3, 'only successful commits count toward retention');
+    assert(fs.existsSync(path.join(retainedStorage.BACKUP_DIR, confirmedBackup)), 'success after repeated failures retains the original recovery point');
+    // Promotion failure happens after the live commit and must not report that
+    // commit as failed or prune any confirmed archive.
+    fs.renameSync = (from, to) => {
+      if (path.basename(to).startsWith('snapshot_backup_')) throw new Error('injected promotion failure');
+      return renameForRetention(from, to);
+    };
+    assert.doesNotThrow(() => retainedStorage.writeDb(retainedDb));
+    assert.strictEqual(confirmedFiles().length, 3);
+    fs.renameSync = renameForRetention;
+    for (let attempt = 0; attempt < 16; attempt++) retainedStorage.writeDb(retainedDb);
+    assert.strictEqual(confirmedFiles().length, 15, 'successful archives still obey the retention limit');
+    for (const name of confirmedFiles()) {
+      const archivedDb = JSON.parse(new AdmZip(path.join(retainedStorage.BACKUP_DIR, name)).readAsText('data/db.json'));
+      assert.deepStrictEqual(archivedDb.members, retainedDb.members, 'retention contains committed data, not failed candidates');
+    }
+  } finally {
+    fs.renameSync = renameForRetention;
+    fs.unlinkSync = unlinkForRetention;
+    console.error = errorForRetention;
+  }
+
   console.log('Storage, index-cache recovery, backup ordering and snapshot rollback assertions passed.');
 } finally {
   if (originalDataDir === undefined) delete process.env.FUND_DATA_DIR;

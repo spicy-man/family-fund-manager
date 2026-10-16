@@ -4,8 +4,25 @@
     const { ledgerTbody, editEventId, editEventType, editDate, editRemark, editMember,
       editAmount, editCnhAmount, editFromMember, editToMember, editCnhRate, editEventModal } = elements;
     const { dismissToast, showToast } = notifications;
+    const pendingDeletes = new Map();
+    function findRow(id) {
+      return [...ledgerTbody.querySelectorAll('tr')].find(row =>
+        [...row.querySelectorAll('button')].some(button => button._deleteEventId === id));
+    }
+    function markRow(id, pending) {
+      const row = findRow(id);
+      if (!row) return;
+      row.style.opacity = pending ? '0.2' : '1';
+      row.style.pointerEvents = pending ? 'none' : '';
+      row.style.transform = '';
+    }
+    const refreshPending = () => pendingDeletes.forEach((_entry, id) => markRow(id, true));
+    async function flushPending() {
+      await Promise.all([...pendingDeletes.values()].map(entry => entry.commit()));
+    }
     // 删除单条交易记录 — 3 秒内可撤销
     function handleDeleteEvent(id, name, type, value) {
+      if (pendingDeletes.has(id)) return;
       const UNDO_DELAY = 3000; // 3 秒
 
       // 找到对应的 <tr> 行，视觉上先隐藏（软删除）
@@ -31,7 +48,7 @@
         <div class="toast-undo-row">
           <svg class="toast-undo-icon ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/></svg>
           <span class="toast-undo-text">
-            <strong>已删除</strong>
+            <strong>待删除</strong>
             ${type === 'deposit' ? '入金' : type === 'withdraw' ? '出金' : type === 'transfer' ? '转让' : '估值'}记录（$${formatMoney(value)}）<br>
             <span style="font-size:0.75rem; opacity:0.7;">3 秒内可撤销，操作完成后将重算账目</span>
           </span>
@@ -57,6 +74,8 @@
           undone = true;
           undoBtn.disabled = true;
           clearTimeout(deleteTimer);
+          pendingDeletes.delete(id);
+          markRow(id, false);
           // 恢复行显示
           if (targetRow) {
             targetRow.style.opacity = '1';
@@ -70,25 +89,35 @@
       }
 
       // 3 秒后执行真正删除
-      const deleteTimer = setTimeout(() => {
-        if (undone) return;
+      let deletionPromise;
+      const commit = () => {
+        if (undone) return Promise.resolve();
+        if (deletionPromise) return deletionPromise;
         deletionStarted = true;
+        clearTimeout(deleteTimer);
         if (undoBtn) undoBtn.disabled = true;
-        api.deleteEvent(id)
-          .then(() => {
+        deletionPromise = api.deleteEvent(id)
+          .then(async () => {
             showToast('账目记录已删除，系统已完成全额重算！', 'success');
-            loadAllData();
+            await loadAllData();
+            pendingDeletes.delete(id);
           })
           .catch(err => {
+            pendingDeletes.delete(id);
+            markRow(id, false);
             // 删除失败，恢复行
             if (targetRow) {
               targetRow.style.opacity = '1';
               targetRow.style.pointerEvents = '';
             }
             showToast('删除失败：' + err.message, 'error');
+            throw err;
           });
         dismissToast(toast);
-      }, UNDO_DELAY);
+        return deletionPromise;
+      };
+      const deleteTimer = setTimeout(() => { void commit().catch(() => {}); }, UNDO_DELAY);
+      pendingDeletes.set(id, { commit });
     }
 
     // 弹出编辑账目模态框并填充回显
@@ -159,7 +188,9 @@
       modal.open(editEventModal);
     }
 
-    return { edit: handleEditEvent, remove: handleDeleteEvent };
+    window.FundLedgerActions.flushPending = flushPending;
+    window.FundLedgerActions.hasPending = () => pendingDeletes.size > 0;
+    return { edit: handleEditEvent, remove: handleDeleteEvent, refreshPending, flushPending };
   }
   window.FundLedgerActions = { create };
 })();

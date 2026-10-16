@@ -379,7 +379,8 @@ async function syncBenchmarkHistory(dates) {
   console.log(`⏳ [Yahoo Sync Worker] Updating daily history for ${requestedTickers.length} benchmark tickers...`);
 
   try {
-    const history = normalizeMarketHistory(storage.readMarketHistory());
+    let history = normalizeMarketHistory(storage.readMarketHistory());
+    const fetchedPrices = new Map();
     const oldestRequired = addUtcDays(datesToBuild[0], -14);
     const today = new Date().toISOString().slice(0, 10);
     const nowSec = Math.floor(Date.now() / 1000);
@@ -395,21 +396,33 @@ async function syncBenchmarkHistory(dates) {
         nowSec,
         { adjusted: true }
       );
+      fetchedPrices.set(ticker, { prices, requestStart });
+    }));
+
+    // Network requests may overlap a settings edit or cache restore. Merge into
+    // the latest shared history and materialize the currently selected recipes.
+    history = normalizeMarketHistory(storage.readMarketHistory());
+    for (const [ticker, { prices, requestStart }] of fetchedPrices) {
       changed = replaceAdjustedTickerPrices(history, ticker, prices, {
         from: requestStart,
         through: today
       }) || changed;
-    }));
+    }
 
     if (changed) {
       history.updatedAt = new Date().toISOString();
       writeMarketHistory(history);
     }
 
+    const latestConfig = storage.readConfig();
+    const latestBenchmarks = [normalizeCustomBenchmark(latestConfig.customBenchmark),
+      normalizeCustomBenchmark(latestConfig.customBenchmark2)];
+    dates = [...new Set([...dates, ...readDb().events.map(event => event.date),
+      ...Object.keys(storage.readIndexCache()), ...Object.keys(storage.readCustomBenchmarkCache())])];
     const materialized = materializeBenchmarkCaches(
       dates,
       history,
-      customBenchmarks,
+      latestBenchmarks,
       benchmarkClosePolicy
     );
     writeIndexCache({ ...storage.readIndexCache(), ...materialized.indexCache });
@@ -448,6 +461,7 @@ const { registerApiRoutes } = require('./routes/api');
 
 registerApiRoutes(app, {
   tickerRefreshState,
+  restoreSharedSettings: storage.restoreSharedSettings !== false,
   readBaseDb: () => storage.readDb(),
   getStoredMemberIds: () => require('./lib/stored-member-ids').storedMemberIds(path.dirname(defaultStorage.DB_FILE)),
   readDb,
@@ -496,8 +510,9 @@ function startServer({ port = PORT, host = '127.0.0.1', openBrowser = false,
   console.log(`====================================================`);
 
   // 启动时静默同步一次汇率与美股指数数据
+  const initialRateCache = EXTERNAL_SYNC_ENABLED ? JSON.stringify(storage.readCnhRateCache()) : null;
   if (EXTERNAL_SYNC_ENABLED) fetchCnhRateFromApi().then(rate => {
-    if (rate) {
+    if (rate && JSON.stringify(storage.readCnhRateCache()) === initialRateCache) {
       try {
         writeCnhRate(rate, { source: 'startup-sync' });
         console.log(`🌍 [Auto-Sync] 系统成功自适应获取全球最新汇率：1 USD = ${rate} CNH`);

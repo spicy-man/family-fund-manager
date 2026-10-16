@@ -15,6 +15,7 @@
       if (newMemberName.disabled) return;
       const name = newMemberName.value.trim();
       if (!name) return;
+      newMemberName.disabled = true;
       try {
         await api.addMember(name);
         showToast(`家庭成员【${name}】添加成功`, 'success');
@@ -23,7 +24,7 @@
         renderMembersEditorList();
       } catch (error) {
         showToast(error.message, 'error');
-      }
+      } finally { newMemberName.disabled = false; }
     });
 
     btnTriggerUpload.addEventListener('click', () => fileImport.click());

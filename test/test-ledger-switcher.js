@@ -99,11 +99,24 @@ async function setup({ failFirstLoad = false, privacyMode = true, positionTransf
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../public/js/ledger-switcher.js'), 'utf8'), context);
   await ready();
-  return { nodes, writes, exportLink, storage, scrolls, frames, ledger: context.window.FundLedger,
+  return { nodes, writes, exportLink, storage, scrolls, frames, window: context.window, ledger: context.window.FundLedger,
     getDestination: () => destination, isOpen: () => opened, getRequests: () => requests };
 }
 
 (async () => {
+  const queued = await setup();
+  let finishDeletion;
+  const deletion = new Promise(resolve => { finishDeletion = resolve; });
+  queued.window.FundLedgerActions = { hasPending: () => true, flushPending: () => deletion };
+  const switching = queued.nodes['ledger-menu-list'].children[0].dispatch('click');
+  assert.strictEqual(queued.getDestination(), undefined, 'switching must await requested deletions');
+  finishDeletion(); await switching;
+  assert.strictEqual(queued.getDestination(), 'http://localhost/');
+  const failed = await setup();
+  failed.window.FundLedgerActions = { hasPending: () => true, flushPending: async () => { throw new Error('delete failed'); } };
+  await failed.nodes['ledger-menu-list'].children[0].dispatch('click');
+  assert.strictEqual(failed.getDestination(), undefined);
+  assert.strictEqual(failed.nodes['ledger-switcher-status'].textContent, 'delete failed');
   const sandbox = await setup({ demoMode: { enabled: true, sandbox: true } });
   assert.strictEqual(sandbox.nodes['ledger-switcher'].hidden, false);
   assert.strictEqual(sandbox.getRequests(), 1);

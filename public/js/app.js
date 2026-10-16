@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- 全局状态 ---
   let appState = null;
+  let dataLoadSequence = 0;
   let membersList = [];
   let activeTimeSlice = 'YTD';
   let activeScaleType = 'linear'; // 'linear' or 'logarithmic'
@@ -463,11 +464,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- 数据拉取与主渲染控制 ---
   async function loadAllData() {
+    const sequence = ++dataLoadSequence;
     disposalTrial?.invalidate();
     try {
       // 同时获取成员列表与基金状态
-      membersList = await Api.getMembers();
-      appState = await Api.getState();
+      const [loadedMembers, loadedState] = await Promise.all([Api.getMembers(), Api.getState()]);
+      if (sequence !== dataLoadSequence) return null;
+      membersList = loadedMembers;
+      appState = loadedState;
       membersList = window.FundMemberRenderer.sortByFirstRecord(membersList, appState.events);
       settingsController.syncBenchmarkPolicy(appState.settings?.benchmarkClosePolicy || 'previous');
       window.FundCustomBenchmark.sync(
@@ -497,6 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       return appState;
     } catch (err) {
+      if (sequence !== dataLoadSequence) return null;
       showToast('获取系统账务状态失败: ' + err.message, 'error');
       return null;
     }
@@ -508,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedTxVal = elTxMember.value;
     const lpMembers = membersList.filter(member => member.roles?.lp !== false);
     elTxMember.innerHTML = lpMembers.map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}</option>`).join('');
-    if (savedTxVal && membersList.some(m => m.id === savedTxVal)) {
+    if (savedTxVal && lpMembers.some(m => m.id === savedTxVal)) {
       elTxMember.value = savedTxVal;
     }
 
@@ -684,7 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 3. 家庭成员管理模态框列表渲染 (带 inline 修改与安全删除)
   // 4. 历史账目表格流水渲染 (USD 币种重构)
   function renderLedger() {
-    return window.FundLedgerRenderer.render({
+    const result = window.FundLedgerRenderer.render({
       state: appState,
       members: membersList,
       elements: { filterMember, filterType, ledgerTbody },
@@ -692,6 +697,8 @@ document.addEventListener('DOMContentLoaded', () => {
       onEdit: ledgerActions.edit,
       onDelete: ledgerActions.remove
     });
+    ledgerActions.refreshPending();
+    return result;
   }
 
   function renderCharts() {

@@ -16,6 +16,23 @@ const state = calculateStateFromDb({ ...structuredClone(db), events: [...db.even
 const computed = state.events.find(e => e.id === 's');
 event.snapshot = { breakdown: computed._breakdown, totalFee: computed._totalFee, feeShares: computed._feeShares, navPerShare: computed._navAtTx };
 const ledger = { version: 1, records: [event] };
+// Historical unversioned snapshots must be migrated before rename replay;
+// migration is pure and must not change the caller's original snapshot.
+for (const algorithmVersion of [1, 2]) {
+  const oldEvent = { ...event, algorithmVersion };
+  const oldComputed = calculateStateFromDb({ ...structuredClone(db), events: [...db.events, oldEvent] })
+    .events.find(e => e.id === oldEvent.id);
+  oldEvent.snapshot = { breakdown: oldComputed._breakdown, totalFee: oldComputed._totalFee,
+    feeShares: oldComputed._feeShares, navPerShare: oldComputed._navAtTx };
+  delete oldEvent.algorithmVersion;
+  const oldLedger = { version: 1, records: [oldEvent] };
+  const original = JSON.stringify(oldLedger);
+  const renamed = renameMemberIdentifiers(db, oldLedger, { mother: '123456' });
+  assert([1, 2].includes(renamed.ledger.records[0].algorithmVersion));
+  assert.strictEqual(JSON.stringify(oldLedger), original);
+  assert.deepStrictEqual(calculateStateFromDb(mergeSettlementLedger(renamed.db, renamed.ledger)).summary,
+    calculateStateFromDb(mergeSettlementLedger(db, migrateSettlementLedger(db, oldLedger).ledger)).summary);
+}
 const draws = ['123456', '234567'];
 assert.strictEqual(generateMemberId(new Set(['123456']), () => draws.shift()), '234567', 'random collisions must retry');
 const before = JSON.stringify([db, ledger]);

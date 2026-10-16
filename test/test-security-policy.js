@@ -80,6 +80,12 @@ function extractCssReferences(css) {
   try {
     const page = await request(server, '/');
     assert.strictEqual(page.status, 200);
+    const navigation = { 'Sec-Fetch-Site': 'cross-site', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-Dest': 'document' };
+    assert.strictEqual((await request(server, '/', { headers: navigation })).status, 200,
+      'external links must be able to open the landing page');
+    assert.strictEqual((await request(server, '/demo', { headers: navigation })).status, 200);
+    assert.strictEqual((await request(server, '/api/state', { headers: navigation })).status, 403,
+      'the navigation exception must never expose read APIs');
     assert.strictEqual(page.headers['x-content-type-options'], 'nosniff');
 
     const policy = parsePolicy(page.headers['content-security-policy']);

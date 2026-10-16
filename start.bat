@@ -3,23 +3,8 @@ setlocal EnableExtensions
 title Family Fund Manager Launcher
 chcp 65001 >nul
 
-:: Switch to script directory
-:: 1. If already on a mapped or local drive letter, use it directly
-if not "%~d0"=="\\" (
-    cd /d "%~dp0"
-    goto DIR_READY
-)
-
-:: 2. If run via UNC network share (e.g. \\SynologyNAS\code\...), resolve to permanent mapped drive
-for %%D in (X W Y Z V U T S R Q P O N M L K J I H G F E D C) do (
-    if exist "%%D:\family-fund-manager\package.json" (
-        cd /d "%%D:\family-fund-manager"
-        goto DIR_READY
-    )
-)
-
-:: 3. Fallback: allocate temporary virtual drive only if no mapped drive exists
-pushd "%~dp0"
+:: Use this exact checkout; pushd maps UNC shares to a temporary drive.
+pushd "%~dp0" || goto NO_PACKAGE
 
 :DIR_READY
 
@@ -80,5 +65,5 @@ echo.
 pause
 
 :CLEANUP
-if "%~d0"=="\\" popd 2>nul
+popd 2>nul
 exit /b

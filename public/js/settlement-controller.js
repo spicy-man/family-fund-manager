@@ -38,6 +38,10 @@
     };
     [settleGp, settleDate, settleRemark].forEach(element => element.addEventListener('input', invalidateSettlementPreview));
     btnPreviewSettlement.addEventListener('click', async () => {
+      if (window.FundLedgerActions?.hasPending?.()) {
+        try { await window.FundLedgerActions.flushPending(); }
+        catch (error) { showToast(error.message, 'error'); return; }
+      }
       invalidateSettlementPreview();
       const version = previewVersion;
       const payload = Object.freeze(settlementPayload());

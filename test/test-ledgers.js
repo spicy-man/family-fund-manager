@@ -161,7 +161,19 @@ function request(method, url, ledger, body, binary = false) {
     const snapshot = JSON.parse(zip.readAsText('data/db.json'));
     assert(snapshot.members.some(m => m.name === 'Only second'));
     assert(!snapshot.members.some(m => m.name === 'Only default'));
-    assert.strictEqual((await request('POST','/api/backup/import',third,exported.body)).status,200);
+    // A legacy backup from another date must not rewrite shared market settings
+    // when restoring only one child ledger.
+    const historicalZip = new AdmZip(exported.body);
+    historicalZip.updateFile('data/db.json', Buffer.from(JSON.stringify({ ...snapshot, cnhRate: 6,
+      indexCache: { '2026-03-01': { spx: 10, ndx: 20 } } })));
+    historicalZip.updateFile('data/config.json', Buffer.from(JSON.stringify({ tickers: [{ ticker: 'AAPL' }] })));
+    const sharedIndex = { '2026-03-03': { spx: 100, ndx: 200 } };
+    storage.writeIndexCache(sharedIndex);
+    assert.strictEqual((await request('POST','/api/backup/import',third,historicalZip.toBuffer())).status,200);
+    assert.strictEqual(storage.readCnhRateCache().rate, 8);
+    assert.deepStrictEqual(storage.readIndexCache(), sharedIndex);
+    assert.deepStrictEqual(storage.readConfig().tickers, tickers);
+
     assert((await request('GET','/api/members',third)).body.data.some(m=>m.name==='Only second'));
     assert((await request('GET','/api/members','default')).body.data.some(m=>m.name==='Only default'));
     const preview = await request('POST','/api/performance-settlement/preview',second,{date:'2026-03-03'});

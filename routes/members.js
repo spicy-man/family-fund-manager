@@ -1,5 +1,5 @@
 const { generateMemberId } = require('../lib/member-id');
-const { renameMemberIdentifiers } = require('../lib/member-identifiers');
+const { renameMemberIdentifiers, MEMBER_ID_PATTERN } = require('../lib/member-identifiers');
 const { DEFAULT_PERFORMANCE_FEE_CONFIG } = require('../lib/performance-fee-policy');
 
 const { InputError, NotFoundError, ConflictError, handleApiError } = require('../lib/api-errors');
@@ -56,7 +56,9 @@ app.put('/api/members', (req, res, next) => {
   try {
     const changes = req.body?.changes;
     if (!Array.isArray(changes) || !changes.length) throw new InputError('请提供成员修改列表。');
-    const db = deps.readBaseDb?.() ?? readDb();
+    // Complete legacy settlement migration before taking the base snapshot.
+    const migratedDb = readDb();
+    const db = deps.readBaseDb?.() ?? migratedDb;
     const nextMembers = db.members.map(member => ({ ...member }));
     const mapping = {};
     const seen = new Set();
@@ -66,8 +68,8 @@ app.put('/api/members', (req, res, next) => {
       const member = nextMembers.find(item => item.id === change.id);
       if (!member) throw new NotFoundError('未找到该家庭成员');
       const id = change.memberId === undefined ? member.id : change.memberId;
-      if (id !== member.id && (typeof id !== 'string' || !/^[0-9]{6}$/.test(id))) {
-        throw new InputError('成员编号须为 6 位数字。');
+      if (id !== member.id && (typeof id !== 'string' || !MEMBER_ID_PATTERN.test(id))) {
+        throw new InputError('成员编号须为 6 位数字，首位不能为 0。');
       }
       member.name = normalizeMemberName(change.name);
       if (id !== member.id) mapping[member.id] = id;
@@ -108,8 +110,8 @@ app.put('/api/members/:id', (req, res, next) => {
     }
 
     const newId = req.body.memberId === undefined ? memberId : req.body.memberId;
-    if (newId !== memberId && (typeof newId !== 'string' || !/^[0-9]{6}$/.test(newId))) {
-      throw new InputError('成员编号须为 6 位数字。');
+    if (newId !== memberId && (typeof newId !== 'string' || !MEMBER_ID_PATTERN.test(newId))) {
+      throw new InputError('成员编号须为 6 位数字，首位不能为 0。');
     }
     if (newId !== memberId) {
       if (db.members.some(member => member.id === newId)) {

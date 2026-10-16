@@ -1,4 +1,13 @@
 const assert = require('assert');
+// Stub the transport before Yahoo creates its fetcher; unit tests stay offline.
+let responses = [];
+const requested = [];
+require('../lib/http-json').createJsonFetcher = () => async url => {
+  requested.push(url);
+  const response = responses.shift();
+  if (response instanceof Error) throw response;
+  return response;
+};
 const {
   findCloseForPolicy,
   findPreviousClose,
@@ -116,8 +125,19 @@ assert.strictEqual(withoutAnchor.ytdChange, null, 'never substitute an older cac
 assert.strictEqual(withoutAnchor.previousYearCloseDate, null);
 
 (async () => {
-  const rate = await fetchCnhRateFromApi();
-  assert(rate === null || (typeof rate === 'number' && rate > 0), 'fetchCnhRateFromApi must return a positive number or null');
+  responses = [{ result: 'success', rates: { CNH: 7.123456 } }];
+  assert.strictEqual(await fetchCnhRateFromApi(), 7.1235);
+  assert.strictEqual(requested.length, 1);
+  responses = [new Error('offline'), { usd: { cny: 7.2 } }];
+  assert.strictEqual(await fetchCnhRateFromApi(), 7.2);
+  assert.strictEqual(requested.length, 3);
+  responses = [{}, {}, { rates: { CNY: 7.3 } }];
+  assert.strictEqual(await fetchCnhRateFromApi(), 7.3);
+  responses = [{}, {}, {}, { chart: { result: [{ meta: { regularMarketPrice: 7.4 } }] } }];
+  assert.strictEqual(await fetchCnhRateFromApi(), 7.4);
+  responses = [null, null, null, null];
+  assert.strictEqual(await fetchCnhRateFromApi(), null);
+  assert.strictEqual(responses.length, 0);
   console.log('Yahoo previous-close & CNH rate fetch assertions passed.');
 })().catch(err => {
   console.error(err);

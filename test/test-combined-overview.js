@@ -34,6 +34,7 @@ for (const key of ['totalNAV', 'remainingPrincipal', 'activeProfit', 'profit', '
 const empty = combineLedgers([]);
 assert.strictEqual(empty.summary.activeProfitRate, null);
 assert.strictEqual(empty.summary.profitRate, null);
+assert.strictEqual(empty.summary.cnhProfitRate, null);
 assert.strictEqual(result.members.find(item => item.id === 'default-other').profitRate, 0);
 // Decimal summation must not accumulate binary floating-point noise.
 assert.strictEqual(combineLedgers([ledger('a', .1, .1), ledger('b', .2, .2)]).summary.totalNAV, .3);
@@ -60,4 +61,15 @@ const orderingEntries = [
 assert.deepStrictEqual(combineLedgers(orderingEntries).members.map(member => member.id),
   ['100003', '100004', '100005', '100002', '100001'],
   'sort by first record across ledgers, respect same-day event order and keep unrecorded members last');
+orderingEntries[0].state.events.unshift({ type: 'performance_settlement', gpMember: '100005',
+  lpMembers: ['100001', '100002', '100003'], date: '2025-12-31' });
+assert.deepStrictEqual(combineLedgers(orderingEntries).members.map(member => member.id),
+  ['100005', '100003', '100004', '100002', '100001'],
+  'an empty LP in a settlement eligibility snapshot remains unrecorded');
+const sameDayOrder = { id: 'order', name: 'Order', state: { summary: {},
+  members: { late: { name: 'Late' }, early: { name: 'Early' } }, events: [
+    { type: 'deposit', member: 'late', date: '2026-01-01', sequenceNumber: 2, createdAt: 1 },
+    { type: 'deposit', member: 'early', date: '2026-01-01', sequenceNumber: 1, createdAt: 2 }
+  ] } };
+assert.deepStrictEqual(combineLedgers([sameDayOrder]).members.map(member => member.id), ['early', 'late']);
 console.log('Combined overview identity, USD/CNH cash-flow return and dashboard parity tests passed.');

@@ -17,8 +17,17 @@ try {
   const later=second.ensureIndexCache(['2025-03-03']);
   await turn();
   assert.strictEqual(pending.length,2,'only one shared benchmark job may fetch at a time');
+  const changedConfig=storage.readConfig();
+  changedConfig.customBenchmark={name:'Latest',components:[{ticker:'VOO',weight:100}]};
+  storage.writeConfig(changedConfig);
+  const concurrentHistory=storage.readMarketHistory();
+  concurrentHistory.tickers.AAPL={prices:{'2026-03-02':200}};
+  storage.writeMarketHistory(concurrentHistory);
   for(const item of pending.splice(0)) item.resolve({'2026-03-02':100});
   await first; await turn();
+  assert.strictEqual(storage.readMarketHistory().tickers.AAPL.prices['2026-03-02'],200, 'sync preserves concurrent unrelated history');
+  const customEntries=Object.values(storage.readCustomBenchmarkCache());
+  assert(customEntries.length>0, 'sync must materialize the currently configured recipe');
   assert.strictEqual(pending.length,2);
   for(const item of pending.splice(0)) item.resolve({'2025-03-02':90,'2026-03-02':100});
   await later;

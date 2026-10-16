@@ -225,7 +225,7 @@ async function deleteUndoTests() {
       loadAllData: context.loadAllData, formatMoney: context.formatMoney
     });
     controller.remove('d', 'LP', 'deposit', 100);
-    return { undoButton, row, timer, notices, deletion, getDeletes: () => deletes };
+    return { controller, undoButton, row, timer, notices, deletion, getDeletes: () => deletes };
   };
   const cancelled = create();
   cancelled.undoButton.handlers.click();
@@ -249,6 +249,24 @@ async function deleteUndoTests() {
   await new Promise(resolve => setImmediate(resolve));
   assert.strictEqual(started.row.style.opacity, '1');
   assert.match(started.notices[0], /删除失败/);
+
+  const flushed = create();
+  flushed.controller.remove('d', 'LP', 'deposit', 100);
+  const completion = flushed.controller.flushPending();
+  assert.strictEqual(flushed.getDeletes(), 1, 'repeat clicks and flushing must share one delete request');
+  flushed.timer.fn();
+  assert.strictEqual(flushed.getDeletes(), 1);
+  flushed.row.style.opacity = '1';
+  flushed.controller.refreshPending();
+  assert.strictEqual(flushed.row.style.opacity, '0.2', 'rerendered rows must stay pending');
+  flushed.deletion.resolve(); await completion;
+  await flushed.controller.flushPending();
+  assert.strictEqual(flushed.getDeletes(), 1);
+
+  const failedFlush = create();
+  const failure = failedFlush.controller.flushPending();
+  failedFlush.deletion.reject(new Error('cannot delete'));
+  await assert.rejects(failure, /cannot delete/, 'dependent writes must stop if a queued deletion fails');
 }
 
 function navigationScrollTest() {

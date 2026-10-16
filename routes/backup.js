@@ -15,7 +15,7 @@ const { normalizeCustomBenchmark } = require('../lib/custom-benchmark');
 
 function registerBackupRoutes(app, deps, utils, tickerUtils) {
   const { readDb, readSettlements, readConfig, writeSnapshot, writeCnhRate = () => {},
-    writeIndexCache = () => {}, ensureIndexCache, isValidDate, normalizeRemark } = deps;
+    writeIndexCache = () => {}, ensureIndexCache, isValidDate, normalizeRemark, restoreSharedSettings = true } = deps;
   const { toFiniteNumber, findLedgerIssue, rejectLedgerIssue, rejectFutureSettlementDate } = utils;
   const { queueTickerRefresh } = tickerUtils;
   const rejectImport = message => { throw new InputError(message); };
@@ -195,9 +195,24 @@ app.post('/api/backup/import', express.raw({
       }
     }
 
-    const importedIndexCache = (indexCache && typeof indexCache === 'object' && !Array.isArray(indexCache))
-      ? indexCache
-      : (currentDb.indexCache || {});
+    let importedIndexCache = currentDb.indexCache || {};
+    if (restoreSharedSettings && indexCache !== undefined) {
+      if (!indexCache || typeof indexCache !== 'object' || Array.isArray(indexCache)) {
+        rejectImport('备份中的指数缓存格式无效。');
+      }
+      const normalizedCache = {};
+      for (const [date, record] of Object.entries(indexCache)) {
+        if (!isValidDate(date) || !record || typeof record !== 'object' || Array.isArray(record) ||
+            !Number.isFinite(record.spx) || record.spx <= 0 || !Number.isFinite(record.ndx) || record.ndx <= 0 ||
+            ['spxPriceDate', 'ndxPriceDate'].some(key => record[key] !== undefined && !isValidDate(record[key])) ||
+            ['policy', 'source'].some(key => record[key] !== undefined && typeof record[key] !== 'string')) {
+          rejectImport('备份中的指数缓存包含无效日期或价格。');
+        }
+        normalizedCache[date] = Object.fromEntries(['spx', 'ndx', 'spxPriceDate', 'ndxPriceDate', 'policy', 'source']
+          .filter(key => record[key] !== undefined).map(key => [key, record[key]]));
+      }
+      importedIndexCache = { ...importedIndexCache, ...normalizedCache };
+    }
     let importedFeeRates;
     try {
       importedFeeRates = configuredPerformanceFeeRates(performanceFee || {
@@ -314,19 +329,19 @@ app.post('/api/backup/import', express.raw({
     // back into the ledger; newer exports deliberately omit it.
     const warnings = [];
     try {
-      writeCnhRate(importedCnhRate, { source: 'backup-import' });
+      if (restoreSharedSettings && cnhRate !== undefined) writeCnhRate(importedCnhRate, { source: 'backup-import' });
     } catch (error) {
       console.error('Failed to restore optional exchange rate cache:', error.message);
       warnings.push('账目已恢复，但汇率未更新，请在设置中重新同步汇率。');
     }
     try {
-      writeIndexCache(importedIndexCache);
+      if (restoreSharedSettings && indexCache !== undefined) writeIndexCache(importedIndexCache);
     } catch (error) {
       // Market data is disposable. A cache write failure must not turn a
       // successful core-ledger restore into an ambiguous failed import.
       console.error('Failed to restore optional index cache:', error.message);
     }
-    void queueTickerRefresh(importedConfig);
+    void queueTickerRefresh(readConfig());
 
     // 批量导入触发指数同步
     if (events && events.length > 0) {
@@ -336,7 +351,7 @@ app.post('/api/backup/import', express.raw({
     const migrationNotice = settlementMigration.migrated
       ? `，并已为 ${settlementMigration.migratedCount} 笔历史结算补充算法版本`
       : '';
-    res.json({ success: true, warnings, message: `ZIP 快照已恢复，账目、结算与系统配置均已原子覆盖并重新计算${migrationNotice}。${warnings.join('')}` });
+    res.json({ success: true, warnings, message: `ZIP 快照已恢复，账目与结算已原子覆盖并重新计算${restoreSharedSettings ? '，系统配置已恢复' : '，共享系统配置与行情已保留'}${migrationNotice}。${warnings.join('')}` });
   } catch (error) {
     handleApiError(error, req, res, next);
   }

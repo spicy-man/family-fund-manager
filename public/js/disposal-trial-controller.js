@@ -65,6 +65,15 @@
         apply.hidden = false;
       }
       async function calculate(fullExit) {
+        if (window.FundLedgerActions?.hasPending?.()) {
+          try { await window.FundLedgerActions.flushPending(); }
+          catch (error) {
+            result.textContent = error.message;
+            result.hidden = false;
+            modal.open(dialog, fullExit ? full : partial);
+            return;
+          }
+        }
         invalidate();
         const requestGeneration = generation;
         const data = payload();

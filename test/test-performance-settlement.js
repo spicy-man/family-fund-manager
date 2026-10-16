@@ -502,7 +502,8 @@ approximately(legacyDisposalState.members.lp.shares, legacyDisposalState.members
 
 // Preserve the frozen legacy algorithm even in its pathological boundary:
 // cash shares plus carry can exactly exhaust one lot during a nominally
-// partial disposal. Historical replay retained that zero lot for audit output.
+// partial disposal. Keep its internal legacy shape for locked snapshots, but
+// omit empty lots from the public ledger and clear the exhausted principal.
 const legacyExhaustedLotState = calculateStateFromDb({
   cnhRate: 7.2,
   members: [{ id: 'lp', name: 'LP' }, { id: 'gp', name: 'GP' }],
@@ -516,9 +517,27 @@ const legacyExhaustedLotState = calculateStateFromDb({
     })
   ]
 });
-assert.strictEqual(legacyExhaustedLotState.members.lp.lpLedger.length, 1);
-assert.strictEqual(legacyExhaustedLotState.members.lp.lpLedger[0].shares, 0);
-assert(Number.isNaN(legacyExhaustedLotState.members.lp.lpLedger[0].highWaterNav));
+assert.strictEqual(legacyExhaustedLotState.members.lp.lpLedger.length, 0,
+  'empty legacy lots must not expose a NaN high-water NAV');
+assert.strictEqual(legacyExhaustedLotState.members.lp.remainingPrincipal, 0,
+  'cash plus carry exhausted every LP share, so no principal can remain');
+
+// Carry-only withdrawals have no LP disposal denominator. They must report a
+// finite zero ratio without taking principal or inventing LP lots.
+const carryOnly = calculateStateFromDb({ cnhRate: 7.2,
+  members: [{ id: 'lp', name: 'LP' }, { id: 'gp', name: 'GP' }],
+  events: [
+    event('carry-d', 'deposit', '2025-01-01', 1, { member: 'lp', amount: 100 }),
+    event('carry-v', 'valuation', '2026-01-01', 2, { totalNAV: 200 }),
+    event('carry-s', 'performance_settlement', '2026-01-01', 3,
+      { gpMember: 'gp', annualRate: 0, feeRate: 0.25 }),
+    event('carry-w', 'withdraw', '2026-01-02', 4, { member: 'gp', amount: 10, cnhAmount: 72 })
+  ]
+});
+assert.strictEqual(carryOnly.events.at(-1)._disposedRatio, 0);
+assert.strictEqual(carryOnly.members.gp.remainingPrincipal, 0);
+assert.strictEqual(carryOnly.members.gp.gpCarryValue, 15);
+assert.strictEqual(carryOnly.summary.totalNAV, 190);
 
 // Reversal records remain auditable ledger events, but must not create a
 // fake point/remark on the economic performance timeline.
@@ -541,7 +560,8 @@ assert.strictEqual(reversedChartState.members.lp.lpLedger[0].hurdle, 105.98);
 
 // Withdrawals and transfers must share one disposal engine. For every current
 // and historical disposal shape, the outgoing member and GP economics are
-// identical; only the fund cash flow and recipient acquisition differ.
+// identical except a full self-GP transfer retains newly earned carry, whereas
+// an external withdrawal pays it out with the cash.
 for (const disposalVersion of [1, 2]) {
   for (const fullExit of [false, true]) {
     for (const selfGp of [false, true]) {
@@ -576,6 +596,15 @@ for (const disposalVersion of [1, 2]) {
       const transferState = calculateStateFromDb(makePairedDb('transfer'));
       const withdrawal = withdrawalState.events.at(-1);
       const transfer = transferState.events.at(-1);
+      if (selfGp && fullExit) {
+        approximately(transfer._actualAmount + transfer._performanceFee, withdrawal._actualAmount);
+        approximately(transferState.members.seller.currentValue, transfer._performanceFee);
+        approximately(transferState.members.seller.gpCarryValue, transfer._performanceFee);
+        assert.strictEqual(transferState.members.seller.lpShares, 0);
+        assert.strictEqual(transferState.members.seller.remainingPrincipal, 0);
+        approximately(transferState.members.buyer.currentValue + transferState.members.seller.currentValue, 120);
+        continue;
+      }
       for (const field of [
         '_actualAmount', '_grossAmount', '_performanceFee', '_performanceFeeShares',
         '_carrySharesDisposed', '_unpaidPerformanceFeeShares', '_fullExit',
@@ -595,6 +624,39 @@ for (const disposalVersion of [1, 2]) {
     }
   }
 }
+
+// A self-GP full transfer can include previously vested carry. Only the newly
+// crystallized fee stays behind; all existing carry and net LP shares transfer.
+const mixedFullDb = { cnhRate: 7.2,
+  members: [{ id: 'seller', name: 'GP', roles: { lp: true, gp: true } },
+    { id: 'buyer', name: 'Buyer', roles: { lp: true, gp: false } }],
+  events: [
+    event('mf-d1', 'deposit', '2025-01-01', 1, { member: 'seller', amount: 1000 }),
+    event('mf-d2', 'deposit', '2025-01-01', 2, { member: 'buyer', amount: 1000 }),
+    event('mf-v1', 'valuation', '2026-01-01', 3, { totalNAV: 4000 }),
+    event('mf-s', 'performance_settlement', '2026-01-01', 4,
+      { gpMember: 'seller', annualRate: 0, feeRate: 0.25 }),
+    event('mf-v2', 'valuation', '2026-01-02', 5, { totalNAV: 6000 })
+  ]
+};
+const mixedBefore = calculateStateFromDb(structuredClone(mixedFullDb));
+mixedFullDb.events.push(event('mf-t', 'transfer', '2026-01-04', 6, {
+  fromMember: 'seller', toMember: 'buyer', amount: mixedBefore.members.seller.currentValue,
+  cnhRate: 7.2, fullExit: true,
+  performanceFee: { gpMember: 'seller', annualRate: 0, feeRate: 0.25, disposalVersion: 2 }
+}));
+const mixedAfter = calculateStateFromDb(mixedFullDb, { verifyLotSummaries: true, validateMemberBalances: true });
+const mixedTransfer = mixedAfter.events.at(-1);
+assert(mixedBefore.members.seller.gpCarryShares > 0);
+assert(mixedTransfer._performanceFee > 0);
+approximately(mixedAfter.members.seller.currentValue, mixedTransfer._performanceFee);
+approximately(mixedTransfer._actualAmount + mixedTransfer._performanceFee, mixedBefore.members.seller.currentValue);
+approximately(mixedTransfer._carrySharesDisposed, mixedBefore.members.seller.gpCarryShares);
+assert.strictEqual(mixedAfter.members.seller.shares,
+  Number(mixedAfter.members.seller.gpCarryShares.toFixed(4)), 'display shares equal retained carry at display precision');
+assert.strictEqual(mixedAfter.members.seller.lpShares, 0);
+assert.strictEqual(mixedAfter.summary.totalNAV, 6000);
+approximately(mixedAfter.members.seller.currentValue + mixedAfter.members.buyer.currentValue, 6000);
 
 const snapshottedRateDb = {
   cnhRate: 7.2,

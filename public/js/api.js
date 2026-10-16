@@ -28,6 +28,12 @@ function resolveApiUrl(url) {
 }
 
 async function requestApi(url, options = {}) {
+  // New writes and previews must observe all deletions already requested by
+  // the user. DELETE bypasses this barrier so committing the queue can call API.
+  const method = (options.method || 'GET').toUpperCase();
+  if (method !== 'GET' && !(method === 'DELETE' && url.startsWith('/api/event/'))) {
+    await window.FundLedgerActions?.flushPending?.();
+  }
   if (window.FundDemoMode?.sandbox) return window.FundDemoSandbox.request(url, {
     ...options, headers: { ...options.headers, ...(window.FundLedger ? { 'X-Ledger-Id': window.FundLedger.id } : {}) }
   });

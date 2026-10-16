@@ -4,7 +4,6 @@ const { InputError, NotFoundError } = require('../lib/api-errors');
 const weeklyMarket = require('../demo/weekly-market.json');
 
 const demoLedgers = buildDemoLedgers();
-const demoLedger = demoLedgers[0].ledger;
 function selectedLedger(req) {
   const header = req.get('X-Ledger-Id');
   const query = req.query.ledger;
@@ -67,6 +66,7 @@ function registerDemoRoutes(app, { calculateStateFromDb, publicDirectory }) {
   });
 
   app.get('/api/demo/settings/custom-benchmark', (req, res) => {
+    const demoLedger = selectedLedger(req);
     const slot = Number(req.query.slot || 0);
     const data = slot === 1 ? demoLedger.customBenchmark2 : demoLedger.customBenchmark;
     res.json({ success: true, data: clone(data) });

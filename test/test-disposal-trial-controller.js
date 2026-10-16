@@ -36,12 +36,23 @@ function harness(demo = null, animateOperationChange) {
   });
   const pending = [];
   const controller = window.FundDisposalTrial.init({ animateOperationChange, modal: { bindAccessible() {}, open(dialog) { dialog.open = true; }, close(dialog) { dialog.open = false; } }, api: { previewDisposal: input => new Promise((resolve, reject) => pending.push({ input, resolve, reject })) }, formatMoney: n => Number(n).toFixed(2) });
-  return { elements, pending, controller };
+  return { elements, pending, controller, window };
 }
 const account = { currentValue: 1000, remainingPrincipal: 500, lpShares: 500, gpCarryShares: 0 };
 const response = input => ({ input: { ...input, previewToken: 'token' }, date: input.date, valuationDate: '2026-01-09', nav: 2,
   actualAmount: 300, cnhAmount: 2100, performanceFee: 10, sharesDeducted: 155, sender: { before: account, after: account }, fullExit: false });
 (async () => {
+  const queued = harness();
+  let finishDeletion;
+  const deletion = new Promise(resolve => { finishDeletion = resolve; });
+  let deleting = true;
+  queued.window.FundLedgerActions = { hasPending: () => deleting, flushPending: () => deletion };
+  const afterDelete = queued.elements['tx-trial-partial'].dispatchEvent({ type: 'click' });
+  assert.strictEqual(queued.pending.length, 0, 'trial must await requested deletions');
+  queued.controller.invalidate(); deleting = false; finishDeletion();
+  await new Promise(resolve => setImmediate(resolve));
+  queued.pending[0].resolve(response(queued.pending[0].input)); await afterDelete;
+  assert.strictEqual(queued.elements['tx-trial-modal'].open, true, 'deletion refresh must not discard the new trial');
   const { elements: e, pending, controller } = harness();
   const first = e['tx-trial-partial'].dispatchEvent({ type: 'click' });
   assert.strictEqual(e['tx-trial-partial'].disabled, true);

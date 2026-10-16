@@ -52,7 +52,7 @@
                 <div class="member-id-editor">
                   <span class="member-id-label">编号</span>
                   <span class="member-id-value" id="member-id-value-${m.id}">${escapeHtml(m.id)}</span>
-                  <input class="member-id-input" id="member-id-input-${m.id}" value="${escapeHtml(m.id)}" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" spellcheck="false" style="display:none" aria-label="${escapeHtml(m.name)}的成员编号">
+                  <input class="member-id-input" id="member-id-input-${m.id}" value="${escapeHtml(m.id)}" maxlength="6" inputmode="numeric" pattern="[1-9][0-9]{5}" spellcheck="false" style="display:none" aria-label="${escapeHtml(m.name)}的成员编号">
                   <button type="button" class="member-id-edit" id="member-id-save-${m.id}" aria-label="编辑${escapeHtml(m.name)}的编号">编辑</button>
                 </div>
               </div>
@@ -97,7 +97,7 @@
         input.style.display = draft?.nameOpen ? 'block' : 'none';
         span.style.display = draft?.nameOpen ? 'none' : 'block';
         btnEdit.style.display = draft?.nameOpen ? 'none' : 'grid';
-        btnSave.style.display = draft?.nameOpen ? 'grid' : 'none';
+        btnSave.style.display = draft?.nameOpen || draft?.numberOpen ? 'grid' : 'none';
         if (idInput) {
           idInput.value = draft?.numberOpen ? draft.number : m.id;
           idInput.style.display = draft?.numberOpen ? 'block' : 'none';
@@ -136,6 +136,9 @@
           const newName = input.value.trim();
           const newId = idInput?.value.trim() ?? m.id;
           if (!newId) { showToast('成员编号不能为空', 'error'); return; }
+          if (newId !== m.id && !/^[1-9][0-9]{5}$/.test(newId)) {
+            showToast('成员编号须为 6 位数字，首位不能为 0。', 'error'); return;
+          }
           if (!newName) {
             showToast('成员姓名不能为空', 'error');
             return;
@@ -167,6 +170,12 @@
           input.style.display = 'none';
           btnSave.style.display = 'none';
           input.value = m.name;
+          if (idInput) {
+            idInput.value = m.id;
+            idInput.style.display = 'none';
+            idSave.style.display = 'inline';
+            document.getElementById('member-id-value-' + m.id).style.display = 'inline';
+          }
         };
 
         span.addEventListener('dblclick', startEdit);
@@ -177,7 +186,13 @@
           document.getElementById('member-id-value-' + m.id).style.display = 'none';
           idInput.style.display = 'block';
           idSave.style.display = 'none';
+          btnSave.style.display = 'grid';
           idInput.focus(); idInput.select();
+        });
+
+        idInput?.addEventListener('keyup', (e) => {
+          if (e.key === 'Enter') saveEdit();
+          if (e.key === 'Escape') cancelEdit();
         });
 
         input.addEventListener('keyup', (e) => {
@@ -218,6 +233,9 @@
         showToast('成员姓名不能为空', 'error'); return false;
       }
       if (changes.some(change => !change.newId)) { showToast('成员编号不能为空', 'error'); return false; }
+      if (changes.some(change => change.newId !== change.id && !/^[1-9][0-9]{5}$/.test(change.newId))) {
+        showToast('成员编号须为 6 位数字，首位不能为 0。', 'error'); return false;
+      }
       savingNames = true;
       const editor = document.getElementById('member-modal') || elMembersEditList;
       const controls = [...(editor.querySelectorAll?.('input, button') || [])].map(control => ({ control, disabled: control.disabled }));

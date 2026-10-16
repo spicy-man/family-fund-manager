@@ -618,11 +618,13 @@ async function startExternalFailureServer() {
     const storage = require('../lib/storage');
     const oldWriteRate = storage.writeCnhRateCache;
     const oldConsoleError = console.error;
+    const legacyRateBackup = new AdmZip(exported.body);
+    legacyRateBackup.updateFile('data/db.json', Buffer.from(JSON.stringify({ ...exportedDb, cnhRate: 7.2 })));
     let warningRestore;
     try {
       storage.writeCnhRateCache = () => { throw new Error('injected rate cache failure'); };
       console.error = () => {};
-      warningRestore = await requestBuffer(server, 'POST', '/api/backup/import', exported.body);
+      warningRestore = await requestBuffer(server, 'POST', '/api/backup/import', legacyRateBackup.toBuffer());
     } finally {
       storage.writeCnhRateCache = oldWriteRate;
       console.error = oldConsoleError;

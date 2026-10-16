@@ -41,9 +41,15 @@ const near = (a, b) => assert(Math.abs(a - b) < 1e-7, `${a} != ${b}`);
         assert(preview.performanceFee > 0);
         if (fullExit) {
           assert.strictEqual(preview.input.amount, 2000);
-          assert.strictEqual(preview.sender.after.currentValue, 0);
+          const retainsCarry = selfGp && type === 'transfer';
+          near(preview.sender.after.currentValue, retainsCarry ? Number(preview.performanceFee.toFixed(2)) : 0);
+          assert.strictEqual(preview.sender.after.lpShares, 0);
+          if (retainsCarry) {
+            near(preview.sender.after.gpCarryValue, Number(preview.performanceFee.toFixed(2)));
+            near(preview.recipient.after.currentValue, Number((2000 - preview.performanceFee).toFixed(2)));
+          }
           assert.strictEqual(preview.sender.after.remainingPrincipal, 0);
-          near(preview.actualAmount, selfGp ? 2000 : 2000 - preview.performanceFee);
+          near(preview.actualAmount, selfGp && type === 'withdraw' ? 2000 : 2000 - preview.performanceFee);
         } else near(preview.actualAmount, 300);
         const again = await request(api.routes['post:/api/disposal/preview'], body);
         assert.deepStrictEqual(again.body.data, preview, 'repeated estimates must be deterministic');

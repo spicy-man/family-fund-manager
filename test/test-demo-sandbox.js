@@ -122,6 +122,9 @@ function openTab(store) {
     assert.strictEqual((await selected('/api/state')).data.events.length, 0);
     const secondMembers = (await selected('/api/members')).data;
     assert(secondMembers.every(item => /^[1-9][0-9]{5}$/.test(item.id)));
+    const priorIds = new Set([...Object.keys(initial.members), ...Object.keys(sampleSecond.members), member.id]);
+    assert(secondMembers.every(item => !priorIds.has(item.id)), 'new ledger identifiers must avoid every existing ledger');
+    await assert.rejects(selected('/api/members/missing', 'DELETE'), error => error.status === 404 && error.code === 'NOT_FOUND');
     // Align one member identifier to demonstrate aggregation by identity.
     await selected('/api/members/' + secondMembers[0].id, 'PUT', { name: 'Miku', memberId: member.id });
     await selected('/api/transaction', 'POST', { member: member.id, type: 'deposit', amount: 1000, cnhAmount: 7000, date: sunday });
@@ -144,7 +147,17 @@ function openTab(store) {
     const secondZip = new AdmZip(Buffer.from(secondBackup.binary));
     assert.strictEqual(JSON.parse(secondZip.getEntry('data/db.json').getData()).events.length, 1);
     // Restoring into an additional ledger leaves the default ledger and shared settings intact.
-    await sandbox.request('/api/backup/import', { method: 'POST', headers: { 'X-Ledger-Id': second.id }, body: backupBody });
+    const oldSharedZip = new AdmZip(Buffer.from(backup.binary));
+    const oldSharedDb = JSON.parse(oldSharedZip.readAsText('data/db.json'));
+    oldSharedZip.updateFile('data/db.json', Buffer.from(JSON.stringify({ ...oldSharedDb, cnhRate: 6,
+      indexCache: { '2026-03-01': { spx: 10, ndx: 20 } } })));
+    const oldSharedBytes = oldSharedZip.toBuffer();
+    const beforeSharedRate = sandbox.snapshot().cnhRate;
+    await sandbox.request('/api/backup/import', { method: 'POST', headers: { 'X-Ledger-Id': second.id }, body: {
+      size: oldSharedBytes.length, arrayBuffer: async () => Uint8Array.from(oldSharedBytes).buffer
+    } });
+    assert.strictEqual(sandbox.snapshot().cnhRate, beforeSharedRate, 'restoring a child ledger preserves shared FX');
+
     assert.strictEqual((await selected('/api/state')).data.summary.totalNAV, beforeBackup.summary.totalNAV);
     assert.strictEqual((await get('/api/state')).data.summary.totalNAV, firstLedgerState.summary.totalNAV);
     assert.strictEqual((await get('/api/state')).data.settings.customBenchmark2.components[0].ticker, 'AAPL');

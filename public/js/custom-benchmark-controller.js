@@ -139,15 +139,22 @@
       updateTotal();
     };
 
+    let openSequence = 0;
+    let writing = false;
     slots.forEach((slotRefs, slot) => {
       slotRefs.button.addEventListener('click', async event => {
+        if (writing) return;
+        const sequence = ++openSequence;
+        const trigger = event.currentTarget;
         try {
-          activeSlot = slot;
           const benchmark = await api.getCustomBenchmark(slot);
+          if (sequence !== openSequence) return;
+          activeSlot = slot;
           customBenchmarkModalTitle.textContent = `配置自定义对比组合 ${slot + 1}`;
           renderConfig(benchmark);
-          modal.open(customBenchmarkModal, event.currentTarget);
+          modal.open(customBenchmarkModal, trigger);
         } catch (error) {
+          if (sequence !== openSequence) return;
           showToast(`读取自定义组合 ${slot + 1} 失败：${error.message}`, 'error');
         }
       });
@@ -159,6 +166,7 @@
     });
 
     btnSaveCustomBenchmark.addEventListener('click', async () => {
+      if (writing) return;
       const components = [...customBenchmarkComponents.querySelectorAll('.custom-benchmark-component-row')]
         .map(row => ({
           ticker: row.querySelector('.custom-benchmark-ticker').value.trim().toUpperCase(),
@@ -171,6 +179,8 @@
       }
       if (Math.abs(updateTotal() - 100) > 0.01) return showToast('成分权重合计必须为 100%', 'error');
 
+      writing = true;
+      ++openSequence;
       btnSaveCustomBenchmark.disabled = true;
       btnSaveCustomBenchmark.textContent = '正在同步历史行情…';
       try {
@@ -186,13 +196,17 @@
       } catch (error) {
         showToast(`保存失败：${error.message}`, 'error');
       } finally {
+        writing = false;
         btnSaveCustomBenchmark.disabled = false;
         btnSaveCustomBenchmark.textContent = '保存并同步历史行情';
       }
     });
 
     btnRemoveCustomBenchmark.addEventListener('click', async () => {
+      if (writing) return;
       if (!confirm('确定移除自定义对比标的吗？历史行情缓存不会影响基金账本。')) return;
+      writing = true;
+      ++openSequence;
       btnRemoveCustomBenchmark.disabled = true;
       try {
         await api.saveCustomBenchmark(null, activeSlot);
@@ -203,6 +217,7 @@
       } catch (error) {
         showToast(`移除失败：${error.message}`, 'error');
       } finally {
+        writing = false;
         btnRemoveCustomBenchmark.disabled = false;
       }
     });
