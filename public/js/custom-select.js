@@ -181,7 +181,8 @@
     trigger.setAttribute('aria-expanded', 'false');
 
     const label = select.labels?.[0];
-    if (label) trigger.setAttribute('aria-label', label.textContent.trim());
+    const ariaLabel = label?.textContent.trim() || select.getAttribute?.('aria-label');
+    if (ariaLabel) trigger.setAttribute('aria-label', ariaLabel);
     wrapper.appendChild(trigger);
 
     const menu = document.createElement('div');

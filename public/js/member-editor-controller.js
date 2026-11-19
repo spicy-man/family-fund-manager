@@ -47,7 +47,7 @@
               <div class="member-edit-avatar" style="background: ${cardColor}; color: ${cardTextColor};">${shortName}</div>
               <div class="member-edit-identity">
                 <div class="member-identity-heading"><span class="member-edit-name" id="member-name-span-${m.id}" title="双击或点击右侧笔头重命名">${escapeHtml(m.name)}</span>
-                <input type="text" class="input-rename" id="member-name-input-${m.id}" value="${escapeHtml(m.name)}" style="display: none;">
+                <input type="text" class="input-rename" id="member-name-input-${m.id}" value="${escapeHtml(m.name)}" style="display: none;" aria-label="${escapeHtml(m.name)}的成员姓名">
                 <span class="member-role-badge">LP</span></div>
                 <div class="member-id-editor">
                   <span class="member-id-label">编号</span>
@@ -63,18 +63,18 @@
               </label>
             </div>
             <div class="member-edit-actions">
-              <button class="btn-rename-save" id="btn-rename-edit-${m.id}" title="重命名成员" style="color: var(--color-cyan);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <button type="button" class="btn-rename-save" id="btn-rename-edit-${m.id}" title="重命名成员" aria-label="重命名${escapeHtml(m.name)}" style="color: var(--color-cyan);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
                 </svg>
               </button>
-              <button class="btn-rename-save" id="btn-rename-save-${m.id}" title="保存修改" style="color: var(--color-green); display: none;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <button type="button" class="btn-rename-save" id="btn-rename-save-${m.id}" title="保存修改" aria-label="保存${escapeHtml(m.name)}的修改" style="color: var(--color-green); display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
               </button>
-              <button class="btn-delete" id="btn-member-del-${m.id}" title="${hasTx ? '已有出入金或转让记录，禁止删除' : '移除该成员'}" ${hasTx ? 'disabled style="opacity: 0.25; cursor: not-allowed;"' : ''}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <button type="button" class="btn-delete" id="btn-member-del-${m.id}" title="${hasTx ? '已有出入金或转让记录，禁止删除' : '移除该成员'}" aria-label="移除${escapeHtml(m.name)}" ${hasTx ? 'disabled style="opacity: 0.25; cursor: not-allowed;"' : ''}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <polyline points="3 6 5 6 21 6"/>
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                 </svg>
@@ -190,15 +190,34 @@
           idInput.focus(); idInput.select();
         });
 
-        idInput?.addEventListener('keyup', (e) => {
-          if (e.key === 'Enter') saveEdit();
+        let isComposing = false;
+        const onCompositionStart = () => { isComposing = true; };
+        const onCompositionEnd = () => { isComposing = false; };
+        const handleEditKeydown = e => {
+          if (e.key === 'Enter') {
+            if (e.isComposing || e.keyCode === 229 || isComposing) return;
+            e.preventDefault?.();
+            saveEdit();
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault?.();
+            e.stopPropagation?.();
+            cancelEdit();
+          }
+        };
+        const handleEditKeyup = e => {
           if (e.key === 'Escape') cancelEdit();
-        });
+        };
 
-        input.addEventListener('keyup', (e) => {
-          if (e.key === 'Enter') saveEdit();
-          if (e.key === 'Escape') cancelEdit();
-        });
+        idInput?.addEventListener('compositionstart', onCompositionStart);
+        idInput?.addEventListener('compositionend', onCompositionEnd);
+        idInput?.addEventListener('keydown', handleEditKeydown);
+        idInput?.addEventListener('keyup', handleEditKeyup);
+
+        input.addEventListener('compositionstart', onCompositionStart);
+        input.addEventListener('compositionend', onCompositionEnd);
+        input.addEventListener('keydown', handleEditKeydown);
+        input.addEventListener('keyup', handleEditKeyup);
 
         if (btnDel && !btnDel.disabled) {
           btnDel.addEventListener('click', async () => {

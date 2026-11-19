@@ -108,9 +108,26 @@ async function targetedReversalTests() {
   assert(prompts[0].includes('2026-03-01'));
   pending.resolve({ message: 'reversed' }); await first;
   assert.strictEqual(elements.btnReverseSettlement.disabled, false);
+  state = { events: [
+    { id: 's1', type: 'performance_settlement', date: '2026-02-01', sequenceNumber: 1 },
+    { id: 's2', type: 'performance_settlement', date: '2026-03-01', sequenceNumber: 2 },
+    { id: 'r2', type: 'performance_settlement_reversal', settlementId: 's2', date: '2026-03-01', sequenceNumber: 3 }
+  ] };
+  const reversedStep = deferred();
+  pending.promise = reversedStep.promise;
+  const second = elements.btnReverseSettlement.handlers.click();
+  assert.strictEqual(calls.length, 2, 'must skip already-reversed settlement and target the previous active settlement');
+  assert.strictEqual(calls[1].id, 's1');
+  reversedStep.resolve({ message: 'reversed s1' }); await second;
+  state = { events: [
+    { id: 's2', type: 'performance_settlement', date: '2026-03-01', sequenceNumber: 2 },
+    { id: 'r2', type: 'performance_settlement_reversal', settlementId: 's2', date: '2026-03-01', sequenceNumber: 3 }
+  ] };
+  await elements.btnReverseSettlement.handlers.click();
+  assert.strictEqual(calls.length, 2, 'a ledger where all settlements are reversed must not submit a reversal');
   state = { events: [] };
   await elements.btnReverseSettlement.handlers.click();
-  assert.strictEqual(calls.length, 1, 'an empty ledger must not submit an untargeted reversal');
+  assert.strictEqual(calls.length, 2, 'an empty ledger must not submit an untargeted reversal');
 }
 
 async function transactionTests() {
@@ -155,6 +172,42 @@ async function transactionTests() {
   controller.prepareEdit({ amount: 100, cnhAmount: 650 });
   elements.editAmount.value = '200'; elements.editAmount.handlers.input();
   assert.strictEqual(elements.editCnhAmount.value, '1300.00', 'reopening must reset manual state and historical rate');
+
+  let reportedOnChange = 0;
+  elements.txDate.reportValidity = () => { reportedOnChange++; };
+  elements.txDate.value = '2026-01-03'; // Friday -> nearest Sunday is 2026-01-04
+  elements.txDate.handlers.change();
+  assert.strictEqual(reportedOnChange, 0, 'date change must snap to nearest Sunday without calling reportValidity');
+  assert.strictEqual(elements.txDate.value, '2026-01-04', 'Friday snaps forward to upcoming Sunday');
+  elements.txDate.value = '2026-01-06'; // Tuesday -> nearest Sunday is 2026-01-04
+  elements.txDate.handlers.change();
+  assert.strictEqual(elements.txDate.value, '2026-01-04', 'Tuesday snaps backward to previous Sunday');
+  elements.valDate.value = '2026-01-04'; // Sunday -> valuation snaps back to Friday 2026-01-02
+  elements.valDate.handlers.change();
+  assert.strictEqual(elements.valDate.value, '2026-01-02', 'Weekend valuation date snaps to preceding Friday');
+  elements.valDate.value = '2026-10-01'; // Exceeds latest 2026-09-29 -> snaps to 2026-09-29
+  elements.valDate.handlers.change();
+  assert.strictEqual(elements.valDate.value, '2026-09-29', 'Future valuation date snaps to latest valuation date');
+
+  const dateTimeWindow = load('date-time.js');
+  const { parseCompactDate, snapToNearestSunday, snapToValuationDate, enhanceDateInput } = dateTimeWindow.FundDateTime;
+  assert.strictEqual(parseCompactDate('20250103'), '2025-01-03');
+  assert.strictEqual(parseCompactDate('20251350'), '2025-12-31', 'out-of-range month/day digits clamp safely instead of leaving invalid 50');
+  assert.strictEqual(snapToNearestSunday('20250103'), '2025-01-05', '2025-01-03 (Fri) snaps to nearest Sunday 2025-01-05');
+  assert.strictEqual(snapToNearestSunday('20250101'), '2024-12-29', '2025-01-01 (Wed) snaps to nearest Sunday 2024-12-29');
+  assert.strictEqual(snapToValuationDate('20250105', '2026-09-29'), '2025-01-03', 'Sunday valuation snaps back to Friday');
+  const typedDate = element();
+  typedDate.type = 'date';
+  typedDate.value = '2026-01-04';
+  typedDate.dataset = {};
+  enhanceDateInput(typedDate, snapToNearestSunday);
+  typedDate.handlers.focus();
+  assert.strictEqual(typedDate.type, 'text', 'focusing switches date input to Excel-like 8-digit text mode');
+  assert.strictEqual(typedDate.value, '20260104', 'edit mode displays pure 8-digit date string');
+  typedDate.value = '20250103';
+  typedDate.handlers.blur();
+  assert.strictEqual(typedDate.type, 'date', 'blurring restores date display mode');
+  assert.strictEqual(typedDate.value, '2025-01-05', 'typing 20250103 in edit mode snaps to nearest Sunday 2025-01-05');
 
   elements.txDate.value = '2026-03-01'; elements.elTxMember.value = 'lp';
   elements.txAmount.value = '100'; elements.formTransaction.reset = () => {};

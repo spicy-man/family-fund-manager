@@ -95,4 +95,26 @@ assert.strictEqual(modalActive, true, 'persistent onboarding must ignore Escape'
 modalListeners.keydown({ key: 'Tab', shiftKey: false, preventDefault() {} });
 assert.deepStrictEqual(focusCalls, ['first'], 'persistent onboarding must keep keyboard focus inside the dialog');
 
+const dismissableListeners = {};
+let dismissableActive = true;
+const dismissableModal = {
+  dataset: {},
+  classList: {
+    contains(name) { return name === 'active' && dismissableActive; },
+    add() { dismissableActive = true; },
+    remove() { dismissableActive = false; }
+  },
+  addEventListener(type, listener) { dismissableListeners[type] = listener; },
+  querySelectorAll() { return [firstFocusable, lastFocusable]; },
+  querySelector() { return null; },
+  setAttribute() {}
+};
+modalContext.window.FundModal.bindAccessible(dismissableModal);
+dismissableListeners.pointerdown({ target: firstFocusable });
+dismissableListeners.click({ target: dismissableModal });
+assert.strictEqual(dismissableActive, true, 'a text-selection drag starting inside the modal and releasing on the backdrop must not close it');
+dismissableListeners.pointerdown({ target: dismissableModal });
+dismissableListeners.click({ target: dismissableModal });
+assert.strictEqual(dismissableActive, false, 'a genuine backdrop press and release must close the modal');
+
 console.log('Empty-ledger onboarding assertions passed.');

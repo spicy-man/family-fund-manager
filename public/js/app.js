@@ -512,7 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
     settleGp.innerHTML = settlementGps.map(member => `<option value="${escapeHtml(member.id)}">${escapeHtml(member.name)}（主GP）</option>`).join('');
     const primaryGp = gpMembers.find(member => member.primaryGp);
     if (primaryGp) settleGp.value = primaryGp.id;
-    else if (savedGp && gpMembers.some(member => member.id === savedGp)) settleGp.value = savedGp;
+    else if (savedGp && settlementGps.some(member => member.id === savedGp)) settleGp.value = savedGp;
     if (savedTfFromVal && membersList.some(m => m.id === savedTfFromVal)) {
       tfFromMember.value = savedTfFromVal;
     } else if (membersList.length > 0) {

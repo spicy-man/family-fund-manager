@@ -51,7 +51,7 @@ for (const [width, height, initiallyOpen, ongoing = false] of [[681, 750, false]
         assert(markup.includes('<span>潜在支付报酬</span><strong>$20</strong>'));
         assert(markup.includes('<span>当前权益</span>'));
         assert(markup.includes('未扣除预估报酬'));
-        assert(markup.includes('<th>计提门槛</th><th>潜在报酬</th>'));
+        assert(/<th(?:\s+scope="col")?>计提门槛<\/th><th(?:\s+scope="col")?>潜在报酬<\/th>/.test(markup));
       } else {
         assert(markup.includes('期末高水位 · LP 加权<strong>1.1000</strong>'));
         assert(markup.includes('期末批次区间 1.0000–1.2000'));

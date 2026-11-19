@@ -46,6 +46,10 @@
         modal.close(dialog);
         partial.disabled = false;
         full.disabled = false;
+        if (prefix === 'tf') {
+          const toMemberField = get('to-member');
+          toMemberField?.setCustomValidity?.('');
+        }
         if (prefix === 'tx') panel.hidden = !document.getElementById('t-select-withdraw').checked;
       }
       function render(data) {
@@ -76,7 +80,28 @@
         }
         invalidate();
         const requestGeneration = generation;
+        const dateField = get('date');
+        if (dateField?.value) {
+          const snapped = window.FundDateTime?.snapToNearestSunday
+            ? window.FundDateTime.snapToNearestSunday(dateField.value)
+            : (() => {
+              const cursor = new Date(`${dateField.value}T00:00:00Z`);
+              if (Number.isNaN(cursor.getTime())) return dateField.value;
+              const day = cursor.getUTCDay();
+              if (day !== 0) cursor.setUTCDate(cursor.getUTCDate() + (day >= 4 ? 7 - day : -day));
+              return cursor.toISOString().split('T')[0];
+            })();
+          if (snapped) {
+            if (dateField.type === 'text') dateField.type = 'date';
+            if (snapped !== dateField.value) dateField.value = snapped;
+          }
+          dateField.setCustomValidity?.('');
+        }
         const data = payload();
+        const toMemberField = prefix === 'tf' ? get('to-member') : null;
+        if (toMemberField?.setCustomValidity) {
+          toMemberField.setCustomValidity(data.fromMember && data.fromMember === data.toMember ? '出让方与受让方不能为同一成员' : '');
+        }
         const fields = prefix === 'tx' ? ['member', 'date'] : ['from-member', 'to-member', 'rate', 'date'];
         if (!fullExit) fields.push('amount');
         for (const field of fields) if (!get(field).reportValidity()) return;

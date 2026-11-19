@@ -49,10 +49,10 @@
           <svg class="toast-undo-icon ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/></svg>
           <span class="toast-undo-text">
             <strong>待删除</strong>
-            ${type === 'deposit' ? '入金' : type === 'withdraw' ? '出金' : type === 'transfer' ? '转让' : '估值'}记录（$${formatMoney(value)}）<br>
+            ${type === 'deposit' ? '入金' : type === 'withdraw' ? '出金' : type === 'transfer' ? '转让' : '估值'}记录（<span class="privacy-sensitive">$${formatMoney(value)}</span>）<br>
             <span style="font-size:0.75rem; opacity:0.7;">3 秒内可撤销，操作完成后将重算账目</span>
           </span>
-          <button class="toast-undo-btn" id="undo-btn-${id}">↩ 撤销</button>
+          <button type="button" class="toast-undo-btn" id="undo-btn-${id}">↩ 撤销</button>
         </div>
         <div class="toast-undo-progress-wrap">
           <div class="toast-undo-progress-bar" id="undo-progress-${id}" style="animation-duration: ${UNDO_DELAY}ms;"></div>
@@ -67,7 +67,7 @@
       let deletionStarted = false;
 
       // 撤销按钮点击处理
-      const undoBtn = document.getElementById(`undo-btn-${id}`);
+      const undoBtn = toast.querySelector?.('.toast-undo-btn') || document.getElementById(`undo-btn-${id}`);
       if (undoBtn) {
         undoBtn.addEventListener('click', () => {
           if (undone || deletionStarted) return;

@@ -14,7 +14,7 @@ window.FundMemberRenderer = {
       });
     });
     // Keep the existing member order for ties and members without records.
-    return [...members].sort((a, b) =>
+    return members.toSorted((a, b) =>
       (firstRecord.get(a.id) ?? Infinity) - (firstRecord.get(b.id) ?? Infinity));
   },
 

@@ -96,10 +96,10 @@
           </button>
         </div>
         <div style="flex: 1; min-width: 0;">
-          <input type="text" class="ticker-symbol-input" value="${escapeHtml(ticker)}" placeholder="代码（如：AAPL）" style="width: 100%; font-weight: 700; text-transform: uppercase;" required>
+          <input type="text" class="ticker-symbol-input" value="${escapeHtml(ticker)}" placeholder="代码（如：AAPL）" aria-label="追踪标的代码" style="width: 100%; font-weight: 700; text-transform: uppercase;" required>
         </div>
-        <button class="btn-delete btn-remove-ticker-row" type="button" title="移除此标的" style="flex-shrink: 0; padding: 6px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+        <button class="btn-delete btn-remove-ticker-row" type="button" title="移除此标的" aria-label="移除此标的" style="flex-shrink: 0; padding: 6px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;" aria-hidden="true">
             <polyline points="3 6 5 6 21 6"/>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
           </svg>

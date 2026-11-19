@@ -28,7 +28,7 @@ assert(renderer.includes('formatRate(event.annualRate)') && renderer.includes('$
 assert(renderer.includes('本批次业绩报酬'), 'zero-fee and fee-bearing lots must show their own fee');
 assert(settlementController.includes('preview.event.annualRate') && settlementController.includes('preview.event.feeRate'),
   'settlement preview must label the configured rates returned by the preview event');
-assert(!settlementController.includes('25%报酬') && html.includes('<th>本期门槛</th>'),
+assert(!settlementController.includes('25%报酬') && /<th(?:\s+scope="col")?>本期门槛<\/th>/.test(html),
   'settlement preview must not hard-code a rate that can differ from configuration');
 assert(css.includes('.ledger-row--disposal:hover + .ledger-row--disposal-detail'),
   'hovering a disposal ledger row must reveal the audit breakdown');

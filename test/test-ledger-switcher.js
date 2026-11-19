@@ -134,6 +134,10 @@ async function setup({ failFirstLoad = false, privacyMode = true, positionTransf
   const fields = nodes['manage-ledgers-list'].querySelectorAll('input');
   await rows[0].querySelector('button').dispatch('click'); fields[0].value = '未保存的默认名称';
   await rows[1].querySelector('button').dispatch('click'); fields[1].value = '取消的名称';
+  await fields[1].dispatch('keydown', { key: 'Enter', isComposing: true });
+  assert.strictEqual(fields[1].hidden, false, 'IME composition Enter must not commit or close the rename field');
+  await fields[1].dispatch('keydown', { key: 'Enter', keyCode: 229 });
+  assert.strictEqual(fields[1].hidden, false, 'Safari IME keyCode 229 Enter must not commit or close the rename field');
   await fields[1].dispatch('keydown', { key: 'Escape' });
   assert(isOpen(), 'cancelling one name must not close the dialog and discard other drafts');
   assert.strictEqual(fields[0].value, '未保存的默认名称');

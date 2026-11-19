@@ -51,4 +51,23 @@ for (const osDark of [true, false]) {
 assert(setup('dark', false).classes.has('theme-dark'), 'Remember an explicit dark preference');
 assert(setup('system', true).classes.has('theme-dark'), 'Remember the system preference');
 assert.strictEqual(setup('invalid', true).controller.get(), 'light');
+{
+  const context = vm.createContext({
+    window: { matchMedia: () => ({ matches: false, addEventListener() {} }) },
+    document: { documentElement: { style: {} }, querySelector: () => null,
+      body: { classList: { remove() {}, add() {} } } },
+    localStorage: {
+      getItem() { throw new Error('SecurityError'); },
+      setItem() { throw new Error('QuotaExceededError'); }
+    },
+    requestAnimationFrame: callback => callback()
+  });
+  vm.runInContext(source, context);
+  const controller = context.window.FundTheme.create({
+    buttons: [], group: {}, segmentedControl: { activate() {}, setIndicator() {} }
+  });
+  assert.doesNotThrow(() => controller.init());
+  assert.doesNotThrow(() => controller.set('dark'));
+  assert.strictEqual(controller.get(), 'dark');
+}
 console.log('Default light, saved preferences, native colour schemes and system-change checks passed.');

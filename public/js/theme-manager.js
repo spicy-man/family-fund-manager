@@ -23,7 +23,10 @@
     }
 
     function set(theme, { persist = true, notify = true } = {}) {
-      if (persist) localStorage.setItem('family_fund_theme', theme);
+      if (persist) {
+        try { localStorage.setItem('family_fund_theme', theme); }
+        catch (_error) { /* Apply the theme in memory when browser storage is blocked. */ }
+      }
       apply(theme);
       if (notify) {
         const button = [...buttons].find(item => item.dataset.themeBtn === theme);
@@ -32,7 +35,8 @@
     }
 
     function init() {
-      current = localStorage.getItem('family_fund_theme') || 'light';
+      try { current = localStorage.getItem('family_fund_theme') || 'light'; }
+      catch (_error) { current = 'light'; }
       apply(current);
       buttons.forEach(button => {
         button.addEventListener('click', () => set(button.dataset.themeBtn));

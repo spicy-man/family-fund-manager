@@ -35,13 +35,13 @@
         ${member.names.length > 1 ? `<p class="combined-note combined-warning">同一编号的姓名不一致：${member.names.map(escape).join(' / ')}，请核对成员信息。</p>` : ''}
         <div class="combined-member-stats">${stat('剩余本金', member.remainingPrincipal)}${stat('累计收益', member.profit)}${stat('累计入金', member.totalDeposit)}${stat('累计出金', member.totalWithdraw)}${stat('LP资产', member.lpCurrentValue)}${stat('GP报酬资产', member.gpCarryValue)}</div>
         <p class="combined-note privacy-sensitive">CNH：剩余本金 ¥${money(member.cnhRemainingPrincipal)} · 累计收益 ¥${money(member.cnhProfit)} · 入金 ¥${money(member.cnhDeposit)} · 出金 ¥${money(member.cnhWithdraw)}</p>
-        <div class="combined-table-wrap"><table class="combined-table"><thead><tr><th>来源账本</th><th>成员资产</th><th>累计收益率</th><th>入金</th><th>出金</th><th>LP资产 / 份额</th><th>GP报酬 / 份额</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <div class="combined-table-wrap"><table class="combined-table"><thead><tr><th scope="col">来源账本</th><th scope="col">成员资产</th><th scope="col">累计收益率</th><th scope="col">入金</th><th scope="col">出金</th><th scope="col">LP资产 / 份额</th><th scope="col">GP报酬 / 份额</th></tr></thead><tbody>${rows}</tbody></table></div>
       </details>`;
     }).join('');
     return `<p class="combined-note">已汇总 ${data.ledgers.length} 个账本、${data.members.length} 位成员。${dates.size > 1 ? '<span class="combined-warning">各账本估值日期不一致，以下采用各自最新记录。</span>' : ''}</p>
       <div class="combined-metrics">${metric('总资产', s.totalNAV, s.cnhTotalNAV)}${metric('剩余本金', s.remainingPrincipal, s.cnhRemainingPrincipal)}${metric('当前在管收益', s.activeProfit, s.cnhActiveProfit)}${metric('历史累计收益', s.profit, s.cnhProfit)}</div>
       <div class="combined-member-stats"><span>在管本金收益率 ${returns(s.activeProfitRate, s.cnhActiveProfitRate)}</span><span>历史累计收益率 ${returns(s.profitRate, s.cnhProfitRate)}</span>${statSummary('累计入金', s.totalDeposit, s.cnhTotalDeposit)}${statSummary('累计出金', s.totalWithdraw, s.cnhTotalWithdraw)}</div>
-      <h4>账本资产分布</h4>${allocation}<div class="combined-table-wrap"><table class="combined-table"><thead><tr><th>账本 / 估值日期</th><th>总资产 / 占比</th><th>剩余本金</th><th>在管收益</th><th>在管收益率</th><th>累计收益</th></tr></thead><tbody>${ledgerRows}</tbody></table></div>
+      <h4>账本资产分布</h4>${allocation}<div class="combined-table-wrap"><table class="combined-table"><thead><tr><th scope="col">账本 / 估值日期</th><th scope="col">总资产 / 占比</th><th scope="col">剩余本金</th><th scope="col">在管收益</th><th scope="col">在管收益率</th><th scope="col">累计收益</th></tr></thead><tbody>${ledgerRows}</tbody></table></div>
       <h4>家庭成员汇总</h4><p class="combined-note">按成员编号合并；点击成员展开来源明细。成员资产和累计收益率与家庭成员卡片一致，包含已归属的 GP 报酬。</p>${members || '<p class="combined-note">暂无家庭成员。</p>'}
       <p class="combined-note">在管收益率 = 在管收益 ÷ 剩余本金；历史累计收益率 = 累计收益 ÷ 累计入金。成员累计收益 = 当前资产 + 累计出金 − 累计入金；零入金时收益率与成员卡片一致显示 0%。CNH 沿用各账本人民币本金及当前汇率口径，包含汇率影响。单位净值与份额仅在各账本内有效。</p>
       <p class="combined-note">入金、出金按原账本口径累计。若跨账本转账分别记为出金与入金，这一版会保留两笔记录，尚未自动抵消。</p>`;

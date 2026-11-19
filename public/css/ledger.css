@@ -335,27 +335,3 @@ tbody:not(.ledger-hover-animated) .ledger-row--settlement-detail:hover .settleme
   color: var(--color-cyan);
   border-color: rgba(0, 153, 255, 0.15);
 }
-
-/* 操作按钮 */
-.btn-delete {
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-delete:hover {
-  background: rgba(244, 63, 94, 0.1);
-  color: var(--color-magenta);
-}
-
-.btn-delete svg {
-  width: 14px;
-  height: 14px;
-}

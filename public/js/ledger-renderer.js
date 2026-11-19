@@ -18,7 +18,7 @@ window.FundLedgerRenderer = {
     };
     let rendered = 0;
 
-    [...state.events].reverse().forEach(event => {
+    state.events.toReversed().forEach(event => {
       if (memberFilter !== 'all') {
         if (memberFilter === 'system' && !['valuation', 'performance_settlement', 'performance_settlement_reversal'].includes(event.type)) return;
         if (memberFilter !== 'system' && event.type === 'transfer' && event.fromMember !== memberFilter && event.toMember !== memberFilter) return;
@@ -113,16 +113,18 @@ window.FundLedgerRenderer = {
       actionBox.className = 'action-btns-flex';
       const makeButton = (className, title, icon) => {
         const button = document.createElement('button');
+        button.type = 'button';
         button.className = className;
         button.title = title;
+        button.setAttribute('aria-label', `${event.date} ${actor} ${typeMeta[1]}，${title}`);
         button.innerHTML = icon;
         actionBox.appendChild(button);
         return button;
       };
       if (!['performance_settlement', 'performance_settlement_reversal'].includes(event.type)) {
-        const edit = makeButton('btn-edit', '修改此条流水', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>');
+        const edit = makeButton('btn-edit', '修改此条流水', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>');
         edit.addEventListener('click', () => onEdit(event));
-        const remove = makeButton('btn-delete', '删除此条流水并重算', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>');
+        const remove = makeButton('btn-delete', '删除此条流水并重算', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>');
         remove._deleteEventId = event.id;
         remove.addEventListener('click', () => onDelete(event.id, actor, event.type, event.amount || event.totalNAV));
       }

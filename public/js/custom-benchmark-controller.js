@@ -99,9 +99,9 @@
       const row = document.createElement('div');
       row.className = 'custom-benchmark-component-row';
       row.innerHTML = `
-        <input class="custom-benchmark-ticker" type="text" maxlength="20" placeholder="如：VOO" required>
+        <input class="custom-benchmark-ticker" type="text" maxlength="20" placeholder="如：VOO" aria-label="组合成分标的代码" required>
         <div class="custom-benchmark-weight-wrap">
-          <input class="custom-benchmark-weight" type="number" min="0.0001" max="100" step="0.01" placeholder="0" required>
+          <input class="custom-benchmark-weight" type="number" min="0.0001" max="100" step="0.01" placeholder="0" aria-label="组合成分权重百分比" required>
           <span>%</span>
         </div>
         <button class="btn-delete custom-benchmark-remove-row" type="button" aria-label="移除此成分" title="移除此成分">×</button>`;
@@ -109,12 +109,15 @@
       const weightInput = row.querySelector('.custom-benchmark-weight');
       tickerInput.value = component.ticker || '';
       weightInput.value = component.weight ?? '';
-      tickerInput.addEventListener('input', () => {
+      const normalizeTicker = (event = {}) => {
+        if (event.isComposing) return;
         tickerInput.value = tickerInput.value.toUpperCase();
         if (customBenchmarkComponents.querySelectorAll('.custom-benchmark-component-row').length === 1) {
           customBenchmarkName.value = tickerInput.value.trim();
         }
-      });
+      };
+      tickerInput.addEventListener('input', normalizeTicker);
+      tickerInput.addEventListener('compositionend', () => normalizeTicker());
       weightInput.addEventListener('input', updateTotal);
       row.querySelector('.custom-benchmark-remove-row').addEventListener('click', () => {
         row.remove();

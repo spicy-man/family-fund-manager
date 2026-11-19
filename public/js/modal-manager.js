@@ -18,6 +18,7 @@
 
   function close(modal) {
     if (!modal || !modal.classList.contains('active')) return;
+    window.FundCustomSelect?.closeAll?.();
     modal.classList.remove('active');
     modal.setAttribute('aria-hidden', 'true');
     if (!document.querySelector('.modal-overlay.active')) {
@@ -30,9 +31,14 @@
   function bindAccessible(modal, closeButton) {
     if (!modal) return;
     const isPersistent = () => modal.dataset.modalPersistent === 'true';
+    let pressedBackdrop = true;
     closeButton?.addEventListener('click', () => close(modal));
+    modal.addEventListener('pointerdown', event => {
+      pressedBackdrop = event.target === modal;
+    });
     modal.addEventListener('click', event => {
-      if (event.target === modal && !isPersistent()) close(modal);
+      if (pressedBackdrop && event.target === modal && !isPersistent()) close(modal);
+      pressedBackdrop = true;
     });
     modal.addEventListener('keydown', event => {
       if (!modal.classList.contains('active')) return;
@@ -50,10 +56,12 @@
       }
       const first = focusable[0];
       const last = focusable.at(-1);
-      if (event.shiftKey && document.activeElement === first) {
+      const surface = modal.querySelector('.modal-content');
+      const atBoundaryContainer = document.activeElement === modal || document.activeElement === surface || !focusable.includes(document.activeElement);
+      if (event.shiftKey && (document.activeElement === first || atBoundaryContainer)) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
+      } else if (!event.shiftKey && (document.activeElement === last || (atBoundaryContainer && document.activeElement !== surface && document.activeElement !== modal))) {
         event.preventDefault();
         first.focus();
       }

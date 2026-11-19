@@ -21,8 +21,13 @@
   z-index: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-width: none;
   padding-bottom: 84px;
   order: 3;
+}
+
+.layout-right::-webkit-scrollbar {
+  display: none;
 }
 
 .layout-left>section:first-child {

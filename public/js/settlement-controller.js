@@ -14,7 +14,12 @@
 
     btnReverseSettlement.addEventListener('click', async () => {
       if (btnReverseSettlement.disabled) return;
-      const latest = (getState()?.events || []).filter(event => event.type === 'performance_settlement')
+      const events = getState()?.events || [];
+      const reversedIds = new Set(events
+        .filter(event => event.type === 'performance_settlement_reversal')
+        .map(event => event.settlementId));
+      const latest = events
+        .filter(event => event.type === 'performance_settlement' && !reversedIds.has(event.id))
         .sort((a, b) => a.date.localeCompare(b.date) || (a.sequenceNumber || 0) - (b.sequenceNumber || 0)).at(-1);
       if (!latest) { showToast('当前没有可以撤销的有效结算，请刷新页面。', 'error'); return; }
       if (!confirm('确定撤销 ' + latest.date + ' 的业绩结算吗？系统会保留原结算并追加冲销记录，相关账期将重新开放。')) return;
@@ -42,6 +47,14 @@
         try { await window.FundLedgerActions.flushPending(); }
         catch (error) { showToast(error.message, 'error'); return; }
       }
+      if (settleDate?.value && window.FundDateTime?.parseCompactDate) {
+        const parsed = window.FundDateTime.parseCompactDate(settleDate.value);
+        if (parsed) {
+          if (settleDate.type === 'text') settleDate.type = 'date';
+          settleDate.value = parsed;
+        }
+      }
+      if (settleGp.reportValidity?.() === false || settleDate.reportValidity?.() === false) return;
       invalidateSettlementPreview();
       const version = previewVersion;
       const payload = Object.freeze(settlementPayload());

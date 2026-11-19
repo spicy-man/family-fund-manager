@@ -165,7 +165,10 @@
         edit.addEventListener('click', () => { field.hidden = false; label.hidden = true; field.focus(); field.select(); });
         field.addEventListener('keydown', event => {
           if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); field.value = ledger.name; label.textContent = ledger.name; field.hidden = true; label.hidden = false; edit.focus(); }
-          if (event.key === 'Enter') { event.preventDefault(); label.textContent = field.value.trim() || ledger.name; field.hidden = true; label.hidden = false; edit.focus(); }
+          if (event.key === 'Enter') {
+            if (event.isComposing || event.keyCode === 229) return;
+            event.preventDefault(); label.textContent = field.value.trim() || ledger.name; field.hidden = true; label.hidden = false; edit.focus();
+          }
         });
         actions.append(edit); row.append(left,actions); return row;
       }));

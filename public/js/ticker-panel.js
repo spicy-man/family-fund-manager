@@ -248,8 +248,17 @@ function bindTickerTooltips(container, data) {
   container.querySelectorAll('tr[data-ticker]').forEach(row => {
     const item = data[row.dataset.ticker];
     if (!item || item.error) return;
+    row.tabIndex = 0;
     row.addEventListener('mouseenter', event => showTooltip(item, event));
     row.addEventListener('mousemove', event => showTooltip(item, event));
     row.addEventListener('mouseleave', hideTooltip);
+    row.addEventListener('focusin', () => {
+      const rect = row.getBoundingClientRect?.() || { left: 0, top: 0, height: 0 };
+      showTooltip(item, { clientX: rect.left + 48, clientY: rect.top + (rect.height || 0) / 2 });
+    });
+    row.addEventListener('focusout', hideTooltip);
+    row.addEventListener('keydown', event => {
+      if (event.key === 'Escape') hideTooltip();
+    });
   });
 }

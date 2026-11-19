@@ -394,6 +394,11 @@ input:focus,
   box-shadow: 0 0 10px rgba(var(--color-primary-rgb), 0.15);
 }
 
+input:not([type="date"]):user-invalid {
+  border-color: rgba(var(--color-negative-rgb), 0.58);
+  box-shadow: 0 0 0 3px rgba(var(--color-negative-rgb), 0.1);
+}
+
 /* 金额输入框发光效果 */
 .input-wrapper {
   position: relative;
@@ -425,7 +430,15 @@ input:focus,
 }
 
 .type-selector-grid input[type="radio"] {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .selector-btn {

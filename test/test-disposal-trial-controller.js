@@ -4,7 +4,7 @@ const vm = require('vm');
 function harness(demo = null, animateOperationChange) {
   const elements = {};
   class Element {
-    constructor(id) { this.id = id; this.value = ''; this.hidden = false; this.disabled = false; this.checked = false; this.handlers = {}; this.classList = { add() {}, remove() {} }; }
+    constructor(id) { this.id = id; this.value = ''; this.hidden = false; this.disabled = false; this.checked = false; this.customValidity = ''; this.handlers = {}; this.classList = { add() {}, remove() {} }; }
     addEventListener(type, handler) { (this.handlers[type] ||= []).push(handler); }
     dispatchEvent(event) {
       let result;
@@ -12,7 +12,8 @@ function harness(demo = null, animateOperationChange) {
       if (event.bubbles && this.form) this.form.dispatchEvent(event);
       return result;
     }
-    reportValidity() { return true; }
+    setCustomValidity(message) { this.customValidity = message; }
+    reportValidity() { return !this.customValidity; }
   }
   for (const prefix of ['tx', 'tf']) {
     const form = elements[prefix === 'tx' ? 'form-transaction' : 'form-transfer'] = new Element('form');
@@ -91,6 +92,19 @@ const response = input => ({ input: { ...input, previewToken: 'token' }, date: i
   assert.strictEqual(e['tf-trial-full'].disabled, false);
   controller.invalidate();
   assert.strictEqual(e['tf-trial-result'].hidden, true);
+  e['tf-to-member'].value = 'a';
+  await e['tf-trial-partial'].dispatchEvent({ type: 'click' });
+  assert.strictEqual(e['tf-to-member'].customValidity, '出让方与受让方不能为同一成员');
+  assert.strictEqual(pending.length, 3, 'same-member transfer trial must be blocked by client validation');
+  e['tf-to-member'].value = 'b';
+  e['form-transfer'].dispatchEvent({ type: 'change' });
+  assert.strictEqual(e['tf-to-member'].customValidity, '', 'changing transfer members must clear customValidity so formal submit is not blocked');
+  e['tx-date'].value = '2026-01-09'; // Friday -> trial must snap to Sunday 2026-01-11 instead of rejecting
+  const snappedTrial = e['tx-trial-partial'].dispatchEvent({ type: 'click' });
+  assert.strictEqual(e['tx-date'].value, '2026-01-11', 'disposal trial snaps non-Sunday date to nearest Sunday');
+  assert.strictEqual(pending[3].input.date, '2026-01-11');
+  pending[3].resolve(response(pending[3].input));
+  await snappedTrial;
   // Browsers fire input before change when selecting a direction radio.
   const transitions = [];
   let switching;

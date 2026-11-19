@@ -60,6 +60,11 @@ async function membersTest() {
   const input = nodes['member-name-input-lp'];
   nodes['btn-rename-edit-lp'].handlers.click();
   assert.strictEqual(input.style.display, 'block');
+  input.value = 'IME composing';
+  input.handlers.keydown({ key: 'Enter', isComposing: true });
+  assert.strictEqual(requests.length, 0, 'IME composition Enter must not trigger member rename save');
+  input.handlers.keydown({ key: 'Enter', keyCode: 229 });
+  assert.strictEqual(requests.length, 0, 'IME keyCode 229 Enter must not trigger member rename save');
   input.value = 'changed'; input.handlers.keyup({ key: 'Escape' });
   assert.strictEqual(input.value, '<LP>');
   input.value = ' '; await nodes['btn-rename-save-lp'].handlers.click();

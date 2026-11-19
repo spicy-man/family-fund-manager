@@ -34,7 +34,7 @@
       </svg>
       <span>
         <strong>家庭财富账本</strong>
-        <small>WEALTH LEDGER <b class="sidebar-version">v4.7.5</b></small>
+        <small>WEALTH LEDGER <b class="sidebar-version">v4.7.6</b></small>
       </span>
     </div>
 
@@ -125,9 +125,9 @@
         <div class="header-meta">
           <span class="system-time" id="system-time" title="美东时间">2026-05-26 12:00:00 EDT</span>
           <div class="cnh-rate-config flex-center" title="手动修改或一键同步全局 USD/CNH 汇率">
-            <span class="rate-label">CNH 汇率:</span>
-            <input type="number" id="input-cnh-rate" step="0.0001" min="0.0001" value="7.2000" class="rate-input">
-            <button id="btn-sync-rate" class="btn-sync-rate" title="从全球公开接口自动同步最新汇率" aria-label="同步汇率">
+            <label for="input-cnh-rate" class="rate-label">CNH 汇率:</label>
+            <input type="number" id="input-cnh-rate" step="0.0001" min="0.0001" value="7.2000" class="rate-input" aria-label="全局 USD/CNH 汇率">
+            <button id="btn-sync-rate" class="btn-sync-rate" type="button" title="从全球公开接口自动同步最新汇率" aria-label="同步汇率">
               <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                 <path d="M21 12a9 9 0 0 0-15.5-6.2L3 8.3M3 3v5.3h5.3M3 12a9 9 0 0 0 15.5 6.2L21 15.7M21 21v-5.3h-5.3" />
               </svg>
@@ -154,14 +154,14 @@
               <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />
             </svg>深色</button>
         </div>
-        <button id="btn-privacy-toggle" class="btn btn-secondary flex-center" title="一键切换隐私/闭眼模式">
+        <button id="btn-privacy-toggle" class="btn btn-secondary flex-center" type="button" title="一键切换隐私/闭眼模式" aria-label="一键切换隐私/闭眼模式">
           <svg class="btn-icon icon-eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            style="width: 18px; height: 18px;">
+            style="width: 18px; height: 18px;" aria-hidden="true">
             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
             <circle cx="12" cy="12" r="3" />
           </svg>
           <svg class="btn-icon icon-eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            style="display: none; width: 18px; height: 18px;">
+            style="display: none; width: 18px; height: 18px;" aria-hidden="true">
             <path
               d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
             <line x1="1" y1="1" x2="23" y2="23" />
@@ -700,12 +700,12 @@
         </h2>
         <button type="button" class="ledger-section-toggle" id="ledger-section-toggle" aria-expanded="false" aria-controls="ledger-filters ledger-content">展开流水</button>
         <div class="ledger-filters" id="ledger-filters">
-          <select id="filter-member" class="select-input">
+          <select id="filter-member" class="select-input" aria-label="按成员筛选流水">
             <option value="all">所有流水对象</option>
             <!-- 动态加载成员选项 -->
             <option value="system">系统/估值</option>
           </select>
-          <select id="filter-type" class="select-input">
+          <select id="filter-type" class="select-input" aria-label="按类型筛选流水">
             <option value="all">所有流水类型</option>
             <option value="deposit">入金</option>
             <option value="withdraw">出金</option>
@@ -721,14 +721,14 @@
         <table class="ledger-table">
           <thead>
             <tr>
-              <th>时间</th>
-              <th>流水明细</th>
-              <th>类型</th>
-              <th>出资/估值金额</th>
-              <th>成交净值</th>
-              <th>结算份额</th>
-              <th>结算市值</th>
-              <th>操作</th>
+              <th scope="col">时间</th>
+              <th scope="col">流水明细</th>
+              <th scope="col">类型</th>
+              <th scope="col">出资/估值金额</th>
+              <th scope="col">成交净值</th>
+              <th scope="col">结算份额</th>
+              <th scope="col">结算市值</th>
+              <th scope="col">操作</th>
             </tr>
           </thead>
           <tbody id="ledger-tbody">
@@ -1190,7 +1190,7 @@
           </p>
           <div class="file-upload-wrapper">
             <input type="file" id="file-import" accept=".zip,application/zip" style="display: none;">
-            <button class="btn btn-secondary flex-center gap-2" id="btn-trigger-upload">
+            <button class="btn btn-secondary flex-center gap-2" id="btn-trigger-upload" type="button">
               <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
               </svg>
@@ -1198,7 +1198,7 @@
             </button>
             <span class="file-name-label" id="file-name-label">未选择任何文件</span>
           </div>
-          <button class="btn btn-magenta theme-button flex-center gap-2 btn-block mt-3" id="btn-confirm-import" disabled>
+          <button class="btn btn-magenta theme-button flex-center gap-2 btn-block mt-3" id="btn-confirm-import" type="button" disabled>
             确认恢复导入数据
           </button>
         </div>
@@ -1287,20 +1287,20 @@
       </div>
       <div class="modal-body">
         <div id="settlement-preview-summary" class="settlement-summary-grid"></div>
-        <div class="table-container">
+            <div class="table-container">
           <table class="settlement-preview-table">
             <thead>
               <tr>
-                <th>LP / 资金批次</th>
-                <th>本期起始日</th>
-                <th>高水位基准</th>
-                <th>高水位NAV</th>
-                <th>剩余份额</th>
-                <th>本期天数</th>
-                <th>当前价值</th>
-                <th>本期门槛</th>
-                <th>超门槛差额</th>
-                <th id="settlement-preview-fee-heading">业绩报酬</th>
+                <th scope="col">LP / 资金批次</th>
+                <th scope="col">本期起始日</th>
+                <th scope="col">高水位基准</th>
+                <th scope="col">高水位NAV</th>
+                <th scope="col">剩余份额</th>
+                <th scope="col">本期天数</th>
+                <th scope="col">当前价值</th>
+                <th scope="col">本期门槛</th>
+                <th scope="col">超门槛差额</th>
+                <th scope="col" id="settlement-preview-fee-heading">业绩报酬</th>
               </tr>
             </thead>
             <tbody id="settlement-preview-body"></tbody>
@@ -1447,7 +1447,7 @@
           <!-- 动态生成标的配置行 -->
         </div>
 
-        <button class="btn btn-secondary theme-button theme-button--neutral flex-center gap-2 btn-block" id="btn-add-ticker-row">
+        <button class="btn btn-secondary theme-button theme-button--neutral flex-center gap-2 btn-block" id="btn-add-ticker-row" type="button">
           <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
             <circle cx="12" cy="12" r="8" />
             <path d="M12 8v8M8 12h8" />
@@ -1456,7 +1456,7 @@
 
         <hr class="modal-divider">
 
-        <button class="btn btn-primary theme-button btn-block flex-center gap-2" id="btn-save-ticker-config">
+        <button class="btn btn-primary theme-button btn-block flex-center gap-2" id="btn-save-ticker-config" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
             style="width: 18px; height: 18px;">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
@@ -1509,8 +1509,8 @@
   <script src="js/notifications.js"></script>
   <script src="js/member-editor-controller.js"></script>
   <script src="js/ledger-actions-controller.js"></script>
-  <div class="modal-overlay" id="member-statement-modal" aria-hidden="true">
-    <div class="modal-content statement-dialog" role="dialog" aria-modal="true" aria-labelledby="member-statement-title" tabindex="-1">
+  <div class="modal-overlay" id="member-statement-modal" role="dialog" aria-modal="true" aria-labelledby="member-statement-title" aria-hidden="true">
+    <div class="modal-content statement-dialog" tabindex="-1">
       <div class="modal-header statement-controls">
         <div><h3 id="member-statement-title">成员报表</h3><p class="statement-caption">按结算周期查看年度权益</p></div>
         <div class="settlement-preview-header-actions">
@@ -1547,8 +1547,8 @@
     <div class="ledger-menu-divider"></div>
     <button id="btn-manage-ledgers" class="ledger-menu-action" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6M16 14v6" /></svg>管理账本</button>
   </div>
-  <div id="combined-overview-modal" class="modal-overlay" aria-hidden="true">
-    <div class="modal-content glass-panel premium-border combined-overview" role="dialog" aria-modal="true" aria-labelledby="combined-overview-title" tabindex="-1">
+  <div id="combined-overview-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="combined-overview-title" aria-hidden="true">
+    <div class="modal-content glass-panel premium-border combined-overview" tabindex="-1">
       <div class="modal-header"><div><h3 id="combined-overview-title">合并总览</h3><p class="section-desc">全部账本 · 成员按编号合并</p></div><div class="settlement-preview-header-actions">
           <button id="btn-overview-privacy-toggle" class="btn btn-secondary flex-center" type="button"
             title="切换总览隐私模式" aria-label="切换总览隐私模式">
@@ -1571,8 +1571,8 @@
       </div>
     </div>
   </div>
-  <div id="manage-ledgers-modal" class="modal-overlay" aria-hidden="true">
-    <div class="modal-content glass-panel premium-border member-modal-content ledger-management" role="dialog" aria-modal="true" aria-labelledby="manage-ledgers-title" tabindex="-1">
+  <div id="manage-ledgers-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="manage-ledgers-title" aria-hidden="true">
+    <div class="modal-content glass-panel premium-border member-modal-content ledger-management" tabindex="-1">
       <div class="modal-header"><h3 id="manage-ledgers-title">账本管理</h3><button id="btn-close-manage-ledgers" class="btn-close" type="button" aria-label="关闭账本管理窗口">×</button></div>
       <div class="modal-body">
         <p class="section-desc member-modal-desc">管理不同账本，基准与标的设置保持共用。</p>

@@ -60,9 +60,13 @@
       for (const row of [trigger, detail]) {
         row.addEventListener('mouseenter', enter);
         row.addEventListener('mouseleave', leave);
+        row.addEventListener('focusin', enter);
+        row.addEventListener('focusout', leave);
         removers.push(() => {
           row.removeEventListener('mouseenter', enter);
           row.removeEventListener('mouseleave', leave);
+          row.removeEventListener('focusin', enter);
+          row.removeEventListener('focusout', leave);
         });
       }
     }

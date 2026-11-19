@@ -42,6 +42,132 @@
     window.setInterval(update, 1000);
   }
 
+  function parseCompactDate(raw) {
+    if (!raw) return '';
+    const trimmed = String(raw).trim();
+    const isoMatch = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(trimmed);
+    const digits = isoMatch
+      ? `${isoMatch[1]}${isoMatch[2].padStart(2, '0')}${isoMatch[3].padStart(2, '0')}`
+      : trimmed.replace(/\D/g, '');
+    if (digits.length !== 8) return '';
+    const year = Math.min(2099, Math.max(1970, Number(digits.slice(0, 4))));
+    const month = Math.min(12, Math.max(1, Number(digits.slice(4, 6))));
+    const maxDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const day = Math.min(maxDay, Math.max(1, Number(digits.slice(6, 8))));
+    return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  function snapToNearestSunday(dateStr) {
+    const normalized = parseCompactDate(dateStr) || (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateStr : '');
+    if (!normalized) return '';
+    const cursor = new Date(`${normalized}T00:00:00Z`);
+    if (Number.isNaN(cursor.getTime())) return '';
+    const day = cursor.getUTCDay();
+    if (day !== 0) {
+      // Nearest Sunday: Mon-Wed (1-3) snap back to previous Sunday; Thu-Sat (4-6) snap forward to upcoming Sunday.
+      cursor.setUTCDate(cursor.getUTCDate() + (day >= 4 ? 7 - day : -day));
+    }
+    return cursor.toISOString().split('T')[0];
+  }
+
+  function snapToValuationDate(dateStr, latestDateStr = getLatestValuationDate()) {
+    const normalized = parseCompactDate(dateStr) || (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateStr : '');
+    if (!normalized) return '';
+    if (latestDateStr && normalized > latestDateStr) return latestDateStr;
+    const cursor = new Date(`${normalized}T00:00:00Z`);
+    if (Number.isNaN(cursor.getTime())) return '';
+    while (cursor.getUTCDay() === 0 || cursor.getUTCDay() === 6) {
+      cursor.setUTCDate(cursor.getUTCDate() - 1);
+    }
+    const snapped = cursor.toISOString().split('T')[0];
+    return latestDateStr && snapped > latestDateStr ? latestDateStr : snapped;
+  }
+
+  function enhanceDateInput(input, snapFn) {
+    if (!input || input.dataset?.dateEnhanced === 'true') return;
+    if (input.dataset) input.dataset.dateEnhanced = 'true';
+    let lastValidIso = input.value || '';
+    let keepNativePicker = false;
+
+    const toDigits = value => {
+      const parsed = parseCompactDate(value);
+      return parsed ? parsed.replace(/-/g, '') : String(value || '').replace(/\D/g, '').slice(0, 8);
+    };
+
+    const enterEditMode = event => {
+      if (input.disabled || input.readOnly) return;
+      if (event?.type === 'pointerdown') {
+        const rect = typeof input.getBoundingClientRect === 'function' ? input.getBoundingClientRect() : null;
+        // Clicking the right-edge calendar icon area (last 34px) keeps native date picker behavior.
+        keepNativePicker = Boolean(rect && rect.width > 60 && Number.isFinite(event.clientX) && event.clientX >= rect.right - 34);
+        if (keepNativePicker) return;
+      } else if (event?.type === 'focus' && keepNativePicker) {
+        keepNativePicker = false;
+        return;
+      }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(input.value)) lastValidIso = input.value;
+      if (input.type === 'date') {
+        const digits = toDigits(input.value || lastValidIso);
+        input.type = 'text';
+        input.inputMode = 'numeric';
+        input.maxLength = 10;
+        input.placeholder = 'YYYYMMDD';
+        input.value = digits;
+        window.requestAnimationFrame?.(() => input.select?.());
+      }
+    };
+
+    const exitEditMode = () => {
+      const raw = input.value;
+      const parsed = parseCompactDate(raw) || lastValidIso;
+      const snapped = parsed ? (snapFn ? snapFn(parsed) : parsed) : '';
+      const finalIso = snapped || parsed || '';
+      if (finalIso) lastValidIso = finalIso;
+      if (input.type === 'text') {
+        input.type = 'date';
+      }
+      if (finalIso && input.value !== finalIso) {
+        input.value = finalIso;
+      }
+      input.setCustomValidity?.('');
+      return input.value;
+    };
+
+    input.addEventListener?.('pointerdown', enterEditMode);
+    input.addEventListener?.('focus', enterEditMode);
+    input.addEventListener?.('input', () => {
+      if (input.type === 'text') {
+        const cleaned = input.value.replace(/[^\d-/.]/g, '');
+        if (cleaned !== input.value) input.value = cleaned;
+      } else if (/^\d{4}-\d{2}-\d{2}$/.test(input.value)) {
+        lastValidIso = input.value;
+      }
+      input.setCustomValidity?.('');
+    });
+    input.addEventListener?.('keydown', event => {
+      if (event.key === 'Enter') {
+        exitEditMode();
+      } else if (event.key === 'Escape' && input.type === 'text') {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+        input.value = lastValidIso;
+        exitEditMode();
+      }
+    });
+    input.addEventListener?.('blur', () => {
+      const before = lastValidIso;
+      const after = exitEditMode();
+      if (after && after !== before && typeof Event === 'function') {
+        input.dispatchEvent?.(new Event('input', { bubbles: true }));
+        input.dispatchEvent?.(new Event('change', { bubbles: true }));
+      }
+    });
+    input.addEventListener?.('change', () => {
+      if (input.type === 'text') return;
+      exitEditMode();
+    });
+  }
+
   function setDefaultDates({ transactionDate, valuationDate, transferDate, settlementDate }) {
     const parts = getEasternParts();
     const today = `${parts.year}-${parts.month}-${parts.day}`;
@@ -52,8 +178,20 @@
     valuationDate.max = latestValuation;
     valuationDate.value = latestValuation;
     if (transferDate) transferDate.value = latestSunday.toISOString().split('T')[0];
-    if (settlementDate) settlementDate.value = today;
+    if (settlementDate) {
+      settlementDate.value = today;
+      enhanceDateInput(settlementDate);
+    }
   }
 
-  window.FundDateTime = { getEasternParts, getLatestValuationDate, startClock, setDefaultDates };
+  window.FundDateTime = {
+    getEasternParts,
+    getLatestValuationDate,
+    parseCompactDate,
+    snapToNearestSunday,
+    snapToValuationDate,
+    enhanceDateInput,
+    startClock,
+    setDefaultDates
+  };
 })();

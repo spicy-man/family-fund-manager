@@ -29,10 +29,41 @@
     updateTransactionRemark();
     if (!tfRemark.value.trim()) tfRemark.value = transferRemark;
 
-    const validateSundayDateInput = input => {
+    const snapNearestSundayValue = dateStr => {
+      if (window.FundDateTime?.snapToNearestSunday) return window.FundDateTime.snapToNearestSunday(dateStr);
+      if (!dateStr) return '';
+      const cursor = new Date(`${dateStr}T00:00:00Z`);
+      if (Number.isNaN(cursor.getTime())) return '';
+      const day = cursor.getUTCDay();
+      if (day !== 0) cursor.setUTCDate(cursor.getUTCDate() + (day >= 4 ? 7 - day : -day));
+      return cursor.toISOString().split('T')[0];
+    };
+
+    const snapValuationValue = dateStr => {
+      const latest = getLatestValuationDate();
+      if (window.FundDateTime?.snapToValuationDate) return window.FundDateTime.snapToValuationDate(dateStr, latest);
+      if (!dateStr) return '';
+      if (latest && dateStr > latest) return latest;
+      const cursor = new Date(`${dateStr}T00:00:00Z`);
+      if (Number.isNaN(cursor.getTime())) return '';
+      while (cursor.getUTCDay() === 0 || cursor.getUTCDay() === 6) {
+        cursor.setUTCDate(cursor.getUTCDate() - 1);
+      }
+      const snapped = cursor.toISOString().split('T')[0];
+      return latest && snapped > latest ? latest : snapped;
+    };
+
+    const validateSundayDateInput = (input, { snap = true } = {}) => {
       if (!input.value) {
         input.setCustomValidity('');
         return false;
+      }
+      if (snap) {
+        const snapped = snapNearestSundayValue(input.value);
+        if (snapped) {
+          if (input.type === 'text') input.type = 'date';
+          if (snapped !== input.value) input.value = snapped;
+        }
       }
       const day = new Date(`${input.value}T00:00:00Z`).getUTCDay();
       const isSunday = day === 0;
@@ -40,12 +71,19 @@
       return isSunday;
     };
 
-    const validateValuationDateInput = input => {
+    const validateValuationDateInput = (input, { snap = true } = {}) => {
       const latest = getLatestValuationDate();
       input.max = latest;
       if (!input.value) {
         input.setCustomValidity('');
         return false;
+      }
+      if (snap) {
+        const snapped = snapValuationValue(input.value);
+        if (snapped) {
+          if (input.type === 'text') input.type = 'date';
+          if (snapped !== input.value) input.value = snapped;
+        }
       }
       const day = new Date(`${input.value}T00:00:00Z`).getUTCDay();
       let message = '';
@@ -55,25 +93,37 @@
       return !message;
     };
 
-    txDate.addEventListener('input', () => validateSundayDateInput(txDate));
-    txDate.addEventListener('change', () => {
-      if (!validateSundayDateInput(txDate)) txDate.reportValidity();
-    });
-    tfDate.addEventListener('input', () => validateSundayDateInput(tfDate));
-    tfDate.addEventListener('change', () => {
-      if (!validateSundayDateInput(tfDate)) tfDate.reportValidity();
-    });
-    valDate.addEventListener('input', () => validateValuationDateInput(valDate));
-    valDate.addEventListener('change', () => {
-      if (!validateValuationDateInput(valDate)) valDate.reportValidity();
-    });
-    editDate.addEventListener('input', () => {
-      if (['deposit', 'withdraw', 'transfer'].includes(editEventType.value)) validateSundayDateInput(editDate);
-      else if (editEventType.value === 'valuation') validateValuationDateInput(editDate);
-      else editDate.setCustomValidity('');
+    const validateEditDateInput = ({ snap = true } = {}) => {
+      if (['deposit', 'withdraw', 'transfer'].includes(editEventType.value)) return validateSundayDateInput(editDate, { snap });
+      if (editEventType.value === 'valuation') return validateValuationDateInput(editDate, { snap });
+      editDate.setCustomValidity('');
+      return true;
+    };
+
+    window.FundDateTime?.enhanceDateInput?.(txDate, snapNearestSundayValue);
+    window.FundDateTime?.enhanceDateInput?.(tfDate, snapNearestSundayValue);
+    window.FundDateTime?.enhanceDateInput?.(valDate, snapValuationValue);
+    window.FundDateTime?.enhanceDateInput?.(editDate, value => {
+      if (['deposit', 'withdraw', 'transfer'].includes(editEventType.value)) return snapNearestSundayValue(value);
+      if (editEventType.value === 'valuation') return snapValuationValue(value);
+      return window.FundDateTime?.parseCompactDate?.(value) || value;
     });
 
+    txDate.addEventListener('input', () => txDate.setCustomValidity(''));
+    txDate.addEventListener('change', () => validateSundayDateInput(txDate, { snap: true }));
+    tfDate.addEventListener('input', () => tfDate.setCustomValidity(''));
+    tfDate.addEventListener('change', () => validateSundayDateInput(tfDate, { snap: true }));
+    valDate.addEventListener('input', () => valDate.setCustomValidity(''));
+    valDate.addEventListener('change', () => validateValuationDateInput(valDate, { snap: true }));
+    editDate.addEventListener('input', () => editDate.setCustomValidity(''));
+    editDate.addEventListener('change', () => validateEditDateInput({ snap: true }));
+
     // 划转表单金额及汇率联动
+    const clearTransferMemberValidity = () => {
+      tfToMember.setCustomValidity?.('');
+    };
+    tfFromMember.addEventListener('change', clearTransferMemberValidity);
+    tfToMember.addEventListener('change', clearTransferMemberValidity);
     const updateTfCnhDisplay = () => {
       const usdVal = parseFloat(tfAmount.value);
       const rateVal = parseFloat(tfRate.value);
