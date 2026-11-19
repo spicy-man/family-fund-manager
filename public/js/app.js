@@ -58,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeTimeSlice = 'YTD';
   let navTrendChart = null;
   let memberAllocationChart = null;
-  let currentFilteredHistory = [];
   let renderTrendStats = null;
   let hasPromptedGpSetup = false;
   let onboardingController = null;
@@ -100,11 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const assetsDetailsExitedProfit = document.getElementById('assets-details-exited-profit');
   const assetsDetailsWithdrawCheck = document.getElementById('assets-details-withdraw-check');
   const assetsDetailsProfitCheck = document.getElementById('assets-details-profit-check');
-
-  // The overview is deliberately terse: one aligned title, one key figure, one supporting fact.
-  document.querySelectorAll('.metric-label').forEach((label, index) => {
-    label.textContent = ['总资产', '单位净值', '在管本金收益率'][index] || label.textContent;
-  });
 
   // Dynamic Containers
   const elMembersGridContainer = document.getElementById('members-grid-container');
@@ -237,11 +231,6 @@ document.addEventListener('DOMContentLoaded', () => {
     forms: [formTransaction, formValuation, formTransfer, formSettlement],
     segmentedControl: window.FundSegmentedControl
   });
-
-  // Keep operations and market tracking in one right-side flex column so their gap is structural.
-  const rightColumn = document.querySelector('.layout-right');
-  const tickerAthPanel = document.getElementById('ticker-ath-container');
-  if (rightColumn && tickerAthPanel) rightColumn.appendChild(tickerAthPanel);
 
   const themeController = window.FundTheme.create({
     buttons: themeBtns,
@@ -440,9 +429,8 @@ document.addEventListener('DOMContentLoaded', () => {
       theme,
       navTrendChart,
       memberAllocationChart,
-      currentFilteredHistory,
       membersList,
-      ui: { getMemberAvatarColor, createChartGradient, getSeriesColors, hexToRgba }
+      ui: { isDarkTheme, getMemberAvatarColor, createChartGradient, getSeriesColors, hexToRgba }
     });
   }
 
@@ -506,11 +494,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const membersOptionsHtml = membersList.map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}</option>`).join('');
     tfFromMember.innerHTML = membersOptionsHtml;
     tfToMember.innerHTML = membersOptionsHtml;
-    const gpMembers = membersList.filter(member => member.roles?.gp === true);
     const savedGp = settleGp.value;
-    const settlementGps = gpMembers.filter(member => member.primaryGp);
+    const settlementGps = membersList.filter(member => member.primaryGp);
     settleGp.innerHTML = settlementGps.map(member => `<option value="${escapeHtml(member.id)}">${escapeHtml(member.name)}（主GP）</option>`).join('');
-    const primaryGp = gpMembers.find(member => member.primaryGp);
+    const primaryGp = settlementGps[0];
     if (primaryGp) settleGp.value = primaryGp.id;
     else if (savedGp && settlementGps.some(member => member.id === savedGp)) settleGp.value = savedGp;
     if (savedTfFromVal && membersList.some(m => m.id === savedTfFromVal)) {
@@ -691,13 +678,11 @@ document.addEventListener('DOMContentLoaded', () => {
       settings: { activeTimeSlice, theme: themeController.get() },
       charts: { navTrendChart, memberAllocationChart },
       elements: { chkCompNav, chkCompAssets, chkCompSp500, chkCompNdx, chkCompCustom, chkCompCustom2, trendStatsGrid: elTrendStatsGrid },
-      ui: { formatMoney, isDarkTheme, createChartGradient, getSeriesColors, hexToRgba, getMemberAvatarColor }
+      ui: { formatMoney, escapeHtml, isDarkTheme, createChartGradient, getSeriesColors, hexToRgba, getMemberAvatarColor }
     });
     navTrendChart = rendered.navTrendChart;
     memberAllocationChart = rendered.memberAllocationChart;
-    currentFilteredHistory = rendered.filteredHistory;
     renderTrendStats = rendered.renderTrendStats;
-    updateChartsColors(themeController.get());
   }
 
   // 加载并渲染美股标的 ATH 历史及收盘价格回调数据

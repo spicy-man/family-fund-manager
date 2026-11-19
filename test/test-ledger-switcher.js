@@ -74,15 +74,20 @@ async function setup({ failFirstLoad = false, privacyMode = true, positionTransf
   let destination;
   const context = {
     document, URL, URLSearchParams,
-    requestApi: async () => {
-      requests++;
-      if (failFirstLoad && requests === 1) throw new Error('temporary failure');
-      return { data: structuredClone(ledgers) };
-    },
-    jsonRequest: async (url, method, body) => {
-      writes.push([url, method, body.name]);
-      if (method === 'POST') ledgers.push({ id: 'ledger-3', name: body.name, isDefault: false });
-      else ledgers.find(item => item.id === url.split('/').at(-1)).name = body.name.trim();
+    Api: {
+      async getLedgers() {
+        requests++;
+        if (failFirstLoad && requests === 1) throw new Error('temporary failure');
+        return structuredClone(ledgers);
+      },
+      async createLedger(name) {
+        writes.push(['/api/ledgers', 'POST', name]);
+        ledgers.push({ id: 'ledger-3', name, isDefault: false });
+      },
+      async renameLedger(ledgerId, name) {
+        writes.push([`/api/ledgers/${encodeURIComponent(ledgerId)}`, 'PATCH', name]);
+        ledgers.find(item => item.id === ledgerId).name = name.trim();
+      }
     },
     window: {
       FundDemoMode: demoMode,

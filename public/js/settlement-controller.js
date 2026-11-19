@@ -61,7 +61,9 @@
       try {
         const preview = await Api.previewSettlement(payload);
         if (version !== previewVersion) return;
-        const formatRate = value => `${(Number(value) * 100).toFixed(2).replace(/\.00$/, '')}%`;
+        const formatRate = value => window.FundUiUtils?.formatRatePercent
+          ? window.FundUiUtils.formatRatePercent(value)
+          : `${(Number(value) * 100).toFixed(2).replace(/\.00$/, '')}%`;
         const annualRateLabel = formatRate(preview.event.annualRate);
         const feeRateLabel = formatRate(preview.event.feeRate);
         if (settlementPreviewFeeHeading) settlementPreviewFeeHeading.textContent = `${feeRateLabel} 业绩报酬`;

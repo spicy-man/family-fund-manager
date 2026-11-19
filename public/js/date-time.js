@@ -13,6 +13,24 @@
     return values;
   }
 
+  // Dual-timezone contract:
+  // - Market/valuation/chart range dates use US Eastern (`America/New_York`).
+  // - Ledger settlement caps & member statement "today" use Beijing (`Asia/Shanghai`).
+  function getMarketEasternDate(now = new Date()) {
+    const parts = getEasternParts(now, false);
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  }
+
+  function getLedgerBeijingDate(now = new Date()) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(now);
+    const values = {};
+    parts.forEach(part => { values[part.type] = part.value; });
+    return `${values.year}-${values.month}-${values.day}`;
+  }
+
   function getLatestValuationDate(now = new Date()) {
     const values = getEasternParts(now, true);
     const cursor = new Date(`${values.year}-${values.month}-${values.day}T00:00:00Z`);
@@ -169,8 +187,7 @@
   }
 
   function setDefaultDates({ transactionDate, valuationDate, transferDate, settlementDate }) {
-    const parts = getEasternParts();
-    const today = `${parts.year}-${parts.month}-${parts.day}`;
+    const today = getMarketEasternDate();
     const latestSunday = new Date(`${today}T00:00:00Z`);
     latestSunday.setUTCDate(latestSunday.getUTCDate() - latestSunday.getUTCDay());
     transactionDate.value = latestSunday.toISOString().split('T')[0];
@@ -186,6 +203,8 @@
 
   window.FundDateTime = {
     getEasternParts,
+    getMarketEasternDate,
+    getLedgerBeijingDate,
     getLatestValuationDate,
     parseCompactDate,
     snapToNearestSunday,

@@ -159,19 +159,6 @@ html {
   isolation: isolate;
 }
 
-/* The visual order mirrors the centre workspace: dashboard, trends, members, ledger. */
-.sidebar-nav a[href="#trends-section"] {
-  order: 1;
-}
-
-.sidebar-nav a[href="#members-section"] {
-  order: 2;
-}
-
-.sidebar-nav a[href="#ledger-section"] {
-  order: 3;
-}
-
 .sidebar-footer {
   margin-top: auto;
   padding-top: 16px;
@@ -448,8 +435,7 @@ body.theme-dark .app-sidebar {
 
 @media (min-width: 1600px) {
 
-  .layout-right,
-  .ticker-ath-bar {
+  .layout-right {
     right: var(--fixed-panel-gutter) !important;
   }
 }

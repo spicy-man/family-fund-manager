@@ -30,19 +30,17 @@
   display: none;
 }
 
-.layout-left>section:first-child {
-  grid-column: 1;
-  order: 2;
-  height: 100%;
-}
-
-.layout-left>section:last-child {
+.layout-left > #trends-section {
   grid-column: 1 / -1;
-  order: 1;
 }
 
-.layout-left>section:last-child .chart-wrapper {
+.layout-left > #trends-section .chart-wrapper {
   height: 340px;
+}
+
+.layout-left > #members-section {
+  grid-column: 1;
+  height: 100%;
 }
 
 /* 成员面板卡片 */

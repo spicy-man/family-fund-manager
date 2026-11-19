@@ -5,9 +5,9 @@
       editAmount, editCnhAmount, editFromMember, editToMember, editCnhRate, editEventModal } = elements;
     const { dismissToast, showToast } = notifications;
     const pendingDeletes = new Map();
+    let flushingPromise = null;
     function findRow(id) {
-      return [...ledgerTbody.querySelectorAll('tr')].find(row =>
-        [...row.querySelectorAll('button')].some(button => button._deleteEventId === id));
+      return [...ledgerTbody.querySelectorAll('tr')].find(row => row.dataset?.eventId === id);
     }
     function markRow(id, pending) {
       const row = findRow(id);
@@ -17,8 +17,16 @@
       row.style.transform = '';
     }
     const refreshPending = () => pendingDeletes.forEach((_entry, id) => markRow(id, true));
-    async function flushPending() {
-      await Promise.all([...pendingDeletes.values()].map(entry => entry.commit()));
+    function flushPending() {
+      if (!pendingDeletes.size) return flushingPromise || Promise.resolve();
+      if (flushingPromise) return flushingPromise;
+      const drain = async () => {
+        while (pendingDeletes.size) {
+          await Promise.all([...pendingDeletes.values()].map(entry => entry.commit()));
+        }
+      };
+      flushingPromise = drain().finally(() => { flushingPromise = null; });
+      return flushingPromise;
     }
     // 删除单条交易记录 — 3 秒内可撤销
     function handleDeleteEvent(id, name, type, value) {
@@ -26,14 +34,7 @@
       const UNDO_DELAY = 3000; // 3 秒
 
       // 找到对应的 <tr> 行，视觉上先隐藏（软删除）
-      const allRows = ledgerTbody.querySelectorAll('tr');
-      let targetRow = null;
-      allRows.forEach(row => {
-        // 通过行上绑定的删除按钮 data 匹配（找到包含该 id 对应删除按钮的行）
-        row.querySelectorAll('button').forEach(btn => {
-          if (btn._deleteEventId === id) targetRow = row;
-        });
-      });
+      const targetRow = findRow(id);
       if (targetRow) {
         targetRow.style.transition = 'opacity 0.3s, transform 0.3s';
         targetRow.style.opacity = '0.2';
@@ -189,7 +190,7 @@
     }
 
     window.FundLedgerActions.flushPending = flushPending;
-    window.FundLedgerActions.hasPending = () => pendingDeletes.size > 0;
+    window.FundLedgerActions.hasPending = () => pendingDeletes.size > 0 || Boolean(flushingPromise);
     return { edit: handleEditEvent, remove: handleDeleteEvent, refreshPending, flushPending };
   }
   window.FundLedgerActions = { create };

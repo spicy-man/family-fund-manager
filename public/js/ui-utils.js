@@ -67,6 +67,12 @@
     });
   }
 
+  function formatRatePercent(value, fallback = '') {
+    const rate = Number(value);
+    if (!Number.isFinite(rate)) return fallback;
+    return `${(rate * 100).toFixed(2).replace(/\.00$/, '')}%`;
+  }
+
   function createChartGradient(ctx, colorStart, colorEnd) {
     const gradient = ctx.createLinearGradient(0, 0, 0, 250);
     gradient.addColorStop(0, colorStart);
@@ -82,6 +88,7 @@
     getMemberAvatarColor,
     escapeHtml,
     formatMoney,
+    formatRatePercent,
     createChartGradient
   };
 })();

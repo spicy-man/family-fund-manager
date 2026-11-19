@@ -32,9 +32,13 @@ function harness(demo = null, animateOperationChange) {
   elements['t-select-withdraw'] = new Element('withdraw');
   elements['t-select-withdraw'].checked = true;
   const window = { FundDemoMode: demo };
-  vm.runInNewContext(fs.readFileSync(require.resolve('../public/js/disposal-trial-controller.js'), 'utf8'), {
-    window, document: { getElementById: id => elements[id] }, Event: class { constructor(type, options) { this.type = type; Object.assign(this, options); } }
-  });
+  const sandboxContext = {
+    window, document: { getElementById: id => elements[id] }, Intl, Date,
+    Event: class { constructor(type, options) { this.type = type; Object.assign(this, options); } }
+  };
+  vm.runInNewContext(fs.readFileSync(require.resolve('../public/js/ui-utils.js'), 'utf8'), sandboxContext);
+  vm.runInNewContext(fs.readFileSync(require.resolve('../public/js/date-time.js'), 'utf8'), sandboxContext);
+  vm.runInNewContext(fs.readFileSync(require.resolve('../public/js/disposal-trial-controller.js'), 'utf8'), sandboxContext);
   const pending = [];
   const controller = window.FundDisposalTrial.init({ animateOperationChange, modal: { bindAccessible() {}, open(dialog) { dialog.open = true; }, close(dialog) { dialog.open = false; } }, api: { previewDisposal: input => new Promise((resolve, reject) => pending.push({ input, resolve, reject })) }, formatMoney: n => Number(n).toFixed(2) });
   return { elements, pending, controller, window };

@@ -135,7 +135,7 @@ async function memberRefreshFailureTest() {
       requests.push(changes);
       return { data: members.map(member => {
         const change = changes.find(item => item.id === member.id);
-        return change ? { ...member, id: change.memberId, name: change.name } : member;
+        return change ? { ...member, id: change.newId ?? change.memberId, name: change.name } : member;
       }) };
     }, async updateMember() {}, async updateMemberRoles() {} }
   });

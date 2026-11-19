@@ -6,7 +6,7 @@
     const trials = [];
     const money = value => '$' + formatMoney(value);
     const shares = value => Number(value).toFixed(6);
-    const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    const escape = value => window.FundUiUtils.escapeHtml(value);
     for (const prefix of ['tx', 'tf']) {
       const get = suffix => document.getElementById(prefix + '-' + suffix);
       const form = document.getElementById(prefix === 'tx' ? 'form-transaction' : 'form-transfer');
@@ -82,15 +82,7 @@
         const requestGeneration = generation;
         const dateField = get('date');
         if (dateField?.value) {
-          const snapped = window.FundDateTime?.snapToNearestSunday
-            ? window.FundDateTime.snapToNearestSunday(dateField.value)
-            : (() => {
-              const cursor = new Date(`${dateField.value}T00:00:00Z`);
-              if (Number.isNaN(cursor.getTime())) return dateField.value;
-              const day = cursor.getUTCDay();
-              if (day !== 0) cursor.setUTCDate(cursor.getUTCDate() + (day >= 4 ? 7 - day : -day));
-              return cursor.toISOString().split('T')[0];
-            })();
+          const snapped = window.FundDateTime.snapToNearestSunday(dateField.value);
           if (snapped) {
             if (dateField.type === 'text') dateField.type = 'date';
             if (snapped !== dateField.value) dateField.value = snapped;

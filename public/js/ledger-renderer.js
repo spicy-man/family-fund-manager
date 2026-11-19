@@ -11,11 +11,7 @@ window.FundLedgerRenderer = {
     ledgerTbody.replaceChildren();
 
     const memberName = id => members.find(member => member.id === id)?.name || '未知成员';
-    const formatRate = value => {
-      const rate = Number(value);
-      if (!Number.isFinite(rate)) return '业绩';
-      return `${(rate * 100).toFixed(2).replace(/\.00$/, '')}%`;
-    };
+    const formatRate = value => window.FundUiUtils.formatRatePercent(value, '业绩');
     let rendered = 0;
 
     state.events.toReversed().forEach(event => {
@@ -27,6 +23,7 @@ window.FundLedgerRenderer = {
       if (typeFilter !== 'all' && event.type !== typeFilter) return;
 
       const row = document.createElement('tr');
+      row.dataset.eventId = event.id;
       if (event.type === 'performance_settlement') row.className = 'ledger-row--settlement';
       if (event.type === 'performance_settlement_reversal') row.className = 'ledger-row--settlement-reversal';
       if (['withdraw', 'transfer'].includes(event.type) && event._disposedLots?.length) row.className = 'ledger-row--disposal';
@@ -125,7 +122,6 @@ window.FundLedgerRenderer = {
         const edit = makeButton('btn-edit', '修改此条流水', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>');
         edit.addEventListener('click', () => onEdit(event));
         const remove = makeButton('btn-delete', '删除此条流水并重算', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>');
-        remove._deleteEventId = event.id;
         remove.addEventListener('click', () => onDelete(event.id, actor, event.type, event.amount || event.totalNAV));
       }
       actions.appendChild(actionBox);

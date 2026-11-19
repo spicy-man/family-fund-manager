@@ -68,7 +68,7 @@ const Api = {
   async getMembers() { return (await requestApi('/api/members')).data; },
   async addMember(name) { return (await jsonRequest('/api/members', 'POST', { name })).data; },
   async updateMembers(changes) { return jsonRequest('/api/members', 'PUT', { changes }); },
-  async updateMember(id, name, memberId) { return jsonRequest(`/api/members/${id}`, 'PUT', { name, ...(memberId === undefined ? {} : { memberId }) }); },
+  async updateMember(id, name, newId) { return jsonRequest(`/api/members/${id}`, 'PUT', { name, ...(newId === undefined ? {} : { newId }) }); },
   async updateMemberRoles(id, roles) { return jsonRequest(`/api/members/${id}/roles`, 'PUT', roles); },
   async deleteMember(id) { return (await requestApi(`/api/members/${id}`, { method: 'DELETE' })).data; },
   async syncCnhRate() { return (await requestApi('/api/settings/sync-rate', { method: 'POST' })).cnhRate; },
@@ -90,5 +90,9 @@ const Api = {
   },
   async saveCustomBenchmark(customBenchmark, slot = 0) {
     return jsonRequest('/api/settings/custom-benchmark', 'POST', { customBenchmark, slot });
-  }
+  },
+  async getLedgers() { return (await requestApi('/api/ledgers')).data; },
+  async createLedger(name) { return jsonRequest('/api/ledgers', 'POST', { name }); },
+  async renameLedger(id, name) { return jsonRequest(`/api/ledgers/${encodeURIComponent(id)}`, 'PATCH', { name }); },
+  async getCombinedOverview() { return (await requestApi('/api/ledgers/combined', { cache: 'no-store' })).data; }
 };

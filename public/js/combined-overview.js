@@ -1,5 +1,5 @@
 (() => {
-  const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+  const escape = value => window.FundUiUtils.escapeHtml(value);
   const money = value => Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const shares = value => Number(value || 0).toFixed(4);
   const percent = value => value == null ? '—' : `${value > 0 ? '+' : ''}${Number(value).toFixed(2)}%`;
@@ -61,7 +61,7 @@
       status.textContent = '正在汇总所有账本…';
       window.FundModal.open(modal, button);
       try {
-        const { data } = await requestApi('/api/ledgers/combined', { cache: 'no-store' });
+        const data = await Api.getCombinedOverview();
         content.innerHTML = render(data);
         status.textContent = '';
       } catch (error) { status.textContent = `无法加载合并总览：${error.message}。关闭后可重试。`; }

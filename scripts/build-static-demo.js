@@ -47,12 +47,18 @@ function buildStaticDemo(output = defaultOutput) {
   fs.mkdirSync(path.join(output, 'demo-data'), { recursive: true });
   const seed = buildSandboxSeed();
   fs.writeFileSync(path.join(output, 'demo-data/seed.json'), JSON.stringify(seed));
+  const replaceRequired = (source, search, replacement, label, { all = false } = {}) => {
+    if (!source.includes(search)) {
+      throw new Error(`Static demo build failed: missing anchor "${label}" (${search}) in index.html`);
+    }
+    return all ? source.replaceAll(search, replacement) : source.replace(search, replacement);
+  };
   const htmlPath = path.join(output, 'index.html');
-  const html = fs.readFileSync(htmlPath, 'utf8')
-    .replace('<head>', '<head>\n  <meta name="fund-demo-sandbox" content="true">')
-    .replaceAll('href="/demo"', 'href="./"')
-    .replace('href="/api/backup/export"', 'href="#demo-backup-export"')
-    .replace('<script src="js/api.js"></script>', '<script src="js/demo-sandbox.js"></script>\n  <script src="js/api.js"></script>');
+  let html = fs.readFileSync(htmlPath, 'utf8');
+  html = replaceRequired(html, '<head>', '<head>\n  <meta name="fund-demo-sandbox" content="true">', 'head-tag');
+  html = replaceRequired(html, 'href="/demo"', 'href="./"', 'demo-link', { all: true });
+  html = replaceRequired(html, 'href="/api/backup/export"', 'href="#demo-backup-export"', 'backup-export-link');
+  html = replaceRequired(html, '<script src="js/api.js"></script>', '<script src="js/demo-sandbox.js"></script>\n  <script src="js/api.js"></script>', 'api-script-tag');
   fs.writeFileSync(htmlPath, html);
   fs.writeFileSync(path.join(output, '.nojekyll'), '');
   return { output, seed };

@@ -139,9 +139,14 @@ async function transactionTests() {
   const elements = Object.fromEntries(names.map(name => [name, element()]));
   const edits = [], additions = [], transfers = [];
   let transferFails = false;
-  const window = load('transaction-controller.js', {
-    getElementById: () => null, querySelector: () => ({ value: 'deposit' })
-  });
+  const txContext = {
+    window: {},
+    document: { getElementById: () => null, querySelector: () => ({ value: 'deposit' }) },
+    Intl, Date
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../public/js/date-time.js'), 'utf8'), txContext);
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../public/js/transaction-controller.js'), 'utf8'), txContext);
+  const window = txContext.window;
   const controller = window.FundTransactionController.init({
     elements, api: {
       async updateEvent(_id, payload) { edits.push(payload); },
@@ -258,7 +263,7 @@ async function restoreWarningTest() {
 
 async function deleteUndoTests() {
   const create = () => {
-    const undoButton = element(), row = { style: {}, querySelectorAll: () => [{ _deleteEventId: 'd' }] };
+    const undoButton = element(), row = { style: {}, dataset: { eventId: 'd' } };
     const timer = {}, notices = [], deletion = deferred();
     let deletes = 0;
     const context = {

@@ -34,7 +34,7 @@
       </svg>
       <span>
         <strong>家庭财富账本</strong>
-        <small>WEALTH LEDGER <b class="sidebar-version">v4.7.6</b></small>
+        <small>WEALTH LEDGER <b class="sidebar-version">v4.7.7</b></small>
       </span>
     </div>
 
@@ -57,6 +57,13 @@
         </svg>
         <span>数据看板</span>
       </a>
+      <a class="sidebar-nav-item theme-button" href="#trends-section">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3v18h18" />
+          <path d="m7 15 4-4 3 3 5-7" />
+        </svg>
+        <span>业绩表现</span>
+      </a>
       <a class="sidebar-nav-item theme-button" href="#members-section">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -64,13 +71,6 @@
           <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
         <span>家庭成员</span>
-      </a>
-      <a class="sidebar-nav-item theme-button" href="#trends-section">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 3v18h18" />
-          <path d="m7 15 4-4 3 3 5-7" />
-        </svg>
-        <span>业绩表现</span>
       </a>
       <a class="sidebar-nav-item theme-button" href="#ledger-section">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -170,44 +170,6 @@
       </div>
     </header>
 
-    <!-- Ticker ATH Performance Widget -->
-    <section class="ticker-ath-bar glass-panel premium-border surface-primary" id="ticker-ath-container">
-      <div class="panel-header">
-        <h2 class="panel-title">
-          <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M23 6l-9.5 9.5-5-5L1 18" />
-            <polyline points="17 6 23 6 23 12" />
-          </svg>
-          <span>标的回调追踪</span>
-
-        </h2>
-        <div class="ticker-panel-actions">
-          <button id="btn-refresh-tickers" class="btn btn-secondary flex-center"
-            style="padding: 6px 10px; font-size: 0.78rem; gap: 4px;" title="强制从 Yahoo Finance 刷新" aria-label="刷新标的数据">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              style="width: 14px; height: 14px;">
-              <path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5" />
-              <path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5" />
-            </svg>
-          </button>
-          <button id="btn-config-tickers" class="btn btn-secondary flex-center"
-            style="padding: 6px 10px; font-size: 0.78rem; gap: 4px;" title="配置展示的追踪标的" aria-label="配置标的">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              style="width: 14px; height: 14px;">
-              <circle cx="12" cy="12" r="3" />
-              <path
-                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div class="ticker-ath-cards" id="ticker-ath-cards-container">
-        <div class="ticker-table-state loading">
-          <span class="loading-text">正在从 Yahoo Finance 同步美股最新 ATH 与回调数据...</span>
-        </div>
-      </div>
-    </section>
-
     <!-- Main Dashboard Metrics Panel -->
     <section class="glass-panel premium-border surface-primary" id="dashboard-home">
       <div class="panel-header">
@@ -227,9 +189,10 @@
         <div class="metric-card metric-card--interactive premium-border" id="assets-details-card" role="button" tabindex="0"
           aria-haspopup="dialog" aria-controls="assets-details-popover" aria-expanded="false" aria-label="查看总资产构成详情">
           <div class="metric-info">
-            <span class="metric-label">基金总资产 (Total Assets)</span>
+            <span class="metric-label">总资产</span>
             <div class="metric-value font-outfit privacy-sensitive" id="fund-total-nav">$0.00</div>
-            <div class="metric-sub" id="fund-total-shares">总份额: 0.0000 份</div>
+            <!-- ID kept as fund-total-shares for DOM compatibility; renders CNH valuation & profit summary. -->
+            <div class="metric-sub privacy-sensitive" id="fund-total-shares">≈ ¥0.0万</div>
           </div>
           <div class="metric-icon bg-cyan-soft">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -243,7 +206,7 @@
         <div class="metric-card metric-card--interactive premium-border" id="nav-details-card" role="button" tabindex="0"
           aria-haspopup="dialog" aria-controls="nav-details-popover" aria-expanded="false" aria-label="查看单位净值表现详情">
           <div class="metric-info">
-            <span class="metric-label">基金单位净值 (NAV / Share)</span>
+            <span class="metric-label">单位净值</span>
             <div class="metric-value font-outfit privacy-sensitive" id="fund-nav-per-share">1.0000</div>
             <div class="metric-sub privacy-sensitive" id="nav-indicator">暂无估值更新</div>
           </div>
@@ -260,7 +223,7 @@
           tabindex="0" aria-haspopup="dialog" aria-controls="return-details-modal" aria-expanded="false"
           aria-label="查看在管本金收益率与历史累计收益率详情">
           <div class="metric-info">
-            <span class="metric-label" title="当前资产相对尚未退出本金的收益率">在管本金收益率 (Active Capital ROI)</span>
+            <span class="metric-label" title="当前资产相对尚未退出本金的收益率">在管本金收益率</span>
             <div class="metric-value font-outfit privacy-sensitive" id="fund-active-profit-rate">0.00%</div>
             <span class="metric-sub privacy-sensitive" id="fund-active-profit-rate-sub">当前仍在管本金的收益水平</span>
           </div>
@@ -279,43 +242,6 @@
     <main class="dashboard-layout">
       <!-- Left Column: Charts and Member Portfolios -->
       <div class="layout-left">
-        <!-- Members Showcase -->
-        <section class="glass-panel premium-border surface-primary" id="members-section">
-          <div class="panel-header">
-            <h2 class="panel-title">
-              <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-              家庭成员
-            </h2>
-            <div class="member-panel-actions">
-              <div class="tab-buttons segmented-control segmented-control--2" aria-label="成员资产视图">
-                <button class="tab-btn segmented-control__button active" type="button"
-                  data-member-view="assets">成员资产</button>
-                <button class="tab-btn segmented-control__button" type="button"
-                  data-member-view="allocation">资产占比</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="member-views-stage">
-            <div class="members-grid member-view active" id="members-grid-container">
-              <!-- 成员卡片将由 app.js 动态渲染 -->
-            </div>
-            <div class="member-allocation-summary member-view">
-              <div class="member-allocation-chart">
-                <canvas id="memberAllocationChart"></canvas>
-              </div>
-            </div>
-          </div>
-          <div class="member-panel-footer">
-            <button class="btn btn-primary theme-button" id="btn-member-statement" type="button" aria-controls="member-statement-modal" disabled>成员报表</button>
-          </div>
-        </section>
-
         <!-- Dynamic Visualization Charts -->
         <section class="glass-panel premium-border surface-primary" id="trends-section">
           <div class="panel-header" style="margin-bottom: 12px;">
@@ -418,6 +344,43 @@
             <div class="chart-container active" id="chart-tab-nav-container">
               <canvas id="navTrendChart"></canvas>
             </div>
+          </div>
+        </section>
+
+        <!-- Members Showcase -->
+        <section class="glass-panel premium-border surface-primary" id="members-section">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+              家庭成员
+            </h2>
+            <div class="member-panel-actions">
+              <div class="tab-buttons segmented-control segmented-control--2" aria-label="成员资产视图">
+                <button class="tab-btn segmented-control__button active" type="button"
+                  data-member-view="assets">成员资产</button>
+                <button class="tab-btn segmented-control__button" type="button"
+                  data-member-view="allocation">资产占比</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="member-views-stage">
+            <div class="members-grid member-view active" id="members-grid-container">
+              <!-- 成员卡片将由 app.js 动态渲染 -->
+            </div>
+            <div class="member-allocation-summary member-view">
+              <div class="member-allocation-chart">
+                <canvas id="memberAllocationChart"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="member-panel-footer">
+            <button class="btn btn-primary theme-button" id="btn-member-statement" type="button" aria-controls="member-statement-modal" disabled>成员报表</button>
           </div>
         </section>
       </div>
@@ -681,6 +644,43 @@
             <button type="button" id="btn-reverse-settlement" class="btn btn-secondary theme-button btn-block"
               style="margin-top:10px">撤销最近一次结算</button>
           </form>
+        </section>
+
+        <!-- Ticker ATH Performance Widget -->
+        <section class="ticker-ath-bar glass-panel premium-border surface-primary" id="ticker-ath-container">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 6l-9.5 9.5-5-5L1 18" />
+                <polyline points="17 6 23 6 23 12" />
+              </svg>
+              <span>标的回调追踪</span>
+            </h2>
+            <div class="ticker-panel-actions">
+              <button id="btn-refresh-tickers" class="btn btn-secondary flex-center"
+                style="padding: 6px 10px; font-size: 0.78rem; gap: 4px;" title="强制从 Yahoo Finance 刷新" aria-label="刷新标的数据">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  style="width: 14px; height: 14px;">
+                  <path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5" />
+                  <path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5" />
+                </svg>
+              </button>
+              <button id="btn-config-tickers" class="btn btn-secondary flex-center"
+                style="padding: 6px 10px; font-size: 0.78rem; gap: 4px;" title="配置展示的追踪标的" aria-label="配置标的">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  style="width: 14px; height: 14px;">
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="ticker-ath-cards" id="ticker-ath-cards-container">
+            <div class="ticker-table-state loading">
+              <span class="loading-text">正在从 Yahoo Finance 同步美股最新 ATH 与回调数据...</span>
+            </div>
+          </div>
         </section>
       </div>
     </main>
@@ -1469,46 +1469,6 @@
     </div>
   </div>
 
-  <!-- Dynamic Notifications -->
-  <div class="toast-container" id="toast-container"></div>
-
-  <!-- Main JavaScript App -->
-  <script src="vendor/hyalite/0.5.0/hyalite.js"></script>
-  <script src="js/glass-buttons.js"></script>
-  <script src="js/glass-tooltips.js"></script>
-  <script src="js/demo-mode.js"></script>
-  <script src="js/onboarding-controller.js"></script>
-  <script src="js/ledger-switcher.js"></script>
-  <script src="js/combined-overview.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/ui-utils.js"></script>
-  <script src="js/modal-manager.js"></script>
-  <script src="js/submission-guard.js"></script>
-  <script src="js/segmented-control.js"></script>
-  <script src="js/navigation.js"></script>
-  <script src="js/operation-panel.js"></script>
-  <script src="js/date-time.js"></script>
-  <script src="js/theme-manager.js"></script>
-  <script src="js/ticker-config-controller.js"></script>
-  <script src="js/custom-benchmark-controller.js"></script>
-  <script src="js/settlement-controller.js"></script>
-  <script src="js/disposal-trial-controller.js"></script>
-  <script src="js/transaction-controller.js"></script>
-  <script src="js/chart-controls.js"></script>
-  <script src="js/settings-controller.js"></script>
-  <script src="js/management-controller.js"></script>
-  <script src="js/metric-details.js"></script>
-  <script src="js/count-up.js"></script>
-  <script src="js/app-shell-controller.js"></script>
-  <script src="js/custom-select.js"></script>
-  <script src="js/ticker-panel.js"></script>
-  <script src="js/member-renderer.js"></script>
-  <script src="js/ledger-renderer.js"></script>
-  <script src="js/ledger-hover.js"></script>
-  <script src="js/chart-renderer.js"></script>
-  <script src="js/notifications.js"></script>
-  <script src="js/member-editor-controller.js"></script>
-  <script src="js/ledger-actions-controller.js"></script>
   <div class="modal-overlay" id="member-statement-modal" role="dialog" aria-modal="true" aria-labelledby="member-statement-title" aria-hidden="true">
     <div class="modal-content statement-dialog" tabindex="-1">
       <div class="modal-header statement-controls">
@@ -1592,6 +1552,48 @@
       </div>
     </div>
   </div>
+
+  <!-- Dynamic Notifications -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Main JavaScript App -->
+  <script src="vendor/hyalite/0.5.0/hyalite.js"></script>
+  <script src="js/glass-buttons.js"></script>
+  <script src="js/glass-tooltips.js"></script>
+  <script src="js/demo-mode.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/ui-utils.js"></script>
+  <script src="js/onboarding-controller.js"></script>
+  <script src="js/ledger-switcher.js"></script>
+  <script src="js/combined-overview.js"></script>
+  <script src="js/modal-manager.js"></script>
+  <script src="js/submission-guard.js"></script>
+  <script src="js/segmented-control.js"></script>
+  <script src="js/navigation.js"></script>
+  <script src="js/operation-panel.js"></script>
+  <script src="js/date-time.js"></script>
+  <script src="js/theme-manager.js"></script>
+  <script src="js/ticker-config-controller.js"></script>
+  <script src="js/custom-benchmark-controller.js"></script>
+  <script src="js/settlement-controller.js"></script>
+  <script src="js/disposal-trial-controller.js"></script>
+  <script src="js/transaction-controller.js"></script>
+  <script src="js/chart-controls.js"></script>
+  <script src="js/settings-controller.js"></script>
+  <script src="js/management-controller.js"></script>
+  <script src="js/metric-details.js"></script>
+  <script src="js/count-up.js"></script>
+  <script src="js/app-shell-controller.js"></script>
+  <script src="js/custom-select.js"></script>
+  <script src="js/ticker-panel.js"></script>
+  <script src="js/member-renderer.js"></script>
+  <script src="js/ledger-renderer.js"></script>
+  <script src="js/ledger-hover.js"></script>
+  <script src="js/chart-plugins.js"></script>
+  <script src="js/chart-renderer.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/member-editor-controller.js"></script>
+  <script src="js/ledger-actions-controller.js"></script>
   <script src="js/member-statement.js"></script>
   <script src="js/member-statement-controller.js"></script>
   <script src="js/app.js"></script>

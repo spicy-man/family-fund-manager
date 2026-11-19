@@ -64,14 +64,8 @@
     padding-bottom: 0;
   }
 
-  .ticker-ath-bar {
-    position: static;
-    width: auto;
-    overflow: visible;
-  }
-
-  .layout-left>section:first-child,
-  .layout-left>section:last-child {
+  .layout-left > #trends-section,
+  .layout-left > #members-section {
     grid-column: 1;
     height: auto;
   }

@@ -7,10 +7,13 @@ const { registerCustomBenchmarkRoutes } = require('./custom-benchmark');
 const { registerBackupRoutes } = require('./backup');
 const { nextSequenceNumber } = require('../lib/event-order');
 const { InputError, ConflictError } = require('../lib/api-errors');
+const { getLatestValuationDate, getLedgerBeijingDate } = require('../lib/date-utils');
 
 function registerApiRoutes(app, deps) {
   const resolvedDeps = {
     ...deps,
+    readCoreDb: deps.readCoreDb ?? deps.readBaseDb ?? deps.readDb,
+    readCnhRate: deps.readCnhRate ?? (() => deps.readDb().cnhRate),
     readSettlements: deps.readSettlements ?? (() => ({ version: 1, records: [] })),
     writeSettlements: deps.writeSettlements ?? (() => {}),
     now: deps.now ?? (() => new Date())
@@ -33,37 +36,15 @@ function registerApiRoutes(app, deps) {
     return day === 0;
   }
 
-  function latestValuationDate(now = getNow()) {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/New_York',
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', hour12: false, hourCycle: 'h23'
-    }).formatToParts(now);
-    const values = {};
-    parts.forEach(part => { values[part.type] = part.value; });
-    const cursor = new Date(`${values.year}-${values.month}-${values.day}T00:00:00Z`);
-    const minutes = Number(values.hour) * 60 + Number(values.minute);
-    if (cursor.getUTCDay() === 0 || cursor.getUTCDay() === 6 || minutes < 4 * 60 + 5) {
-      do {
-        cursor.setUTCDate(cursor.getUTCDate() - 1);
-      } while (cursor.getUTCDay() === 0 || cursor.getUTCDay() === 6);
-    }
-    return cursor.toISOString().slice(0, 10);
-  }
-
   function validateValuationDate(date) {
     const day = new Date(`${date}T00:00:00Z`).getUTCDay();
     if (day === 0 || day === 6) return '估值日期必须为周一至周五的交易日。';
-    const latest = latestValuationDate();
+    const latest = getLatestValuationDate(getNow());
     return date <= latest ? null : `美东时间04:05后才开放当日估值；当前最晚可选择 ${latest}。`;
   }
 
   function rejectFutureSettlementDate(date) {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit'
-    }).formatToParts(getNow());
-    const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
-    const today = `${values.year}-${values.month}-${values.day}`;
+    const today = getLedgerBeijingDate(getNow());
     if (date > today) throw new InputError(`结算日期不能晚于今天（北京时间 ${today}）。`);
   }
 

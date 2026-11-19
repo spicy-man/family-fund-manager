@@ -82,7 +82,10 @@ for (const [width, height, initiallyOpen, ongoing = false] of [[681, 750, false]
       listeners.afterprint();
     }
   };
-  vm.runInNewContext(fs.readFileSync('public/js/member-statement-controller.js', 'utf8'), { window, document, Intl, Date });
+  const stmtContext = { window, document, Intl, Date };
+  vm.runInNewContext(fs.readFileSync('public/js/ui-utils.js', 'utf8'), stmtContext);
+  vm.runInNewContext(fs.readFileSync('public/js/date-time.js', 'utf8'), stmtContext);
+  vm.runInNewContext(fs.readFileSync('public/js/member-statement-controller.js', 'utf8'), stmtContext);
   window.FundMemberStatementController.create({ getState: () => ({}), getMembers: () => [],
     modal: { bindAccessible() {} }, ui: { escapeHtml: value => value || '', formatMoney: value => String(value) }, showToast: message => assert.fail(message) });
   elements['statement-period'].change();

@@ -1,3 +1,12 @@
+/**
+ * Multi-ledger switcher & management dialog.
+ *
+ * Design note: switching ledgers triggers a full page navigation (`?ledger=...`)
+ * so every controller and Chart.js instance starts cleanly with the target ledger.
+ * One-shot `sessionStorage` handoff keys (`family_fund_ledger_position_transfer`
+ * and `family_fund_ledger_privacy_transfer`) preserve the user's scroll position
+ * and privacy toggle across that reload, and are consumed immediately on arrival.
+ */
 (() => {
   const params = new URLSearchParams(window.location.search);
   const id = params.has('ledger') ? params.get('ledger') : 'default';
@@ -136,7 +145,7 @@
       }));
     }
     async function refresh() {
-      ledgers = (await requestApi('/api/ledgers')).data; render(); trigger.disabled = false;
+      ledgers = await Api.getLedgers(); render(); trigger.disabled = false;
     }
     modal.bindAccessible(manageModal, document.getElementById('btn-close-manage-ledgers'));
     const input = document.getElementById('new-ledger-name');
@@ -177,7 +186,7 @@
       event.preventDefault(); const button = event.currentTarget.querySelector('[type="submit"]');
       if (button.disabled) return; button.disabled = true; saveSettings.disabled = true; createStatus.textContent = '';
       try {
-        await jsonRequest('/api/ledgers', 'POST', { name: input.value });
+        await Api.createLedger(input.value);
         input.value = ''; await refresh(); renderManagement(true); createStatus.textContent = '账本已添加。';
       } catch (error) { createStatus.textContent = error.message; }
       finally { button.disabled = false; saveSettings.disabled = false; }
@@ -193,7 +202,7 @@
       try {
         for (const field of fields) {
           const ledger = ledgers.find(item => item.id === field.dataset.ledgerId);
-          if (ledger && field.value.trim() !== ledger.name) await jsonRequest('/api/ledgers/' + encodeURIComponent(ledger.id), 'PATCH', { name: field.value });
+          if (ledger && field.value.trim() !== ledger.name) await Api.renameLedger(ledger.id, field.value);
         }
         await refresh(); modal.close(manageModal);
       } catch (error) { manageStatus.textContent = error.message; }

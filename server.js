@@ -1,16 +1,5 @@
-const launcherChild = require.main === module && process.argv.includes('--launcher-child');
-const exitWithoutLauncher = () => process.exit(0);
-if (launcherChild) {
-  // Install before loading storage: losing the console during initialization
-  // must not leave an unattended server or a lease on the shared directory.
-  if (!process.connected) process.exit(0);
-  process.once('disconnect', exitWithoutLauncher);
-  for (const stream of [process.stdout, process.stderr]) {
-    stream.on('error', error => {
-      if (error.code !== 'EPIPE') throw error;
-    });
-  }
-}
+const { installLauncherGuard } = require('./lib/process-lifecycle');
+const lifecycle = installLauncherGuard({ isMain: require.main === module });
 const express = require('express');
 const path = require('path');
 const { randomUUID } = require('crypto');
@@ -18,6 +7,7 @@ const defaultStorage = require('./lib/storage');
 const { localRequestPolicy } = require('./lib/local-request-policy');
 const { mergeSettlementLedger, migrateSettlementLedger } = require('./lib/settlement-ledger');
 const { maxSequenceNumber, migrateEventSequences } = require('./lib/event-order');
+const { isValidDate } = require('./lib/date-utils');
 const {
   InputError,
   NotFoundError,
@@ -113,12 +103,6 @@ app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 if (multiLedger) require('./lib/ledgers').registerLedgerRoutes(app, { defaultStorage: storage, createLedgerApplication, getDefaultState: getState });
 
-function isValidDate(date) {
-  if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
-  const parsed = new Date(`${date}T00:00:00Z`);
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
-}
-
 function normalizeRemark(remark, fallback = '') {
   if (remark === undefined || remark === null) return fallback;
   if (typeof remark !== 'string') throw new InputError('备注必须为文本。');
@@ -141,62 +125,80 @@ let _stateCache = null;    // calculateState() 结果缓存
 let _stateDirty = true;    // 脏标记：数据变更后标记缓存失效
 let _settlementLedgerValidated = false;
 
-function readDbUnsafe() {
-  let db = {
-    ...storage.readDb(),
-    customBenchmarkCache: storage.readCustomBenchmarkCache(),
-    indexCache: storage.readIndexCache(),
-    marketHistory: storage.readMarketHistory(),
-    cnhRate: storage.readCnhRateCache().rate
-  };
+/**
+ * Explicit one-time migration step for legacy ledgers (embedded settlements,
+ * missing event sequence numbers, high-water marks, and settlement algorithm
+ * versions). Invoked eagerly on server/ledger startup so normal read paths
+ * stay side-effect free.
+ */
+function ensureLedgerMigrated() {
+  if (_settlementLedgerValidated) return;
+  let db = storage.readDb();
   let settlementLedger = storage.readSettlements();
-  if (!_settlementLedgerValidated) {
-    const legacy = db.events.filter(event =>
-      event.type === 'performance_settlement' || event.type === 'performance_settlement_reversal'
-    );
-    let movedLegacyRecords = false;
-    let orderMigration = { migrated: false };
-    if (legacy.length && settlementLedger.records.length === 0) {
-      // Preserve the exact interleaving of legacy normal and settlement events
-      // before moving settlement records to their dedicated ledger.
-      orderMigration = migrateEventSequences(db.events);
-      settlementLedger = { version: 1, records: legacy };
-      db = {
-        ...db,
-        events: db.events.filter(event =>
-          event.type !== 'performance_settlement' && event.type !== 'performance_settlement_reversal'
-        )
-      };
-      movedLegacyRecords = true;
-    }
-    const combinedOrderMigration = migrateEventSequences(db.events, settlementLedger.records);
-    const dbHighWater = db.lastEventSequence ?? 0;
-    const settlementHighWater = settlementLedger.lastEventSequence ?? 0;
-    if (!Number.isSafeInteger(dbHighWater) || dbHighWater < 0 ||
-        !Number.isSafeInteger(settlementHighWater) || settlementHighWater < 0) {
-      throw new Error('账本包含无效的事件顺序号高水位。');
-    }
-    const derivedHighWater = Math.max(
-      dbHighWater,
-      settlementHighWater,
-      maxSequenceNumber(db.events, settlementLedger.records)
-    );
-    const highWaterMigrated = derivedHighWater > 0 && db.lastEventSequence !== derivedHighWater;
-    if (highWaterMigrated) db.lastEventSequence = derivedHighWater;
-    const migration = migrateSettlementLedger(db, settlementLedger);
-    settlementLedger = migration.ledger;
-    if (movedLegacyRecords || orderMigration.migrated || combinedOrderMigration.migrated ||
-        highWaterMigrated || migration.migrated) {
-      storage.writeSnapshot(db, storage.readConfig(), settlementLedger);
-    }
-    _settlementLedgerValidated = true;
+  const legacy = db.events.filter(event =>
+    event.type === 'performance_settlement' || event.type === 'performance_settlement_reversal'
+  );
+  let movedLegacyRecords = false;
+  let orderMigration = { migrated: false };
+  if (legacy.length && settlementLedger.records.length === 0) {
+    // Preserve the exact interleaving of legacy normal and settlement events
+    // before moving settlement records to their dedicated ledger.
+    orderMigration = migrateEventSequences(db.events);
+    settlementLedger = { version: 1, records: legacy };
+    db = {
+      ...db,
+      events: db.events.filter(event =>
+        event.type !== 'performance_settlement' && event.type !== 'performance_settlement_reversal'
+      )
+    };
+    movedLegacyRecords = true;
   }
-  return mergeSettlementLedger(db, settlementLedger);
+  const combinedOrderMigration = migrateEventSequences(db.events, settlementLedger.records);
+  const dbHighWater = db.lastEventSequence ?? 0;
+  const settlementHighWater = settlementLedger.lastEventSequence ?? 0;
+  if (!Number.isSafeInteger(dbHighWater) || dbHighWater < 0 ||
+      !Number.isSafeInteger(settlementHighWater) || settlementHighWater < 0) {
+    throw new Error('账本包含无效的事件顺序号高水位。');
+  }
+  const derivedHighWater = Math.max(
+    dbHighWater,
+    settlementHighWater,
+    maxSequenceNumber(db.events, settlementLedger.records)
+  );
+  const highWaterMigrated = derivedHighWater > 0 && db.lastEventSequence !== derivedHighWater;
+  if (highWaterMigrated) db.lastEventSequence = derivedHighWater;
+  const migration = migrateSettlementLedger(db, settlementLedger);
+  settlementLedger = migration.ledger;
+  if (movedLegacyRecords || orderMigration.migrated || combinedOrderMigration.migrated ||
+      highWaterMigrated || migration.migrated) {
+    storage.writeSnapshot(db, storage.readConfig(), settlementLedger);
+  }
+  _settlementLedgerValidated = true;
 }
 
-function readDb() {
+// Pure core ledger (`db.json`) without settlement records or market caches.
+function readCoreDb() {
   try {
-    return readDbUnsafe();
+    ensureLedgerMigrated();
+    return storage.readDb();
+  } catch (error) {
+    if (error instanceof StorageError) throw error;
+    throw new StorageError('数据库读取失败。', { cause: error });
+  }
+}
+
+// Combined replay input (`coreDb + settlements + market caches`) for calculator and validation.
+function buildReplayInput() {
+  try {
+    const coreDb = readCoreDb();
+    const settlementLedger = storage.readSettlements();
+    return mergeSettlementLedger({
+      ...coreDb,
+      customBenchmarkCache: storage.readCustomBenchmarkCache(),
+      indexCache: storage.readIndexCache(),
+      marketHistory: storage.readMarketHistory(),
+      cnhRate: storage.readCnhRateCache().rate
+    }, settlementLedger);
   } catch (error) {
     if (error instanceof StorageError) throw error;
     throw new StorageError('数据库读取失败。', { cause: error });
@@ -248,6 +250,14 @@ function writeMarketHistory(history) {
     _stateDirty = true;
   } catch (error) {
     throw new StorageError('逐日行情历史写入失败。', { cause: error });
+  }
+}
+
+function readCnhRate() {
+  try {
+    return storage.readCnhRateCache().rate;
+  } catch (error) {
+    throw new StorageError('汇率缓存读取失败。', { cause: error });
   }
 }
 
@@ -365,7 +375,7 @@ async function syncBenchmarkHistory(dates) {
     normalizeCustomBenchmark(config.customBenchmark),
     normalizeCustomBenchmark(config.customBenchmark2)
   ];
-  dates = [...new Set([...dates, ...readDb().events.map(event => event.date),
+  dates = [...new Set([...dates, ...buildReplayInput().events.map(event => event.date),
     ...Object.keys(storage.readIndexCache()), ...Object.keys(storage.readCustomBenchmarkCache())])];
   const datesToBuild = benchmarkDates(dates);
   if (datesToBuild.length === 0) return;
@@ -417,7 +427,7 @@ async function syncBenchmarkHistory(dates) {
     const latestConfig = storage.readConfig();
     const latestBenchmarks = [normalizeCustomBenchmark(latestConfig.customBenchmark),
       normalizeCustomBenchmark(latestConfig.customBenchmark2)];
-    dates = [...new Set([...dates, ...readDb().events.map(event => event.date),
+    dates = [...new Set([...dates, ...buildReplayInput().events.map(event => event.date),
       ...Object.keys(storage.readIndexCache()), ...Object.keys(storage.readCustomBenchmarkCache())])];
     const materialized = materializeBenchmarkCaches(
       dates,
@@ -443,7 +453,7 @@ async function syncBenchmarkHistory(dates) {
 function calculateState() {
   const config = storage.readConfig();
   return calculateStateFromDb({
-    ...readDb(),
+    ...buildReplayInput(),
     customBenchmark: config.customBenchmark || null,
     customBenchmark2: config.customBenchmark2 || null
   });
@@ -462,9 +472,10 @@ const { registerApiRoutes } = require('./routes/api');
 registerApiRoutes(app, {
   tickerRefreshState,
   restoreSharedSettings: storage.restoreSharedSettings !== false,
-  readBaseDb: () => storage.readDb(),
   getStoredMemberIds: () => require('./lib/stored-member-ids').storedMemberIds(path.dirname(defaultStorage.DB_FILE)),
-  readDb,
+  readCoreDb,
+  readDb: buildReplayInput,
+  readCnhRate,
   writeDb,
   readSettlements,
   writeSettlements,
@@ -506,6 +517,12 @@ function startServer({ port = PORT, host = '127.0.0.1', openBrowser = false,
   console.log(`📂 数据存储路径：${storage.DB_FILE}`);
   console.log(`====================================================`);
 
+  try {
+    ensureLedgerMigrated();
+  } catch (err) {
+    console.error('❌ [Startup Migration Error]:', err);
+  }
+
   // 启动时静默同步一次汇率与美股指数数据
   const initialRateCache = EXTERNAL_SYNC_ENABLED ? JSON.stringify(storage.readCnhRateCache()) : null;
   if (EXTERNAL_SYNC_ENABLED) fetchCnhRateFromApi().then(rate => {
@@ -530,7 +547,7 @@ function startServer({ port = PORT, host = '127.0.0.1', openBrowser = false,
 function syncLedgerBenchmarks() {
   // Existing ledgers opened after startup need the same refresh as the default.
   if (EXTERNAL_SYNC_ENABLED) try {
-    const db = readDb();
+    const db = buildReplayInput();
     if (db.events && db.events.length > 0) {
       const dates = db.events.map(e => e.date);
       return ensureIndexCache(dates);
@@ -540,7 +557,7 @@ function syncLedgerBenchmarks() {
   }
 }
 
-return { app, getState, calculateStateFromDb, ensureIndexCache, syncLedgerBenchmarks, startServer };
+return { app, getState, calculateStateFromDb, ensureIndexCache, ensureLedgerMigrated, syncLedgerBenchmarks, startServer };
 }
 
 const { app, calculateStateFromDb, ensureIndexCache, startServer } = createLedgerApplication(defaultStorage, { multiLedger: true });
@@ -548,38 +565,7 @@ const PORT = process.env.PORT || 3000;
 
 if (require.main === module) {
   const server = startServer({ openBrowser: process.argv.includes('--open-browser') });
-  let shuttingDown = false;
-  const shutdown = () => {
-    if (shuttingDown) return;
-    shuttingDown = true;
-    // Pending HTTP clients cannot keep a closed launcher alive indefinitely.
-    const shutdownTimer = setTimeout(() => process.exit(0), 5000);
-    shutdownTimer.unref();
-    // Stop accepting HTTP work first. Keep ownership through pending requests
-    // and background work; the synchronous exit hook releases it only as this
-    // process terminates, so no surviving callback can write after release.
-    server.close(() => process.exit(0));
-    server.closeIdleConnections?.();
-  };
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
-  process.on('SIGHUP', shutdown);
-  if (launcherChild) {
-    process.removeListener('disconnect', exitWithoutLauncher);
-    process.once('disconnect', shutdown);
-    if (!process.connected) shutdown();
-  }
-  server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.error(`\
-❌ [启动失败] 端口 ${PORT} 已被占用！`);
-      console.error(`💡 请检查是否已经运行了系统实例，或关闭占用 ${PORT} 端口的程序后重试。\
-`);
-      process.exit(1);
-    }
-    console.error('[启动失败] 无法监听本机服务：', err.code || err.message);
-    process.exit(1);
-  });
+  lifecycle.attachServer(server, { port: PORT });
 }
 
 module.exports = { app, calculateStateFromDb, ensureIndexCache, startServer, createLedgerApplication };

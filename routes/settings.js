@@ -1,14 +1,13 @@
 const { InputError, ExternalServiceError, handleApiError } = require('../lib/api-errors');
 
 function registerSettingsRoutes(app, deps, utils) {
-  const { readDb, writeCnhRate = () => {}, fetchCnhRateFromApi } = deps;
+  const { readCnhRate = () => deps.readDb?.().cnhRate, writeCnhRate = () => {}, fetchCnhRateFromApi } = deps;
   const { toFiniteNumber } = utils;
 
 // 4.8. 更新全局系统参数（汇率配置）
 app.post('/api/settings', (req, res, next) => {
   try {
     const { cnhRate, benchmarkClosePolicy } = req.body;
-    const db = readDb();
     let parsedRate;
 
     if (cnhRate !== undefined) {
@@ -26,9 +25,9 @@ app.post('/api/settings', (req, res, next) => {
     // Validate all supplied fields before making any persistent change.
     if (parsedRate !== undefined) {
       writeCnhRate(parsedRate, { source: 'manual' });
-      db.cnhRate = parsedRate;
     }
-    res.json({ success: true, message: '系统参数更新成功', data: { cnhRate: db.cnhRate } });
+    const effectiveRate = parsedRate !== undefined ? parsedRate : readCnhRate();
+    res.json({ success: true, message: '系统参数更新成功', data: { cnhRate: effectiveRate } });
   } catch (error) {
     handleApiError(error, req, res, next);
   }

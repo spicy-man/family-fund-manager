@@ -6,12 +6,13 @@ const AdmZip = require('adm-zip');
 const storage = require('../lib/storage');
 const { generateMemberId } = require('../lib/member-id');
 const { migrateMemberIdentifiers, renameMemberIdentifiers } = require('../lib/member-identifiers');
+const { isSecondaryLedgerId } = require('../lib/ledger-id');
 const mapIndex = process.argv.indexOf('--mapping');
 const explicitMappings = mapIndex < 0 ? null : JSON.parse(fs.readFileSync(process.argv[mapIndex + 1], 'utf8'));
 const root = path.dirname(storage.DB_FILE);
 const stores = [{ id: 'default', store: storage }];
 try {
-  for (const id of fs.readdirSync(root).filter(name => /^ledger-[1-9][0-9]*$/.test(name))) {
+  for (const id of fs.readdirSync(root).filter(isSecondaryLedgerId)) {
     const dir = path.join(root, id);
     if (!fs.existsSync(path.join(dir, 'ledger.json'))) continue;
     if (fs.lstatSync(dir).isSymbolicLink()) throw new Error('账本目录不能为符号链接。');

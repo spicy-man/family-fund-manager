@@ -82,6 +82,7 @@ global.Chart.defaults = {
   }
 };
 
+vm.runInThisContext(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'chart-plugins.js'), 'utf8'));
 vm.runInThisContext(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'chart-renderer.js'), 'utf8'));
 
 assert.strictEqual(

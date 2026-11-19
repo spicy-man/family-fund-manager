@@ -29,29 +29,8 @@
     updateTransactionRemark();
     if (!tfRemark.value.trim()) tfRemark.value = transferRemark;
 
-    const snapNearestSundayValue = dateStr => {
-      if (window.FundDateTime?.snapToNearestSunday) return window.FundDateTime.snapToNearestSunday(dateStr);
-      if (!dateStr) return '';
-      const cursor = new Date(`${dateStr}T00:00:00Z`);
-      if (Number.isNaN(cursor.getTime())) return '';
-      const day = cursor.getUTCDay();
-      if (day !== 0) cursor.setUTCDate(cursor.getUTCDate() + (day >= 4 ? 7 - day : -day));
-      return cursor.toISOString().split('T')[0];
-    };
-
-    const snapValuationValue = dateStr => {
-      const latest = getLatestValuationDate();
-      if (window.FundDateTime?.snapToValuationDate) return window.FundDateTime.snapToValuationDate(dateStr, latest);
-      if (!dateStr) return '';
-      if (latest && dateStr > latest) return latest;
-      const cursor = new Date(`${dateStr}T00:00:00Z`);
-      if (Number.isNaN(cursor.getTime())) return '';
-      while (cursor.getUTCDay() === 0 || cursor.getUTCDay() === 6) {
-        cursor.setUTCDate(cursor.getUTCDate() - 1);
-      }
-      const snapped = cursor.toISOString().split('T')[0];
-      return latest && snapped > latest ? latest : snapped;
-    };
+    const snapNearestSundayValue = dateStr => window.FundDateTime.snapToNearestSunday(dateStr);
+    const snapValuationValue = dateStr => window.FundDateTime.snapToValuationDate(dateStr, getLatestValuationDate());
 
     const validateSundayDateInput = (input, { snap = true } = {}) => {
       if (!input.value) {

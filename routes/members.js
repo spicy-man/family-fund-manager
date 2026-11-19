@@ -1,18 +1,53 @@
 const { generateMemberId } = require('../lib/member-id');
 const { renameMemberIdentifiers, MEMBER_ID_PATTERN } = require('../lib/member-identifiers');
-const { DEFAULT_PERFORMANCE_FEE_CONFIG } = require('../lib/performance-fee-policy');
+const { DEFAULT_PERFORMANCE_FEE_CONFIG, getEventGpMemberId } = require('../lib/performance-fee-policy');
 
 const { InputError, NotFoundError, ConflictError, handleApiError } = require('../lib/api-errors');
 
+function applyMemberChanges(db, settlements, changes, normalizeMemberName) {
+  const nextMembers = db.members.map(member => ({ ...member }));
+  const mapping = {};
+  const seen = new Set();
+  for (const change of changes) {
+    if (!change || seen.has(change.id)) throw new InputError('成员修改列表重复或无效。');
+    seen.add(change.id);
+    const member = nextMembers.find(item => item.id === change.id);
+    if (!member) throw new NotFoundError('未找到该家庭成员');
+    const requestedNewId = change.newId !== undefined ? change.newId : change.memberId;
+    const id = requestedNewId === undefined ? member.id : requestedNewId;
+    if (id !== member.id && (typeof id !== 'string' || !MEMBER_ID_PATTERN.test(id))) {
+      throw new InputError('成员编号须为 6 位数字，首位不能为 0。');
+    }
+    member.name = normalizeMemberName(change.name);
+    if (id !== member.id) mapping[member.id] = id;
+  }
+  const finalMembers = nextMembers.map(member => ({
+    ...member,
+    id: Object.hasOwn(mapping, member.id) ? mapping[member.id] : member.id
+  }));
+  if (new Set(finalMembers.map(member => member.id)).size !== finalMembers.length) {
+    throw new InputError('该编号已被本账本其他成员使用。跨账本的同一个人可以使用相同编号。');
+  }
+  if (new Set(finalMembers.map(member => member.name)).size !== finalMembers.length) {
+    throw new InputError('该成员姓名已被使用');
+  }
+  const hasIdChanges = Object.keys(mapping).length > 0;
+  const result = hasIdChanges
+    ? renameMemberIdentifiers(db, settlements, mapping)
+    : { db, ledger: settlements };
+  result.db.members = finalMembers;
+  return { ...result, hasIdChanges };
+}
+
 function registerMemberRoutes(app, deps) {
-  const { readDb, writeDb, readSettlements, normalizeMemberName } = deps;
+  const { readCoreDb = deps.readBaseDb ?? deps.readDb, writeDb, readSettlements, normalizeMemberName } = deps;
 
 // 7. 家庭成员增删改 API 路由
 
 // 获取成员列表
 app.get('/api/members', (req, res, next) => {
   try {
-    const db = readDb();
+    const db = readCoreDb();
     res.json({
       success: true,
       data: db.members.map(member => ({
@@ -30,7 +65,7 @@ app.get('/api/members', (req, res, next) => {
 app.post('/api/members', (req, res, next) => {
   try {
     const { name } = req.body;
-    const db = readDb();
+    const db = readCoreDb();
     const trimmedName = normalizeMemberName(name);
 
     if (db.members.some(m => m.name === trimmedName)) {
@@ -56,76 +91,41 @@ app.put('/api/members', (req, res, next) => {
   try {
     const changes = req.body?.changes;
     if (!Array.isArray(changes) || !changes.length) throw new InputError('请提供成员修改列表。');
-    // Complete legacy settlement migration before taking the base snapshot.
-    const migratedDb = readDb();
-    const db = deps.readBaseDb?.() ?? migratedDb;
-    const nextMembers = db.members.map(member => ({ ...member }));
-    const mapping = {};
-    const seen = new Set();
-    for (const change of changes) {
-      if (!change || seen.has(change.id)) throw new InputError('成员修改列表重复或无效。');
-      seen.add(change.id);
-      const member = nextMembers.find(item => item.id === change.id);
-      if (!member) throw new NotFoundError('未找到该家庭成员');
-      const id = change.memberId === undefined ? member.id : change.memberId;
-      if (id !== member.id && (typeof id !== 'string' || !MEMBER_ID_PATTERN.test(id))) {
-        throw new InputError('成员编号须为 6 位数字，首位不能为 0。');
-      }
-      member.name = normalizeMemberName(change.name);
-      if (id !== member.id) mapping[member.id] = id;
-    }
-    const finalMembers = nextMembers.map(member => ({ ...member,
-      id: Object.hasOwn(mapping, member.id) ? mapping[member.id] : member.id }));
-    if (new Set(finalMembers.map(member => member.id)).size !== finalMembers.length) {
-      throw new InputError('该编号已被本账本其他成员使用。跨账本的同一个人可以使用相同编号。');
-    }
-    if (new Set(finalMembers.map(member => member.name)).size !== finalMembers.length) {
-      throw new InputError('该成员姓名已被使用');
-    }
-    const result = Object.keys(mapping).length
-      ? renameMemberIdentifiers(db, readSettlements(), mapping)
-      : { db, ledger: readSettlements() };
-    result.db.members = finalMembers;
+    const db = readCoreDb();
+    const result = applyMemberChanges(db, readSettlements(), changes, normalizeMemberName);
     deps.writeSnapshot(result.db, deps.readConfig(), result.ledger);
-    res.json({ success: true, data: result.db.members.map(member => ({ ...member,
-      primaryGp: result.db.performanceFee?.gpMemberId === member.id })) });
+    res.json({
+      success: true,
+      data: result.db.members.map(member => ({
+        ...member,
+        primaryGp: result.db.performanceFee?.gpMemberId === member.id
+      }))
+    });
   } catch (error) { handleApiError(error, req, res, next); }
 });
 
-// 修改成员重命名
+// 修改成员重命名 / 编号
 app.put('/api/members/:id', (req, res, next) => {
   try {
     const memberId = req.params.id;
-    const { name } = req.body;
-    const db = readDb();
-    const trimmedName = normalizeMemberName(name);
-
-    const memberIndex = db.members.findIndex(m => m.id === memberId);
-    if (memberIndex === -1) {
-      throw new NotFoundError('未找到该家庭成员');
-    }
-
-    if (db.members.some((m, idx) => m.name === trimmedName && idx !== memberIndex)) {
-      throw new InputError('该成员姓名已被使用');
-    }
-
-    const newId = req.body.memberId === undefined ? memberId : req.body.memberId;
-    if (newId !== memberId && (typeof newId !== 'string' || !MEMBER_ID_PATTERN.test(newId))) {
-      throw new InputError('成员编号须为 6 位数字，首位不能为 0。');
-    }
-    if (newId !== memberId) {
-      if (db.members.some(member => member.id === newId)) {
-        throw new InputError('该编号已被本账本其他成员使用。跨账本的同一个人可以使用相同编号。');
-      }
-      const result = renameMemberIdentifiers(deps.readBaseDb?.() ?? db, readSettlements(), { [memberId]: newId });
-      result.db.members[memberIndex].name = trimmedName;
+    const { name, newId, memberId: legacyNewId } = req.body;
+    const db = readCoreDb();
+    const requestedNewId = newId !== undefined ? newId : legacyNewId;
+    const result = applyMemberChanges(
+      db,
+      readSettlements(),
+      [{ id: memberId, name, newId: requestedNewId }],
+      normalizeMemberName
+    );
+    const updated = result.db.members.find(member =>
+      member.id === (requestedNewId === undefined ? memberId : requestedNewId)
+    );
+    if (result.hasIdChanges) {
       deps.writeSnapshot(result.db, deps.readConfig(), result.ledger);
     } else {
-      db.members[memberIndex].name = trimmedName;
-      writeDb(db);
+      writeDb(result.db);
     }
-
-    res.json({ success: true, message: '成员姓名修改成功', data: { id: newId, name: trimmedName } });
+    res.json({ success: true, message: '成员姓名修改成功', data: { id: updated.id, name: updated.name } });
   } catch (error) {
     handleApiError(error, req, res, next);
   }
@@ -133,7 +133,7 @@ app.put('/api/members/:id', (req, res, next) => {
 
 app.put('/api/members/:id/roles', (req, res, next) => {
   try {
-    const db = readDb();
+    const db = readCoreDb();
     const member = db.members.find(item => item.id === req.params.id);
     if (!member) throw new NotFoundError('未找到该家庭成员');
     db.performanceFee ||= { ...DEFAULT_PERFORMANCE_FEE_CONFIG };
@@ -155,7 +155,7 @@ app.put('/api/members/:id/roles', (req, res, next) => {
 app.delete('/api/members/:id', (req, res, next) => {
   try {
     const memberId = req.params.id;
-    const db = readDb();
+    const db = readCoreDb();
 
     const memberIndex = db.members.findIndex(m => m.id === memberId);
     if (memberIndex === -1) {
@@ -169,7 +169,7 @@ app.delete('/api/members/:id', (req, res, next) => {
     // 安全检查：如果该成员已经录入过出入金或参与过转让，则绝对不允许删除
     const hasTransactions = db.events.some(e =>
       e.member === memberId || e.fromMember === memberId || e.toMember === memberId ||
-      e.gpMember === memberId || e.performanceFee?.gpMember === memberId
+      getEventGpMemberId(e) === memberId
     ) || readSettlements().records.some(record =>
       record.gpMember === memberId || record.lpMembers?.includes(memberId)
     );

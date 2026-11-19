@@ -8,11 +8,10 @@ const { calculateStateFromDb } = require('../lib/calculator');
     events: [{ id: 'd', type: 'deposit', member: '123456', amount: 100,
       cnhAmount: 700, date: '2025-01-01' }]
   };
-  let migrated = false;
   let db = clone(original), ledger = { version: 1, records: [] }, writes = 0, fail = false;
   const api = makeApi(undefined, db, {
-    readBaseDb: () => { assert(migrated, 'base snapshot must follow legacy migration'); return clone(db); },
-    readDb: () => { migrated = true; return clone(db); }, readSettlements: () => clone(ledger),
+    readCoreDb: () => clone(db),
+    readDb: () => clone(db), readSettlements: () => clone(ledger),
     normalizeMemberName: value => { if (typeof value !== 'string' || !value.trim()) throw new Error('姓名无效'); return value.trim(); },
     writeSnapshot: (next, config, settlements) => {
       if (fail) throw new Error('disk unavailable');
@@ -41,9 +40,9 @@ const { calculateStateFromDb } = require('../lib/calculator');
   assert.strictEqual(db.performanceFee.gpMemberId, '456789');
   assert.deepStrictEqual(calculateStateFromDb(db).summary, calculateStateFromDb(original).summary);
   assert.strictEqual((await save([
-    { id: '345678', name: 'B2', memberId: '456789' },
-    { id: '456789', name: 'A2', memberId: '345678' }
-  ])).body.success, true, 'names and IDs can swap in a single atomic update');
+    { id: '345678', name: 'B2', newId: '456789' },
+    { id: '456789', name: 'A2', newId: '345678' }
+  ])).body.success, true, 'names and IDs can swap in a single atomic update using newId');
   const before = clone(db);
   assert.strictEqual((await save([
     { id: '456789', name: 'A3', memberId: '567890' },

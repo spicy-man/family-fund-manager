@@ -1,4 +1,6 @@
 const { InputError, handleApiError } = require('../lib/api-errors');
+const { TICKER_PATTERN } = require('../lib/custom-benchmark');
+const { getEasternParts, previousWeekday } = require('../lib/date-utils');
 
 function registerTickerRoutes(app, deps) {
   const { readConfig, writeConfig, readTickerCache, writeTickerCache,
@@ -30,26 +32,12 @@ function selectTickerData(cache, config, includeMissing = false) {
 }
 
 function getEasternMarketDay(now) {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/New_York',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    weekday: 'short', hour: '2-digit', hour12: false
-  }).formatToParts(now);
-  const values = {};
-  parts.forEach(part => { values[part.type] = part.value; });
+  const values = getEasternParts(now, { includeTime: true, includeWeekday: true });
   return {
     date: `${values.year}-${values.month}-${values.day}`,
     weekday: values.weekday,
     hour: Number(values.hour)
   };
-}
-
-function previousWeekday(date) {
-  const cursor = new Date(`${date}T12:00:00Z`);
-  do {
-    cursor.setUTCDate(cursor.getUTCDate() - 1);
-  } while (cursor.getUTCDay() === 0 || cursor.getUTCDay() === 6);
-  return cursor.toISOString().slice(0, 10);
 }
 
 function getTickerRefreshPolicy(now) {
@@ -212,9 +200,9 @@ app.post('/api/settings/tickers', (req, res, next) => {
         throw new InputError('标的代码不能为空');
       }
       const cleanTicker = e.ticker.trim().toUpperCase();
-      // [Fix #1] 白名单校验：仅允许股票代码合法字符（字母、数字、连字符、点、脱字符），长度 1-20
-      if (!/^[\^A-Z0-9.\-]{1,20}$/.test(cleanTicker)) {
-        throw new InputError(`标的代码格式非法（只允许字母、数字、.-^符号）: ${cleanTicker}`);
+      // [Fix #1] 白名单校验：仅允许标的代码合法字符（字母、数字、连字符、点、脱字符、等号），长度 1-20
+      if (!TICKER_PATTERN.test(cleanTicker)) {
+        throw new InputError(`标的代码格式非法（只允许字母、数字、.-^=符号）: ${cleanTicker}`);
       }
       return {
         ticker: cleanTicker

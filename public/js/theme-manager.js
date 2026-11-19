@@ -3,6 +3,7 @@
     let current = 'light';
 
     function isDark() {
+      if (window.FundUiUtils?.isDarkTheme) return window.FundUiUtils.isDarkTheme(current);
       return current === 'dark' || (
         current === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches
       );

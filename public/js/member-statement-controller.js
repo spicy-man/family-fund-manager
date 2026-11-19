@@ -14,9 +14,7 @@
       let report = null;
       let oldTitle = null;
       let methodWasOpen = null;
-      const todayDate = () => new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit'
-      }).formatToParts(new Date()).filter(part => part.type === 'year' || part.type === 'month' || part.type === 'day').map(part => part.value).join('-');
+      const todayDate = () => window.FundDateTime.getLedgerBeijingDate();
 
       function render() {
         report = null;
@@ -39,7 +37,7 @@
           const highWaterLots = (label, snapshot, lots) => lots?.length
             ? lots.map((lot, index) => '<tr><td>' + label + '</td><td>' + (index + 1) + '</td><td>' + escape(lot.startDate) + ' · ' + lotSource(lot.sourceType) + '</td><td>' + lot.shares.toFixed(4) + '</td><td>' + lot.highWaterNav.toFixed(4) + '</td><td>' + money(lot.basis) + '</td>' + (r.ongoing ? '<td>' + (r.potentialFee?.lots[index] ? money(r.potentialFee.lots[index].currentValue) : '—') + '</td><td>' + (r.potentialFee?.lots[index] ? money(r.potentialFee.lots[index].hurdle) : '—') + '</td><td>' + (r.potentialFee?.lots[index] ? money(r.potentialFee.lots[index].fee) : '—') + '</td>' : '') + '</tr>').join('')
             : '<tr><td>' + label + '</td><td colspan="' + (r.ongoing ? 8 : 5) + '">' + (snapshot ? '批次数据暂不可用，请重启服务并刷新。' : '无 LP 持仓') + '</td></tr>';
-          const rateLabel = value => (value * 100).toFixed(2).replace(/\.00$/, '') + '%';
+          const rateLabel = value => (ui.formatRatePercent || window.FundUiUtils.formatRatePercent)(value);
           const tone = value => value > 0 ? 'statement-positive' : value < 0 ? 'statement-negative' : '';
           status.textContent = '';
           const movements = [

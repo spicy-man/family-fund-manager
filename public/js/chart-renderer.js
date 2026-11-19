@@ -1,266 +1,31 @@
 /**
  * 图表与趋势统计渲染器。Chart.js 实例由调用方持有，避免模块私有状态。
+ * 自定义 Chart.js 插件已抽离至 `public/js/chart-plugins.js` (`window.FundChartPlugins`)，
+ * 此处保留同名属性引用以兼容现有调用方与测试。
  */
+const chartPlugins = window.FundChartPlugins || {};
+
 window.FundChartRenderer = {
-  operationTypes: {
-    deposit: { symbol: '↑', label: '入金', color: '#23845a' },
-    withdraw: { symbol: '↓', label: '出金', color: '#c45b60' },
-    transfer: { symbol: '⇄', label: '内部转让', color: '#62738b' },
-    performance_settlement: { symbol: '◆', label: '业绩结算', color: '#a67b36' }
-  },
+  operationTypes: chartPlugins.operationTypes,
+  groupOperations: chartPlugins.groupOperations,
+  clusterOperations: chartPlugins.clusterOperations,
+  operationTrackPlugin: chartPlugins.operationTrackPlugin,
+  allocationLabelsPlugin: chartPlugins.allocationLabelsPlugin,
+  datasetOpacityPlugin: chartPlugins.datasetOpacityPlugin,
 
-  groupOperations(history, events = []) {
-    const byId = new Map(events.map(event => [event.id, event]));
-    const days = new Map();
-    history.forEach((point, index) => {
-      // Match the operation point on the curve, not a later same-day valuation.
-      if (!this.operationTypes[point.type]) return;
-      let day = days.get(point.date);
-      if (!day) {
-        day = { date: point.date, index, events: [] };
-        days.set(point.date, day);
-      }
-      day.index = index;
-      day.events.push(byId.get(point.eventId) || point);
-    });
-    return [...days.values()];
-  },
-
-  clusterOperations(days, scale, gap = 30) {
-    const clusters = [];
-    days.forEach(day => {
-      const x = scale.getPixelForValue(day.index);
-      const last = clusters.at(-1);
-      if (last && x - last.firstX < gap) {
-        last.days.push(day);
-        last.lastX = x;
-        // Anchor merged markers to the first date so neighbouring groups stay separated.
-      } else {
-        clusters.push({ x, firstX: x, lastX: x, days: [day] });
-      }
-    });
-    return clusters;
-  },
-
-  operationTrackPlugin: {
-    id: 'operationTrack',
-    afterDestroy(chart) {
-      clearTimeout(chart.$operationHideTimer);
-      const container = chart.canvas?.parentElement;
-      container?.querySelector('.chart-operation-track')?.remove();
-      container?.querySelector('.chart-operation-tooltip')?.remove();
-    },
-    afterDraw(chart) {
-      const model = chart.$operationTrack;
-      const container = chart.canvas.parentElement;
-      if (!model || !container || !chart.chartArea || !chart.scales.x) return;
-      let track = container.querySelector('.chart-operation-track');
-      if (!track) {
-        track = document.createElement('div');
-        track.className = 'chart-operation-track';
-        track.setAttribute('role', 'group');
-        track.setAttribute('aria-label', '图表操作轨道');
-        container.appendChild(track);
-      }
-      const clusters = window.FundChartRenderer.clusterOperations(model.days, chart.scales.x);
-      const y = chart.chartArea.bottom + 12;
-      const key = JSON.stringify([model.version, chart.width, y, clusters.map(group => group.x)]);
-      if (track.dataset.layout !== key) {
-        track.dataset.layout = key;
-        track.replaceChildren();
-        chart.$activeOperation = null;
-        track.style.top = `${y}px`;
-        track.style.left = `${chart.chartArea.left}px`;
-        track.style.width = `${chart.chartArea.right - chart.chartArea.left}px`;
-        clusters.forEach(group => {
-          const events = group.days.flatMap(day => day.events);
-          const type = window.FundChartRenderer.operationTypes[events[0].type];
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.className = 'chart-operation-marker';
-          button.style.left = `${group.x - chart.chartArea.left}px`;
-          button.style.setProperty('--operation-color', events.length > 1 ? '#858b95' : type.color);
-          button.textContent = events.length > 1 ? String(events.length) : type.symbol;
-          const dates = group.days.map(day => day.date);
-          button.setAttribute('aria-label', `${dates.join('、')}，${events.length} 笔操作：${[...new Set(events.map(event => window.FundChartRenderer.operationTypes[event.type].label))].join('、')}`);
-          const show = () => {
-            clearTimeout(chart.$operationHideTimer);
-            chart.$activeOperation = group;
-            const existing = container.querySelector('.chart-external-tooltip');
-            if (existing) existing.style.opacity = '0';
-            let tooltip = container.querySelector('.chart-operation-tooltip');
-            if (!tooltip) {
-              tooltip = document.createElement('div');
-              tooltip.className = 'glass-tooltip chart-operation-tooltip';
-              tooltip.setAttribute('role', 'tooltip');
-              tooltip.addEventListener('mouseenter', () => clearTimeout(chart.$operationHideTimer));
-              tooltip.addEventListener('mouseleave', () => {
-                if (chart.$pinnedOperation) return;
-                chart.$activeOperation = null; tooltip.hidden = true;
-                chart.$operationTrack.renderStats(); chart.draw();
-              });
-              container.appendChild(tooltip);
-            }
-            tooltip.replaceChildren();
-            group.days.forEach(day => {
-              const title = document.createElement('div');
-              title.className = 'chart-external-tooltip-title';
-              title.textContent = `${day.date} · ${day.events.length} 笔操作`;
-              tooltip.appendChild(title);
-              day.events.forEach(event => {
-                const row = document.createElement('div');
-                row.className = 'chart-operation-detail privacy-sensitive';
-                row.textContent = chart.$operationTrack.describe(event);
-                tooltip.appendChild(row);
-              });
-            });
-            tooltip.hidden = false;
-            const position = window.FundChartRenderer.calculateTooltipPosition({
-              caretX: group.x, caretY: y,
-              tooltipWidth: tooltip.offsetWidth, tooltipHeight: tooltip.offsetHeight,
-              containerWidth: container.clientWidth, containerHeight: container.clientHeight, inset: 12
-            });
-            tooltip.style.left = `${position.left}px`;
-            // Keep the entire card above the marker, even beyond the chart bounds.
-            tooltip.style.top = `${y - tooltip.offsetHeight - 16}px`;
-            chart.$operationTrack.renderStats(group.days.at(-1).index);
-            chart.draw();
-          };
-          const hide = () => {
-            if (chart.$pinnedOperation === group) return;
-            chart.$activeOperation = null;
-            const tooltip = container.querySelector('.chart-operation-tooltip');
-            if (tooltip) tooltip.hidden = true;
-            chart.$operationTrack.renderStats();
-            chart.draw();
-          };
-          button.addEventListener('mouseenter', show);
-          button.addEventListener('mouseleave', () => { chart.$operationHideTimer = setTimeout(hide, 150); });
-          button.addEventListener('focus', show);
-          button.addEventListener('blur', () => { chart.$pinnedOperation = null; hide(); });
-          button.addEventListener('click', () => {
-            if (chart.$pinnedOperation === group) { chart.$pinnedOperation = null; hide(); }
-            else { chart.$pinnedOperation = group; show(); }
-          });
-          button.addEventListener('keydown', event => {
-            if (event.key === 'Escape') { chart.$pinnedOperation = null; hide(); }
-          });
-          track.appendChild(button);
-        });
-        chart.$pinnedOperation = null;
-        const tooltip = container.querySelector('.chart-operation-tooltip');
-        if (tooltip) tooltip.hidden = true;
-      }
-      const toggle = document.getElementById('chk-chart-operations');
-      track.hidden = toggle ? !toggle.checked : false;
-      if (track.hidden) {
-        chart.$activeOperation = null;
-        chart.$pinnedOperation = null;
-        const tooltip = container.querySelector('.chart-operation-tooltip');
-        if (tooltip) tooltip.hidden = true;
-      }
-      if (chart.$activeOperation) {
-        const { ctx, chartArea } = chart;
-        ctx.save();
-        ctx.strokeStyle = chart.$operationTrack.dark ? 'rgba(203,213,225,.55)' : 'rgba(98,115,139,.55)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        chart.$activeOperation.days.forEach(day => {
-          const x = chart.scales.x.getPixelForValue(day.index);
-          ctx.beginPath(); ctx.moveTo(x, chartArea.top); ctx.lineTo(x, chartArea.bottom); ctx.stroke();
-        });
-        ctx.restore();
-      }
-    }
-  },
-
-  allocationLabelsPlugin: {
-    id: 'allocationLabels',
-    beforeLayout(chart) {
-      // Keep the legend out of the leader labels' way on narrow panels.
-      const position = chart.width < 560 ? 'bottom' : 'right';
-      chart.options.plugins.legend.position = position;
-      if (chart.legend) {
-        // Chart.js caches the legend's options separately during beforeUpdate.
-        // Keep its orientation and layout box in sync on the first resize.
-        chart.legend.options.position = position;
-        chart.legend.position = position;
-      }
-    },
-    afterDatasetsDraw(chart, _args, options) {
-      if (options.empty) return;
-      const values = chart.data.datasets[0].data;
-      const total = values.reduce((sum, value) => sum + Number(value), 0);
-      if (!(total > 0)) return;
-      const { ctx, chartArea } = chart;
-      const sides = [[], []];
-      chart.getDatasetMeta(0).data.forEach((arc, index) => {
-        if (!(values[index] > 0) || !chart.getDataVisibility(index)) return;
-        const { x, y, startAngle, endAngle, outerRadius } = arc.getProps(
-          ['x', 'y', 'startAngle', 'endAngle', 'outerRadius'], true
-        );
-        if (!(outerRadius > 0)) return;
-        const angle = (startAngle + endAngle) / 2;
-        const direction = Math.cos(angle) >= 0 ? 1 : -1;
-        sides[direction === 1 ? 1 : 0].push({
-          x: x + Math.cos(angle) * outerRadius,
-          y: y + Math.sin(angle) * outerRadius,
-          elbowX: x + direction * (outerRadius + 12),
-          labelY: y + Math.sin(angle) * (outerRadius + 14),
-          direction,
-          text: `${(values[index] / total * 100).toFixed(2)}%`
-        });
-      });
-      ctx.save();
-      ctx.font = '600 12px Inter, sans-serif';
-      ctx.fillStyle = chart.options.plugins.legend.labels.color;
-      ctx.strokeStyle = ctx.fillStyle;
-      ctx.lineWidth = 1;
-      ctx.textBaseline = 'middle';
-      const top = chartArea.top + 6;
-      const bottom = chartArea.bottom - 6;
-      sides.forEach(labels => {
-        labels.sort((a, b) => a.labelY - b.labelY);
-        const gap = Math.min(20, (bottom - top) / Math.max(1, labels.length - 1));
-        // Separate nearby small slices, then pull the group back inside the canvas.
-        labels.forEach((label, index) => {
-          label.labelY = Math.max(top, label.labelY, index ? labels[index - 1].labelY + gap : top);
-        });
-        for (let index = labels.length - 1; index >= 0; index--) {
-          labels[index].labelY = Math.min(labels[index].labelY,
-            index === labels.length - 1 ? bottom : labels[index + 1].labelY - gap);
-        }
-        labels.forEach(label => {
-          const textWidth = ctx.measureText(label.text).width;
-          const rightEdge = chart.legend?.position === 'right' ? chart.legend.left - 8 : chart.width - 8;
-          const endX = label.direction === 1
-            ? Math.min(label.elbowX + 14, rightEdge - textWidth - 4)
-            : Math.max(label.elbowX - 14, textWidth + 12);
-          ctx.beginPath();
-          ctx.moveTo(label.x, label.y);
-          ctx.lineTo(label.elbowX, label.labelY);
-          ctx.lineTo(endX, label.labelY);
-          ctx.stroke();
-          ctx.textAlign = label.direction === 1 ? 'left' : 'right';
-          ctx.fillText(label.text, endX + label.direction * 4, label.labelY);
-        });
-      });
-      ctx.restore();
-    }
-  },
-
-  datasetOpacityPlugin: {
-    id: 'trendDatasetOpacity',
-    beforeDatasetDraw(chart, args) {
-      const opacity = chart.data.datasets[args.index]?.$visibilityOpacity;
-      if (!Number.isFinite(opacity)) return;
-      chart.ctx.save();
-      chart.ctx.globalAlpha *= opacity;
-    },
-    afterDatasetDraw(chart, args) {
-      const opacity = chart.data.datasets[args.index]?.$visibilityOpacity;
-      if (Number.isFinite(opacity)) chart.ctx.restore();
-    }
+  getChartThemePalette(dark, seriesColors, hexToRgba) {
+    return {
+      dark,
+      labelColor: dark ? 'rgba(255, 255, 255, 0.7)' : 'rgba(31, 41, 55, 0.7)',
+      tickColor: dark ? 'rgba(255, 255, 255, 0.46)' : 'rgba(42, 61, 82, 0.52)',
+      gridColor: dark ? 'rgba(255, 255, 255, 0.055)' : 'rgba(42, 61, 82, 0.075)',
+      chartBgColor: dark ? '#0f111a' : '#ffffff',
+      navFillAlpha: dark ? 0.36 : 0.30,
+      navTickColor: hexToRgba(seriesColors.nav, 0.72),
+      navTitleColor: hexToRgba(seriesColors.nav, 0.9),
+      assetsTickColor: hexToRgba(seriesColors.assets, 0.72),
+      assetsTitleColor: hexToRgba(seriesColors.assets, 0.9)
+    };
   },
 
   animateDatasetVisibility(chart, datasetIndex, visible, options = {}) {
@@ -359,15 +124,19 @@ window.FundChartRenderer = {
 
   calculateTrendCutoff(activeTimeSlice, now = new Date()) {
     if (!activeTimeSlice || activeTimeSlice === 'ALL') return undefined;
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/New_York',
-      year: 'numeric', month: '2-digit', day: '2-digit'
-    }).formatToParts(now);
-    const values = {};
-    parts.forEach(part => { values[part.type] = part.value; });
-    const easternDate = new Date(Date.UTC(
-      Number(values.year), Number(values.month) - 1, Number(values.day)
-    ));
+    const easternDateStr = window.FundDateTime?.getMarketEasternDate
+      ? window.FundDateTime.getMarketEasternDate(now)
+      : (() => {
+        const parts = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'America/New_York',
+          year: 'numeric', month: '2-digit', day: '2-digit'
+        }).formatToParts(now);
+        const values = {};
+        parts.forEach(part => { values[part.type] = part.value; });
+        return `${values.year}-${values.month}-${values.day}`;
+      })();
+    const [year, month, day] = easternDateStr.split('-').map(Number);
+    const easternDate = new Date(Date.UTC(year, month - 1, day));
     const shiftCalendarDate = (years, months) => {
       const targetMonth = new Date(Date.UTC(
         easternDate.getUTCFullYear() + years,
@@ -396,124 +165,75 @@ window.FundChartRenderer = {
     return offsets[activeTimeSlice]?.().toISOString().slice(0, 10);
   },
 
-  updateTheme({ theme, navTrendChart, memberAllocationChart, currentFilteredHistory, membersList, ui }) {
+  applyChartTheme({ dark, navTrendChart, memberAllocationChart, membersList, ui }) {
     const { getMemberAvatarColor, createChartGradient, getSeriesColors, hexToRgba } = ui;
-    let isDarkTheme = false;
-    if (theme === 'dark') {
-      isDarkTheme = true;
-    } else if (theme === 'light') {
-      isDarkTheme = false;
-    } else {
-      // system
-      isDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-
-    // 设置在不同主题下图表的文字与线条颜色
-    const labelColor = isDarkTheme ? 'rgba(255, 255, 255, 0.7)' : 'rgba(31, 41, 55, 0.7)';
-    const axisColor = isDarkTheme ? 'rgba(255, 255, 255, 0.4)' : 'rgba(31, 41, 55, 0.6)';
-    const gridColor = isDarkTheme ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)';
-    const chartBgColor = isDarkTheme ? '#0f111a' : '#ffffff';
+    const seriesColors = getSeriesColors();
+    const palette = this.getChartThemePalette(dark, seriesColors, hexToRgba);
 
     if (navTrendChart) {
-      if (navTrendChart.$operationTrack) navTrendChart.$operationTrack.dark = isDarkTheme;
-      navTrendChart.options.plugins.legend.labels.color = labelColor;
-      navTrendChart.options.scales.x.grid.color = gridColor;
-      navTrendChart.options.scales.x.ticks.color = axisColor;
-      navTrendChart.options.scales['y-nav'].grid.color = gridColor;
-    const seriesColors = getSeriesColors();
-    navTrendChart.options.scales['y-nav'].ticks.color = hexToRgba(seriesColors.nav, 0.7);
-    navTrendChart.options.scales['y-nav'].title.color = hexToRgba(seriesColors.nav, 0.7);
-    navTrendChart.options.scales['y-assets'].ticks.color = hexToRgba(seriesColors.assets, 0.7);
-    navTrendChart.options.scales['y-assets'].title.color = hexToRgba(seriesColors.assets, 0.7);
+      if (navTrendChart.$operationTrack) navTrendChart.$operationTrack.dark = dark;
+      navTrendChart.options.plugins.legend.labels.color = palette.labelColor;
+      navTrendChart.options.scales.x.grid.color = palette.gridColor;
+      navTrendChart.options.scales.x.ticks.color = palette.tickColor;
+      navTrendChart.options.scales['y-nav'].grid.color = palette.gridColor;
+      navTrendChart.options.scales['y-nav'].ticks.color = palette.navTickColor;
+      navTrendChart.options.scales['y-nav'].title.color = palette.navTitleColor;
+      navTrendChart.options.scales['y-assets'].ticks.color = palette.assetsTickColor;
+      navTrendChart.options.scales['y-assets'].title.color = palette.assetsTitleColor;
 
-      // 动态调整明暗主题下四条曲线的色值，彻底解决浅色模式下的低对比度问题
-      const semanticStyles = getComputedStyle(document.body);
-      const colors = {
-        ...seriesColors,
-        deposit: semanticStyles.getPropertyValue('--color-positive').trim(),
-        withdraw: semanticStyles.getPropertyValue('--color-negative').trim(),
-        transfer: seriesColors.nav
-      };
-
-      const getPointColorsList = (historyList, defaultColor) => {
-        if (!historyList || historyList.length === 0) {
-          return [defaultColor];
+      const seriesKeys = ['assets', 'nav', 'sp500', 'ndx', 'custom', 'custom2'];
+      seriesKeys.forEach((key, index) => {
+        const dataset = navTrendChart.data.datasets[index];
+        const color = seriesColors[key];
+        if (!dataset || !color) return;
+        dataset.borderColor = color;
+        dataset.pointHoverBackgroundColor = color;
+        if (index === 1) {
+          const ctxNav = document.getElementById('navTrendChart').getContext('2d');
+          dataset.backgroundColor = createChartGradient(
+            ctxNav,
+            hexToRgba(color, palette.navFillAlpha),
+            hexToRgba(color, 0)
+          );
+          dataset.$setVisibilityOpacity = function setVisibilityOpacity(opacity) {
+            this.backgroundColor = createChartGradient(
+              ctxNav,
+              hexToRgba(color, palette.navFillAlpha * opacity),
+              hexToRgba(color, 0)
+            );
+          };
         }
-        return historyList.map(h => {
-          if (h.type === 'deposit') return colors.deposit;
-          if (h.type === 'withdraw') return colors.withdraw;
-          if (h.type === 'transfer') return colors.transfer;
-          return defaultColor;
-        });
-      };
-
-      if (navTrendChart.data.datasets[0]) {
-        navTrendChart.data.datasets[0].borderColor = colors.assets;
-        const ptColors = getPointColorsList(currentFilteredHistory, colors.assets);
-        navTrendChart.data.datasets[0].pointBackgroundColor = ptColors;
-        navTrendChart.data.datasets[0].pointBorderColor = ptColors;
-        navTrendChart.data.datasets[0].pointHoverBackgroundColor = ptColors;
-        navTrendChart.data.datasets[0].pointHoverBorderColor = ptColors;
-      }
-      if (navTrendChart.data.datasets[1]) {
-        navTrendChart.data.datasets[1].borderColor = colors.nav;
-        navTrendChart.data.datasets[1].pointBackgroundColor = colors.nav;
-        navTrendChart.data.datasets[1].pointBorderColor = 'transparent';
-        navTrendChart.data.datasets[1].pointHoverBackgroundColor = colors.nav;
-        navTrendChart.data.datasets[1].pointHoverBorderColor = 'transparent';
-        const ctxNav = document.getElementById('navTrendChart').getContext('2d');
-        navTrendChart.data.datasets[1].backgroundColor = createChartGradient(ctxNav, hexToRgba(colors.nav, isDarkTheme ? 0.30 : 0.25), hexToRgba(colors.nav, 0));
-      }
-      if (navTrendChart.data.datasets[2]) {
-        navTrendChart.data.datasets[2].borderColor = colors.sp500;
-        navTrendChart.data.datasets[2].pointBackgroundColor = colors.sp500;
-        navTrendChart.data.datasets[2].pointBorderColor = colors.sp500;
-        navTrendChart.data.datasets[2].pointHoverBackgroundColor = colors.sp500;
-        navTrendChart.data.datasets[2].pointHoverBorderColor = colors.sp500;
-      }
-      if (navTrendChart.data.datasets[3]) {
-        navTrendChart.data.datasets[3].borderColor = colors.ndx;
-        navTrendChart.data.datasets[3].pointBackgroundColor = colors.ndx;
-        navTrendChart.data.datasets[3].pointBorderColor = colors.ndx;
-        navTrendChart.data.datasets[3].pointHoverBackgroundColor = colors.ndx;
-        navTrendChart.data.datasets[3].pointHoverBorderColor = colors.ndx;
-      }
-      if (navTrendChart.data.datasets[4]) {
-        navTrendChart.data.datasets[4].borderColor = colors.custom;
-        navTrendChart.data.datasets[4].pointBackgroundColor = colors.custom;
-        navTrendChart.data.datasets[4].pointBorderColor = colors.custom;
-        navTrendChart.data.datasets[4].pointHoverBackgroundColor = colors.custom;
-        navTrendChart.data.datasets[4].pointHoverBorderColor = colors.custom;
-      }
-      if (navTrendChart.data.datasets[5]) {
-        navTrendChart.data.datasets[5].borderColor = colors.custom2;
-        navTrendChart.data.datasets[5].pointBackgroundColor = colors.custom2;
-        navTrendChart.data.datasets[5].pointBorderColor = colors.custom2;
-        navTrendChart.data.datasets[5].pointHoverBackgroundColor = colors.custom2;
-        navTrendChart.data.datasets[5].pointHoverBorderColor = colors.custom2;
-      }
+      });
 
       navTrendChart.update();
     }
 
     if (memberAllocationChart) {
-      memberAllocationChart.options.plugins.legend.labels.color = labelColor;
-      memberAllocationChart.data.datasets[0].borderColor = chartBgColor;
+      memberAllocationChart.options.plugins.legend.labels.color = palette.labelColor;
+      memberAllocationChart.data.datasets[0].borderColor = palette.chartBgColor;
 
       // 扇区颜色始终与对应成员头像的底色一致。
       if (memberAllocationChart.data.datasets[0].backgroundColor && memberAllocationChart.data.datasets[0].backgroundColor.length > 0) {
         const firstColor = memberAllocationChart.data.datasets[0].backgroundColor[0];
         if (firstColor && !firstColor.startsWith('rgba(')) {
-          const newColors = membersList.map((member, idx) => getMemberAvatarColor(member.id || member.name, isDarkTheme, idx).background);
+          const newColors = membersList.map((member, idx) => getMemberAvatarColor(member.id || member.name, dark, idx).background);
           memberAllocationChart.data.datasets[0].backgroundColor = newColors;
         } else {
-          const zeroColor = isDarkTheme ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+          const zeroColor = dark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
           memberAllocationChart.data.datasets[0].backgroundColor = memberAllocationChart.data.labels.map(() => zeroColor);
         }
       }
 
       memberAllocationChart.update();
     }
+  },
+
+  updateTheme({ theme, navTrendChart, memberAllocationChart, membersList, ui }) {
+    const resolveDark = ui.isDarkTheme || window.FundUiUtils?.isDarkTheme;
+    const dark = resolveDark
+      ? resolveDark(theme)
+      : (theme === 'dark' || (theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches));
+    this.applyChartTheme({ dark, navTrendChart, memberAllocationChart, membersList, ui });
   },
 
   render({ state, members, settings, charts, elements, ui }) {
@@ -580,9 +300,9 @@ window.FundChartRenderer = {
     const custom2 = benchmarkSeries('custom2NAV', 'custom2NAV', 'custom2PriceDate');
     const customName = state.settings?.customBenchmark?.name || '自定义标的';
     const customName2 = state.settings?.customBenchmark2?.name || '自定义标的 2';
-    const escapeLabel = value => String(value).replace(/[&<>"']/g, character => ({
+    const escapeLabel = ui.escapeHtml || window.FundUiUtils?.escapeHtml || (value => String(value).replace(/[&<>"']/g, character => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    })[character]);
+    })[character]));
     const safeCustomName = escapeLabel(customName);
     const safeCustomName2 = escapeLabel(customName2);
 
@@ -631,11 +351,12 @@ window.FundChartRenderer = {
     renderStats();
 
     const dark = isDarkTheme(settings.theme);
+    const palette = this.getChartThemePalette(dark, seriesColors, hexToRgba);
     const navCanvas = document.getElementById('navTrendChart');
     const navCtx = navCanvas.getContext('2d');
 
     // 动态生成高通透度 Apple 风格多阶渐变
-    const navGradient = createChartGradient(navCtx, hexToRgba(seriesColors.nav, dark ? 0.36 : 0.30), hexToRgba(seriesColors.nav, 0));
+    const navGradient = createChartGradient(navCtx, hexToRgba(seriesColors.nav, palette.navFillAlpha), hexToRgba(seriesColors.nav, 0));
 
     const datasets = [
       {
@@ -735,11 +456,10 @@ window.FundChartRenderer = {
         hidden: !customCheckbox2.checked
       }
     ];
-    const navFillAlpha = dark ? 0.36 : 0.30;
     datasets[1].$setVisibilityOpacity = function setVisibilityOpacity(opacity) {
       this.backgroundColor = createChartGradient(
         navCtx,
-        hexToRgba(seriesColors.nav, navFillAlpha * opacity),
+        hexToRgba(seriesColors.nav, palette.navFillAlpha * opacity),
         hexToRgba(seriesColors.nav, 0)
       );
     };
@@ -775,8 +495,7 @@ window.FundChartRenderer = {
       bodyFont: { size: 11, weight: '500', family: 'Inter, sans-serif' }
     };
 
-    const gridColor = dark ? 'rgba(255, 255, 255, 0.055)' : 'rgba(42, 61, 82, 0.075)';
-    const tickColor = dark ? 'rgba(255, 255, 255, 0.46)' : 'rgba(42, 61, 82, 0.52)';
+    const { gridColor, tickColor } = palette;
     const formatTrendAxisDate = function formatTrendAxisDate(value) {
       const label = this.getLabelForValue?.(value) || '';
       const parts = String(label).split('-').map(Number);
@@ -864,13 +583,14 @@ window.FundChartRenderer = {
       nextNav.data.labels = labels;
       nextNav.data.datasets.forEach((dataset, index) => { Object.assign(dataset, datasets[index]); });
       nextNav.options.scales['y-assets'].display = chkCompAssets.checked;
+      nextNav.options.plugins.legend.labels.color = palette.labelColor;
       nextNav.options.scales.x.grid.color = gridColor;
       nextNav.options.scales.x.ticks.color = tickColor;
       nextNav.options.scales['y-nav'].grid.color = gridColor;
-      nextNav.options.scales['y-nav'].ticks.color = hexToRgba(seriesColors.nav, 0.8);
-      nextNav.options.scales['y-nav'].title.color = hexToRgba(seriesColors.nav, 0.9);
-      nextNav.options.scales['y-assets'].ticks.color = hexToRgba(seriesColors.assets, 0.8);
-      nextNav.options.scales['y-assets'].title.color = hexToRgba(seriesColors.assets, 0.9);
+      nextNav.options.scales['y-nav'].ticks.color = palette.navTickColor;
+      nextNav.options.scales['y-nav'].title.color = palette.navTitleColor;
+      nextNav.options.scales['y-assets'].ticks.color = palette.assetsTickColor;
+      nextNav.options.scales['y-assets'].title.color = palette.assetsTitleColor;
       nextNav.options.plugins.legend.labels.generateLabels = generateTrendLegendLabels;
       nextNav.options.animation = chartAnimation;
       Object.assign(nextNav.options.plugins.tooltip, tooltipTheme);
@@ -892,7 +612,7 @@ window.FundChartRenderer = {
             legend: {
               display: false,
               labels: {
-                color: dark ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.7)',
+                color: palette.labelColor,
                 font: { size: 11, weight: '600', family: 'Inter, sans-serif' },
                 usePointStyle: true,
                 boxWidth: 8,
@@ -1024,7 +744,8 @@ window.FundChartRenderer = {
     let nextAllocation = memberAllocationChart;
     if (nextAllocation) {
       Object.assign(nextAllocation.data, { labels: members.map(member => member.name) });
-      Object.assign(nextAllocation.data.datasets[0], { data: empty ? members.map(() => 1) : values, backgroundColor: colors });
+      Object.assign(nextAllocation.data.datasets[0], { data: empty ? members.map(() => 1) : values, backgroundColor: colors, borderColor: palette.chartBgColor });
+      nextAllocation.options.plugins.legend.labels.color = palette.labelColor;
       Object.assign(nextAllocation.options.plugins.tooltip, tooltipTheme, { enabled: false, external: externalTooltip });
       nextAllocation.options.plugins.allocationLabels = { empty };
       nextAllocation.options.animation = false;
@@ -1035,14 +756,14 @@ window.FundChartRenderer = {
         plugins: [window.FundChartRenderer.allocationLabelsPlugin],
         data: {
           labels: members.map(member => member.name),
-          datasets: [{ data: empty ? members.map(() => 1) : values, backgroundColor: colors, borderWidth: 3, hoverOffset: 10 }]
+          datasets: [{ data: empty ? members.map(() => 1) : values, backgroundColor: colors, borderColor: palette.chartBgColor, borderWidth: 3, hoverOffset: 10 }]
         },
         options: {
           responsive: true, maintainAspectRatio: false, animation: false, cutout: '70%',
           layout: { padding: { left: 64, right: 64, top: 18, bottom: 18 } },
           plugins: {
             allocationLabels: { empty },
-            legend: { position: 'right', labels: { color: dark ? 'rgba(255,255,255,.7)' : 'rgba(31,41,55,.7)', font: { size: 11, weight: '500' } } },
+            legend: { position: 'right', labels: { color: palette.labelColor, font: { size: 11, weight: '500' } } },
             tooltip: { ...tooltipTheme, enabled: false, external: externalTooltip }
           }
         }

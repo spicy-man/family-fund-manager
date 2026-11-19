@@ -262,7 +262,7 @@
       try {
         if (changes.length) {
           const result = await api.updateMembers(changes.map(change => ({
-            id: change.id, name: change.name, memberId: change.newId
+            id: change.id, name: change.name, newId: change.newId
           })));
           if (Array.isArray(result?.data)) setMembers?.(result.data);
         }

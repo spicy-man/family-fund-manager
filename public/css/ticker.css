@@ -1,13 +1,11 @@
-/* --- 美股标的 Ticker Panel ATH 顶栏与卡片样式 --- */
+/* --- 美股标的 Ticker Panel ATH 卡片样式 --- */
 .ticker-ath-bar {
-  position: fixed;
-  top: 500px;
-  right: var(--fixed-panel-gutter);
-  bottom: var(--fixed-panel-top);
-  width: var(--fixed-panel-width);
-  z-index: 41;
+  position: relative;
   display: flex;
   flex-direction: column;
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: auto;
   overflow: hidden;
   padding: 16px !important;
 }
@@ -113,10 +111,6 @@
   white-space: pre-line;
 }
 
-.ticker-ath-bar {
-  position: relative;
-}
-
 body.theme-dark .glass-tooltip {
   --glass-tooltip-border: rgba(255, 255, 255, 0.16);
   --glass-tooltip-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
@@ -129,19 +123,9 @@ body.theme-dark .glass-tooltip {
   }
 }
 
-/* Once mounted inside .layout-right, both right-hand panels share the page gutter. */
+/* Both right-hand panels live inside .layout-right and share the page gutter. */
 .layout-right .operations-panel {
   flex: 0 0 auto;
-}
-
-.layout-right .ticker-ath-bar {
-  position: static;
-  right: auto !important;
-  bottom: auto;
-  width: 100%;
-  min-height: auto;
-  flex: 0 0 auto;
-  z-index: auto;
 }
 
 
