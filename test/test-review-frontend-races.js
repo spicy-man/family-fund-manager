@@ -36,7 +36,7 @@ async function dataRace() {
   const members = [], states = [], errors = [], rendered = []; const noop = () => {};
   const context = { window: { FundMemberRenderer: { sortByFirstRecord: list => list }, FundCustomBenchmark: { sync: noop } },
     Api: { getMembers() { const request = deferred(); members.push(request); return request.promise; }, getState() { const request = deferred(); states.push(request); return request.promise; } },
-    disposalTrial: { invalidate: noop }, settingsController: { syncBenchmarkPolicy: noop }, populateDynamicSelectors: noop,
+    disposalTrial: { invalidate: noop }, populateDynamicSelectors: noop,
     renderDashboard() { rendered.push(context.appState.tag); }, renderMembersGrid: noop, memberStatement: { sync: noop }, renderLedger: noop, renderCharts: noop,
     onboardingController: { showIfEmpty: () => true }, showToast: text => errors.push(text), dataLoadSequence: 0, membersList: [], appState: null };
   const source = read('app.js'), begin = source.indexOf('  async function loadAllData()'), end = source.indexOf('  // 动态构建', begin);

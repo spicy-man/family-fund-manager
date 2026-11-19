@@ -27,7 +27,6 @@
             ? '该成员暂无参与的结算周期。' : '暂无有效结算记录，完成首次业绩结算后可查看报表。');
           report = window.FundMemberStatement.build(getState(), member.value, periodSelect.value, todayDate());
           const r = report;
-          const label = '期';
           const heading = '成员投资报表';
           const netFlows = r.deposits - r.withdrawals + r.transfersIn - r.transfersOut;
           const netProfit = r.investmentProfit - r.feesPaid + r.feesReceived;

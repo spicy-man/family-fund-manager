@@ -149,7 +149,6 @@ const elements = {
 };
 const ui = {
   formatMoney: value => Number(value).toFixed(2),
-  getThemeColors: () => ({ palette: ['#111', '#222'] }),
   isDarkTheme: () => true,
   createChartGradient: (_context, colorStart, colorEnd) => ({ colorStart, colorEnd })
 };

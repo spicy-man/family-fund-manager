@@ -101,7 +101,7 @@ if not exist "node_modules" (
 set "TAG=v%VERSION%"
 set "ARCHIVE_NAME=%PROJECT_NAME%_v%VERSION%.zip"
 set "ARCHIVE=%CD%\%ARCHIVE_NAME%"
-set "RELEASE_URL=https://github.com/kamen-exaid/family-fund-manager/releases/download/%TAG%/%ARCHIVE_NAME%"
+set "RELEASE_URL=https://github.com/spicy-man/family-fund-manager/releases/download/%TAG%/%ARCHIVE_NAME%"
 set "FILE_LIST=%TEMP%\fund_account_package_%RANDOM%_%RANDOM%.txt"
 
 echo Collecting tracked project files and node_modules...
@@ -126,7 +126,7 @@ echo Creating "%ARCHIVE%"...
 powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
     "$ErrorActionPreference = 'Stop';" ^
     "$bytes = [IO.File]::ReadAllBytes($env:FILE_LIST);" ^
-    "$files = [Text.Encoding]::UTF8.GetString($bytes).Split([char]0, [StringSplitOptions]::RemoveEmptyEntries);" ^
+    "$files = @([Text.Encoding]::UTF8.GetString($bytes).Split([char]0, [StringSplitOptions]::RemoveEmptyEntries) | Where-Object { $_ -eq 'data/.gitkeep' -or $_ -notmatch '^(data/|backups/|\.git/|\.env(\.|$)|node_modules/)|\.(env|zip)$' });" ^
     "$root = (Resolve-Path -LiteralPath '.').Path.TrimEnd('\') + '\';" ^
     "if (Test-Path -LiteralPath 'node_modules' -PathType Container) { $files += Get-ChildItem -LiteralPath 'node_modules' -File -Recurse | ForEach-Object { $_.FullName.Substring($root.Length) } }" ^
     "Add-Type -AssemblyName System.IO.Compression; Add-Type -AssemblyName System.IO.Compression.FileSystem;" ^

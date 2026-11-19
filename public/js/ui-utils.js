@@ -1,32 +1,4 @@
 (function () {
-  function getThemeColors(isDark) {
-    return isDark ? {
-      palette: [
-        '#60a5fa',
-        '#e5e7eb',
-        '#9ca3af',
-        '#6b7280',
-        '#d1d5db',
-        '#4b5563',
-        '#93c5fd',
-        '#374151'
-      ],
-      textPalette: ['#000000', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#000000', '#ffffff', '#ffffff']
-    } : {
-      palette: [
-        '#0a63b8',
-        '#374151',
-        '#6b7280',
-        '#9ca3af',
-        '#d1d5db',
-        '#4b5563',
-        '#93c5fd',
-        '#e5e7eb'
-      ],
-      textPalette: ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff']
-    };
-  }
-
   function isDarkTheme(theme) {
     if (theme === 'dark') return true;
     if (theme === 'light') return false;
@@ -77,15 +49,6 @@
     return { background, color };
   }
 
-  function formatMonthDay(dateStr) {
-    if (!dateStr) return '';
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-      return `${parts[1]}/${parts[2]}`;
-    }
-    return dateStr;
-  }
-
   function escapeHtml(str) {
     if (str === undefined || str === null) return '';
     return String(str)
@@ -112,13 +75,11 @@
   }
 
   window.FundUiUtils = {
-    getThemeColors,
     isDarkTheme,
     getSeriesColors,
     hexToRgba,
     getAvatarText,
     getMemberAvatarColor,
-    formatMonthDay,
     escapeHtml,
     formatMoney,
     createChartGradient

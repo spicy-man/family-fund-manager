@@ -36,11 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const {
-    getThemeColors,
     isDarkTheme,
     getAvatarText,
     getMemberAvatarColor,
-    formatMonthDay,
     escapeHtml,
     formatMoney,
     createChartGradient,
@@ -58,13 +56,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let dataLoadSequence = 0;
   let membersList = [];
   let activeTimeSlice = 'YTD';
-  let activeScaleType = 'linear'; // 'linear' or 'logarithmic'
   let navTrendChart = null;
   let memberAllocationChart = null;
   let currentFilteredHistory = [];
-  let currentTrendStatSeries = [];
   let renderTrendStats = null;
-  let isTrendStatsHovering = false;
   let hasPromptedGpSetup = false;
   let onboardingController = null;
   let formController = null;
@@ -130,8 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnConfigCustomBenchmark = document.getElementById('btn-config-custom-benchmark');
   const btnConfigCustomBenchmark2 = document.getElementById('btn-config-custom-benchmark-2');
   const elTrendStatsGrid = document.getElementById('trend-stats-grid');
-  const benchmarkPolicyGroup = document.getElementById('benchmark-policy-group');
-  const benchmarkPolicyButtons = [...document.querySelectorAll('[data-benchmark-policy]')];
 
   // Operation Tabs & Forms
   const btnTabTx = document.getElementById('tab-btn-tx');
@@ -260,15 +253,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const checkIfDark = () => themeController.isDark();
   const settingsController = window.FundSettingsController.create({
     elements: {
-      benchmarkPolicyGroup,
-      benchmarkPolicyButtons,
       privacyButtons: [document.getElementById('btn-overview-privacy-toggle'), btnPrivacyToggle, btnSettlementPrivacyToggle, document.getElementById('btn-statement-privacy-toggle'), document.getElementById('tx-trial-privacy-toggle'), document.getElementById('tf-trial-privacy-toggle')]
     },
-    api: Api,
-    segmentedControl: window.FundSegmentedControl,
-    getState: () => appState,
-    setState: state => { appState = state; },
-    renderCharts,
     showToast
   });
 
@@ -350,7 +336,6 @@ document.addEventListener('DOMContentLoaded', () => {
       renderMembersEditorList: () => memberEditor.render(),
       showToast
     });
-    const { openMembersPanel, openBackupPanel } = managementController;
     onboardingController = window.FundOnboarding.init({
       elements: { onboardingModal, btnStartLedger,
         btnSwitchLedger: document.getElementById('btn-onboarding-switch-ledger'),
@@ -404,7 +389,6 @@ document.addEventListener('DOMContentLoaded', () => {
       modal: window.FundModal,
       submission: window.FundSubmission,
       getMembers: () => membersList,
-      setMembers: value => { membersList = value; },
       getState: () => appState,
       loadAllData,
       showToast,
@@ -473,7 +457,6 @@ document.addEventListener('DOMContentLoaded', () => {
       membersList = loadedMembers;
       appState = loadedState;
       membersList = window.FundMemberRenderer.sortByFirstRecord(membersList, appState.events);
-      settingsController.syncBenchmarkPolicy(appState.settings?.benchmarkClosePolicy || 'previous');
       window.FundCustomBenchmark.sync(
         [appState.settings?.customBenchmark || null, appState.settings?.customBenchmark2 || null],
         [
@@ -686,8 +669,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 3. 家庭成员管理模态框列表渲染 (带 inline 修改与安全删除)
-  // 4. 历史账目表格流水渲染 (USD 币种重构)
+  // 3. 历史账目表格流水渲染 (USD 币种重构)
   function renderLedger() {
     const result = window.FundLedgerRenderer.render({
       state: appState,
@@ -709,12 +691,11 @@ document.addEventListener('DOMContentLoaded', () => {
       settings: { activeTimeSlice, theme: themeController.get() },
       charts: { navTrendChart, memberAllocationChart },
       elements: { chkCompNav, chkCompAssets, chkCompSp500, chkCompNdx, chkCompCustom, chkCompCustom2, trendStatsGrid: elTrendStatsGrid },
-      ui: { formatMoney, getThemeColors, isDarkTheme, createChartGradient, getSeriesColors, hexToRgba, getMemberAvatarColor }
+      ui: { formatMoney, isDarkTheme, createChartGradient, getSeriesColors, hexToRgba, getMemberAvatarColor }
     });
     navTrendChart = rendered.navTrendChart;
     memberAllocationChart = rendered.memberAllocationChart;
     currentFilteredHistory = rendered.filteredHistory;
-    currentTrendStatSeries = rendered.trendSeries;
     renderTrendStats = rendered.renderTrendStats;
     updateChartsColors(themeController.get());
   }
@@ -725,7 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return window.FundTickerPanel.load({
       container,
       api: Api,
-      ui: { escapeHtml, formatMonthDay }
+      ui: { escapeHtml }
     });
   }
 

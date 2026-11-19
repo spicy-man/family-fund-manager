@@ -8,7 +8,7 @@ let tickerRefreshPollTimer = null;
 window.FundTickerPanel = {
   async load({ container, api, ui, pollAttempt = 0 }) {
     if (!container) return;
-    const { escapeHtml, formatMonthDay } = ui;
+    const { escapeHtml } = ui;
 
     if (tickerRefreshPollTimer) {
       clearTimeout(tickerRefreshPollTimer);
@@ -30,8 +30,6 @@ window.FundTickerPanel = {
             </tr>`;
         }
 
-        const safeLongName = escapeHtml(item.longName || item.name || ticker);
-        const athDate = item.athDate ? formatMonthDay(item.athDate) : '--';
         const drawdownClass = item.drawdown >= 0 ? 'text-green' : 'text-magenta';
         const drawdownPrefix = item.drawdown > 0 ? '+' : '';
         const hasYtdChange = Number.isFinite(item.ytdChange);
@@ -64,7 +62,7 @@ window.FundTickerPanel = {
           </thead>
           <tbody>${rows}</tbody>
         </table>`;
-      bindTickerTooltips(container, data, formatMonthDay);
+      bindTickerTooltips(container, data);
 
       // The first request deliberately returns disk cache immediately while the
       // server refreshes Yahoo in the background. Follow that worker briefly so
@@ -91,7 +89,7 @@ window.FundTickerPanel = {
   }
 };
 
-function bindTickerTooltips(container, data, formatMonthDay) {
+function bindTickerTooltips(container, data) {
   const panel = container.closest('.ticker-ath-bar');
   if (!panel) return;
 

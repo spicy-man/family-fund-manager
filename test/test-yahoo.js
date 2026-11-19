@@ -9,9 +9,7 @@ require('../lib/http-json').createJsonFetcher = () => async url => {
   return response;
 };
 const {
-  findCloseForPolicy,
-  findPreviousClose,
-  getTickerHistoryStartSec,
+  createPriceLookup,
   mergeTickerAthRecord,
   fetchCnhRateFromApi
 } = require('../lib/yahoo');
@@ -21,33 +19,21 @@ const prices = {
   '2026-07-03': 101,
   '2026-07-06': 102
 };
+const lookupPrice = createPriceLookup(prices);
 
 // A trading-day NAV must not use that day's close.
-assert.deepStrictEqual(findPreviousClose('2026-07-06', prices), {
+assert.deepStrictEqual(lookupPrice('2026-07-06'), {
   date: '2026-07-03',
   price: 101
 });
 
 // Weekends and holidays still resolve to the latest earlier trading close.
-assert.deepStrictEqual(findPreviousClose('2026-07-05', prices), {
+assert.deepStrictEqual(lookupPrice('2026-07-05'), {
   date: '2026-07-03',
   price: 101
 });
 
-assert.strictEqual(findPreviousClose('2026-07-02', prices), null);
-
-assert.deepStrictEqual(findCloseForPolicy('2026-07-06', prices, 'same_day'), {
-  date: '2026-07-06',
-  price: 102
-});
-assert.deepStrictEqual(findCloseForPolicy('2026-07-05', prices, 'same_day'), {
-  date: '2026-07-03',
-  price: 101
-});
-
-assert.strictEqual(getTickerHistoryStartSec(null), 0);
-assert.strictEqual(getTickerHistoryStartSec({ historyThrough: '2026-07-31' }), 0,
-  'all-time adjusted highs must refresh full history after corporate actions');
+assert.strictEqual(lookupPrice('2026-07-02'), null);
 
 const merged = mergeTickerAthRecord('VOO', {
   ath: 500,

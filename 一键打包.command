@@ -90,8 +90,6 @@ while IFS= read -r -d '' file; do
     fi
 done < "$PACKAGE_TMP/files"
 
-# Include this launcher even before its first Git commit.
-cp -pP "$PROJECT_ROOT/一键打包.command" "$STAGING/一键打包.command"
 cp -pR node_modules "$STAGING/node_modules"
 
 echo "正在生成 $ARCHIVE_NAME ..."
@@ -108,4 +106,4 @@ echo "版本标签：v$VERSION"
 echo "大小：$(du -h "$ARCHIVE" | cut -f1)"
 echo
 echo "GitHub Release Markdown："
-printf '[**%s**](https://github.com/kamen-exaid/family-fund-manager/releases/download/v%s/%s)\n' "$ARCHIVE_NAME" "$VERSION" "$ARCHIVE_NAME"
+printf '[**%s**](https://github.com/spicy-man/family-fund-manager/releases/download/v%s/%s)\n' "$ARCHIVE_NAME" "$VERSION" "$ARCHIVE_NAME"

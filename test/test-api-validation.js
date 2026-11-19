@@ -394,7 +394,7 @@ const { clone, makeApi, request } = require('./helpers/api-harness');
 
   const validPolicy = await request(settings, { benchmarkClosePolicy: 'previous' });
   assert.strictEqual(validPolicy.status, 200);
-  assert.strictEqual(api.getWrites(), 1);
+  assert.strictEqual(api.getWrites(), 0);
 
   const settlementValuation = await request(valuation, { totalNAV: 120, date: '2026-01-12' });
   assert.strictEqual(settlementValuation.status, 200);

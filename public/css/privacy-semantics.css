@@ -44,10 +44,6 @@ body.privacy-mode-active .member-allocation-chart {
   opacity: 0.72;
 }
 
-body.privacy-mode-active .chart-wrapper::after {
-  display: none;
-}
-
 /* ------------------------------------------------------------------
  * Restrained colour system: one brand blue, neutral surfaces, semantic red/green.
  * ------------------------------------------------------------------ */
@@ -57,9 +53,6 @@ body.theme-light {
   --color-cyan: var(--color-primary);
   --color-blue: var(--color-primary);
   --color-purple: var(--color-primary);
-  --grad-blue: var(--color-primary);
-  --grad-purple: var(--color-primary);
-  --color-card-hover-border: rgba(10, 99, 184, 0.24);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -68,9 +61,6 @@ body.theme-light {
     --color-cyan: var(--color-primary);
     --color-blue: var(--color-primary);
     --color-purple: var(--color-primary);
-    --grad-blue: var(--color-primary);
-    --grad-purple: var(--color-primary);
-    --color-card-hover-border: rgba(10, 132, 255, 0.28);
   }
 }
 
@@ -79,15 +69,11 @@ body.theme-dark {
   --color-cyan: var(--color-primary);
   --color-blue: var(--color-primary);
   --color-purple: var(--color-primary);
-  --grad-blue: var(--color-primary);
-  --grad-purple: var(--color-primary);
-  --color-card-hover-border: rgba(10, 132, 255, 0.28);
 }
 
 /* Decorative icon containers are neutral; colour is reserved for data semantics. */
 .bg-cyan-soft,
 .bg-blue-soft,
-.bg-green-soft,
 .bg-magenta-soft {
   background: rgba(var(--color-primary-rgb), 0.06) !important;
   color: var(--color-primary) !important;
@@ -110,11 +96,6 @@ body.theme-dark {
   text-shadow: none;
 }
 
-.ticker-ath-icon {
-  color: var(--color-primary);
-  filter: none;
-}
-
 body.privacy-mode-active #btn-privacy-toggle,
 body.privacy-mode-active :is(#btn-overview-privacy-toggle, #btn-settlement-privacy-toggle, #btn-statement-privacy-toggle, #tx-trial-privacy-toggle, #tf-trial-privacy-toggle) {
   background: rgba(var(--color-primary-rgb), 0.10);
@@ -133,7 +114,6 @@ body.privacy-mode-active :is(#btn-overview-privacy-toggle, #btn-settlement-priva
   border-color: var(--color-panel-border);
 }
 
-.member-selector-grid input[type="radio"]:checked + .selector-btn,
 .type-selector-grid #t-select-deposit:checked + .selector-btn,
 .type-selector-grid #t-select-withdraw:checked + .selector-btn {
   background: rgba(var(--color-primary-rgb), 0.08);

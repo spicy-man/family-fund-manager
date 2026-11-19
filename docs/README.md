@@ -8,7 +8,7 @@
 
 ```text
 ├── CHANGELOG.md      # 📋 版本演进与特性变更日志（根目录）
-├── COMMIT_GUIDE.md   # 🔍 Git 提交规范与发版指南（根目录）
+├── AGENTS.md         # 🔍 协作、提交与版本发布规范（根目录）
 ├── 数据迁移说明.md   # 🗄 数据库结构与冷迁移操作指南（根目录）
 └── docs/
     ├── finance/      # ⚖️ 财务逻辑、收益率分析、合伙准则与设计依据
@@ -50,5 +50,5 @@
 | 文档 | 存储位置 | 说明 |
 | :--- | :--- | :--- |
 | [CHANGELOG.md](../CHANGELOG.md) | 根目录 | **变更日志**：系统从 v1.0.0 到当前版本的完整技术特性发布记录 |
-| [COMMIT_GUIDE.md](../COMMIT_GUIDE.md) | 根目录 | **工程规范**：Git 提交信息格式、Semantic Versioning 与发版标准流程 |
+| [AGENTS.md](../AGENTS.md) | 根目录 | **工程规范**：协作原则、验证标准、Git 提交格式与发版流程 |
 | [TASKS.md](./project/TASKS.md) | `docs/project/` | **统一任务清单**：待办、技术债与完成验证记录 |

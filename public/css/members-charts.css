@@ -145,19 +145,6 @@
   flex-shrink: 0;
 }
 
-.avatar-me {
-  background: var(--grad-cyan);
-  color: #000 !important;
-}
-
-.avatar-mother {
-  background: var(--grad-magenta);
-}
-
-.avatar-father {
-  background: var(--grad-blue);
-}
-
 .member-details {
   flex-grow: 1;
   display: flex;

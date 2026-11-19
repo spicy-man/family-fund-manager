@@ -84,10 +84,7 @@ function createSandbox(seed, storage) {
     writeConfig: config => { validateConfig(config); state.config = clone(config); save(); },
     readTickerCache: () => clone(state.tickerCache),
     writeTickerCache: cache => { state.tickerCache = clone(cache); save(); },
-    readIndexCache: () => clone(state.indexCache),
     writeIndexCache: cache => { state.indexCache = clone(cache); save(); },
-    readCustomBenchmarkCache: () => clone(state.customBenchmarkCache),
-    writeCustomBenchmarkCache: cache => { state.customBenchmarkCache = clone(cache); save(); },
     writeCnhRate: rate => { state.cnhRate = rate; save(); },
     writeSnapshot: (db, config, settlements) => {
       if (activeId === 'default') validateConfig(config);

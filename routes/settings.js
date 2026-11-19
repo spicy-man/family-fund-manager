@@ -1,7 +1,7 @@
 const { InputError, ExternalServiceError, handleApiError } = require('../lib/api-errors');
 
 function registerSettingsRoutes(app, deps, utils) {
-  const { readDb, writeDb, writeCnhRate = () => {}, ensureIndexCache, fetchCnhRateFromApi } = deps;
+  const { readDb, writeCnhRate = () => {}, fetchCnhRateFromApi } = deps;
   const { toFiniteNumber } = utils;
 
 // 4.8. 更新全局系统参数（汇率配置）
@@ -19,21 +19,14 @@ app.post('/api/settings', (req, res, next) => {
 
     }
 
-    if (benchmarkClosePolicy !== undefined) {
-      if (benchmarkClosePolicy !== 'previous') {
-        throw new InputError('指数收盘口径无效');
-      }
-      db.benchmarkClosePolicy = 'previous';
+    if (benchmarkClosePolicy !== undefined && benchmarkClosePolicy !== 'previous') {
+      throw new InputError('指数收盘口径无效');
     }
 
     // Validate all supplied fields before making any persistent change.
     if (parsedRate !== undefined) {
       writeCnhRate(parsedRate, { source: 'manual' });
       db.cnhRate = parsedRate;
-    }
-    if (benchmarkClosePolicy !== undefined) writeDb(db);
-    if (benchmarkClosePolicy !== undefined && db.events.length > 0) {
-      ensureIndexCache(db.events.map(event => event.date));
     }
     res.json({ success: true, message: '系统参数更新成功', data: { cnhRate: db.cnhRate } });
   } catch (error) {

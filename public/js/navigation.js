@@ -11,21 +11,12 @@
 
     const setActive = (sectionId, refresh = false) => {
       if (activeId === sectionId && !refresh) return;
-      const activeLink = links.find(link => link.hash === `#${sectionId}`);
-      const navigation = activeLink?.closest('.sidebar-nav');
-      // Read geometry before changing classes, and only when selection changes.
-      const top = activeLink?.offsetTop;
-      const height = activeLink?.offsetHeight;
       links.forEach(link => {
         const active = link.hash === `#${sectionId}`;
         link.classList.toggle('active', active);
         if (active) link.setAttribute('aria-current', 'page');
         else link.removeAttribute('aria-current');
       });
-      if (navigation && activeLink) {
-        navigation.style.setProperty('--active-top', `${top}px`);
-        navigation.style.setProperty('--active-height', `${height}px`);
-      }
       activeId = sectionId;
     };
 

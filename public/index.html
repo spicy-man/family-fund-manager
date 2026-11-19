@@ -34,7 +34,7 @@
       </svg>
       <span>
         <strong>家庭财富账本</strong>
-        <small>WEALTH LEDGER <b class="sidebar-version">v4.7.4</b></small>
+        <small>WEALTH LEDGER <b class="sidebar-version">v4.7.5</b></small>
       </span>
     </div>
 
@@ -120,16 +120,6 @@
     <header class="app-header glass-panel premium-border surface-primary">
       <div class="welcome-copy">
         <h1 id="welcome-message">Hello, Investor</h1>
-      </div>
-      <div class="header-logo">
-        <svg class="icon-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-        </svg>
-        <div class="logo-text">
-          <h1>家庭基金账目管理系统</h1>
-          <span class="sub-logo">Family Private Wealth &amp; NAV Ledger &nbsp;<span
-              class="version-badge">v4.7.4</span></span>
-        </div>
       </div>
       <div class="header-actions">
         <div class="header-meta">
@@ -236,7 +226,6 @@
         <!-- Total NAV Card -->
         <div class="metric-card metric-card--interactive premium-border" id="assets-details-card" role="button" tabindex="0"
           aria-haspopup="dialog" aria-controls="assets-details-popover" aria-expanded="false" aria-label="查看总资产构成详情">
-          <div class="card-glow glow-cyan"></div>
           <div class="metric-info">
             <span class="metric-label">基金总资产 (Total Assets)</span>
             <div class="metric-value font-outfit privacy-sensitive" id="fund-total-nav">$0.00</div>
@@ -253,7 +242,6 @@
         <!-- Unit NAV Card -->
         <div class="metric-card metric-card--interactive premium-border" id="nav-details-card" role="button" tabindex="0"
           aria-haspopup="dialog" aria-controls="nav-details-popover" aria-expanded="false" aria-label="查看单位净值表现详情">
-          <div class="card-glow glow-blue"></div>
           <div class="metric-info">
             <span class="metric-label">基金单位净值 (NAV / Share)</span>
             <div class="metric-value font-outfit privacy-sensitive" id="fund-nav-per-share">1.0000</div>
@@ -271,7 +259,6 @@
         <div class="metric-card metric-card--interactive premium-border" id="active-return-card" role="button"
           tabindex="0" aria-haspopup="dialog" aria-controls="return-details-modal" aria-expanded="false"
           aria-label="查看在管本金收益率与历史累计收益率详情">
-          <div class="card-glow glow-magenta"></div>
           <div class="metric-info">
             <span class="metric-label" title="当前资产相对尚未退出本金的收益率">在管本金收益率 (Active Capital ROI)</span>
             <div class="metric-value font-outfit privacy-sensitive" id="fund-active-profit-rate">0.00%</div>
@@ -806,7 +793,7 @@
     </div>
   </div>
 
-  <!-- Backup & Restore Modal -->
+  <!-- Fund Governance Principles Modal -->
   <div class="modal-overlay" id="principles-modal" role="dialog" aria-modal="true"
     aria-labelledby="principles-modal-title" aria-hidden="true">
     <div class="modal-content glass-panel premium-border principles-modal-content" tabindex="-1">
@@ -1417,7 +1404,7 @@
       </div>
     </div>
   </div>
-  <!-- 标的配置模态框 (Ticker Config Modal) -->
+  <!-- 自定义对比组合配置模态框 (Custom Benchmark Modal) -->
   <div class="modal-overlay" id="custom-benchmark-modal" role="dialog" aria-modal="true"
     aria-labelledby="custom-benchmark-modal-title" aria-hidden="true">
     <div class="modal-content glass-panel premium-border" style="width: 580px;" tabindex="-1">

@@ -1,8 +1,7 @@
 (function () {
-  const staticDemo = Boolean(document.querySelector('meta[name="fund-static-demo"]'));
   const sandbox = Boolean(document.querySelector('meta[name="fund-demo-sandbox"]'));
-  const enabled = staticDemo || window.location.pathname === '/demo';
-  window.FundDemoMode = { enabled, staticDemo, sandbox };
+  const enabled = sandbox || window.location.pathname === '/demo';
+  window.FundDemoMode = { enabled, sandbox };
   if (!enabled) return;
 
   const blockedSelectors = [
@@ -19,7 +18,6 @@
     '#btn-refresh-tickers',
     '#btn-config-custom-benchmark',
     '#btn-config-custom-benchmark-2',
-    '[data-benchmark-policy]',
     '.btn-edit',
     '.btn-delete'
   ].join(',');
@@ -38,7 +36,7 @@
       '<a class="demo-banner-exit" href="/">返回正式账本</a>'
     ].join('');
     document.body.prepend(banner);
-    if (staticDemo) {
+    if (sandbox) {
       const link = banner.querySelector('.demo-banner-exit');
       link.href = 'https://github.com/spicy-man/family-fund-manager';
       link.textContent = '查看 GitHub 源码';

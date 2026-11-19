@@ -5,25 +5,6 @@ const API_TIMEOUT_MS = 15000;
 const API_PREFIX = window.FundDemoMode?.enabled ? '/api/demo' : '/api';
 
 function resolveApiUrl(url) {
-  if (window.FundDemoMode?.staticDemo) {
-    const request = new URL(url, window.location.href);
-    const files = {
-      '/api/ledgers': 'ledgers.json',
-      '/api/ledgers/combined': 'combined.json',
-      '/api/state': 'state.json',
-      '/api/members': 'members.json',
-      '/api/ticker-ath': 'ticker-ath.json',
-      '/api/settings/tickers': 'tickers.json',
-      '/api/settings/custom-benchmark': request.searchParams.get('slot') === '1'
-        ? 'custom-benchmark-1.json' : 'custom-benchmark-0.json'
-    };
-    const file = files[request.pathname];
-    if (!file) throw new Error('演示模式为只读，此操作不可用。');
-    const id = window.FundLedger?.id || new URL(window.location.href).searchParams.get('ledger') || 'default';
-    if (!['default', 'ledger-2'].includes(id)) throw new Error('账本不存在。');
-    const directory = id !== 'default' && ['state.json', 'members.json'].includes(file) ? id + '/' : '';
-    return new URL('demo-data/' + directory + file, window.location.href).href;
-  }
   return url.startsWith('/api/') ? `${API_PREFIX}${url.slice(4)}` : url;
 }
 
@@ -37,9 +18,6 @@ async function requestApi(url, options = {}) {
   if (window.FundDemoMode?.sandbox) return window.FundDemoSandbox.request(url, {
     ...options, headers: { ...options.headers, ...(window.FundLedger ? { 'X-Ledger-Id': window.FundLedger.id } : {}) }
   });
-  if (window.FundDemoMode?.staticDemo && (options.method || 'GET').toUpperCase() !== 'GET') {
-    throw new Error('演示模式为只读，此操作不可用。');
-  }
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 

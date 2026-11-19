@@ -20,7 +20,7 @@ function registerBackupRoutes(app, deps, utils, tickerUtils) {
   const { queueTickerRefresh } = tickerUtils;
   const rejectImport = message => { throw new InputError(message); };
 
-// 5. 数据一键导出备份：完整打包 data/db.json 与 data/config.json
+// 5. 数据一键导出备份：完整打包 data/db.json、data/config.json 与 data/settlements.json
 app.get('/api/backup/export', (req, res, next) => {
   try {
     const db = readDb();
@@ -93,7 +93,7 @@ app.post('/api/backup/import', express.raw({
       rejectImport('ZIP 中的 JSON 数据损坏或无法解析。');
     }
 
-    const { members, cnhRate, indexCache, benchmarkClosePolicy, performanceFee,
+    const { members, cnhRate, indexCache, performanceFee,
       lastEventSequence: importedDbHighWater } = backupDb || {};
     let events = backupDb?.events;
     if (!Array.isArray(events)) {

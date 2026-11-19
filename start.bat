@@ -6,8 +6,6 @@ chcp 65001 >nul
 :: Use this exact checkout; pushd maps UNC shares to a temporary drive.
 pushd "%~dp0" || goto NO_PACKAGE
 
-:DIR_READY
-
 echo ==================================================
 echo         Family Fund Manager Launcher
 echo ==================================================

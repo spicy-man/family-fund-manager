@@ -25,7 +25,7 @@ function load(ledger, { demo = false, store = sessionStorage } = {}) {
   } } };
   vm.runInNewContext(source, { window, document });
   window.FundSettingsController.create({
-    elements: { benchmarkPolicyButtons: [], privacyButtons: buttons }, showToast() {}
+    elements: { privacyButtons: buttons }, showToast() {}
   }).init();
   return {
     buttons, finishCount: () => finishes,

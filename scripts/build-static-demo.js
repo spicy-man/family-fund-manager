@@ -1,8 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const { buildDemoLedgers } = require('../demo/build-ledger');
-const { calculateStateFromDb } = require('../lib/calculator');
-const weeklyMarket = require('../demo/weekly-market.json');
 const { dependencies } = require('../package.json');
 const { bundleSandbox } = require('./bundle-demo-sandbox');
 const { buildSandboxSeed } = require('../demo/build-sandbox-seed');
@@ -48,43 +45,17 @@ function buildStaticDemo(output = defaultOutput) {
   copy(path.join(root, 'LICENSE'), 'LICENSE');
   bundleSandbox(output);
   fs.mkdirSync(path.join(output, 'demo-data'), { recursive: true });
-  fs.writeFileSync(path.join(output, 'demo-data/seed.json'), JSON.stringify(buildSandboxSeed()));
-  const entries = buildDemoLedgers();
-  const db = entries[0].ledger;
-  const payloads = {
-    'ledgers.json': { success: true, data: entries.map(({ ledger, ...entry }) => entry) },
-    'combined.json': { success: true, data: require('../lib/combined-overview').combineLedgers(entries.map(({ ledger, ...entry }) =>
-      ({ ...entry, state: calculateStateFromDb(ledger) }))) },
-    'state.json': { success: true, data: calculateStateFromDb(db) },
-    'members.json': { success: true, data: db.members.map(member => ({
-      ...member, primaryGp: member.id === db.performanceFee.gpMemberId
-    })) },
-    'ticker-ath.json': { success: true, data: weeklyMarket.tickers, refreshing: false },
-    'tickers.json': { success: true, data: Object.values(weeklyMarket.tickers)
-      .map(({ ticker, longName }) => ({ ticker, name: longName })) },
-    'custom-benchmark-0.json': { success: true, data: db.customBenchmark },
-    'custom-benchmark-1.json': { success: true, data: db.customBenchmark2 }
-  };
-  for (const { id, ledger } of entries.slice(1)) {
-    payloads[id + '/state.json'] = { success: true, data: calculateStateFromDb(ledger) };
-    payloads[id + '/members.json'] = { success: true, data: ledger.members.map(member => ({
-      ...member, primaryGp: member.id === ledger.performanceFee.gpMemberId
-    })) };
-  }
-  for (const [file, payload] of Object.entries(payloads)) {
-    const target = path.join(output, 'demo-data', file);
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, `${JSON.stringify(payload)}\n`);
-  }
+  const seed = buildSandboxSeed();
+  fs.writeFileSync(path.join(output, 'demo-data/seed.json'), JSON.stringify(seed));
   const htmlPath = path.join(output, 'index.html');
   const html = fs.readFileSync(htmlPath, 'utf8')
-    .replace('<head>', '<head>\n  <meta name="fund-static-demo" content="true">\n  <meta name="fund-demo-sandbox" content="true">')
+    .replace('<head>', '<head>\n  <meta name="fund-demo-sandbox" content="true">')
     .replaceAll('href="/demo"', 'href="./"')
     .replace('href="/api/backup/export"', 'href="#demo-backup-export"')
     .replace('<script src="js/api.js"></script>', '<script src="js/demo-sandbox.js"></script>\n  <script src="js/api.js"></script>');
   fs.writeFileSync(htmlPath, html);
   fs.writeFileSync(path.join(output, '.nojekyll'), '');
-  return { output, payloads };
+  return { output, seed };
 }
 if (require.main === module) {
   const { output } = buildStaticDemo();

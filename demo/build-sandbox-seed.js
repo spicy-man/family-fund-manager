@@ -27,12 +27,6 @@ function buildSandboxSeed() {
   for (const [ticker, prices] of Object.entries(weeklyMarket.historyPrices || {})) {
     mergeTickerPrices(marketHistory, ticker, prices, { priceBasis: weeklyMarket.priceBasis || 'close' });
   }
-  for (const [ticker, field] of [['AAPL', 'aapl'], ['GOOGL', 'googl'], ['VGT', 'vgt'], ['VOO', 'spx'], ['QQQM', 'ndx']]) {
-    if (weeklyMarket.historyPrices?.[ticker]) continue;
-    const prices = Object.fromEntries([...weeklyMarket.weeks, ...weeklyMarket.anchors]
-      .map(row => [row.priceDate, row[field]]));
-    mergeTickerPrices(marketHistory, ticker, prices, { priceBasis: weeklyMarket.priceBasis || 'close' });
-  }
   return { db, settlements, marketHistory, ledgers, defaultName: entries[0].name,
     config: { tickers: Object.values(weeklyMarket.tickers).map(({ ticker, longName }) => ({ ticker, name: longName })),
       customBenchmark: ledger.customBenchmark, customBenchmark2: ledger.customBenchmark2 },

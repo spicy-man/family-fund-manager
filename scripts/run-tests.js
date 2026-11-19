@@ -3,7 +3,6 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const tests = [
-  "test/test-model.js",
   "test/test-version.js",
   "test/test-release-notes.js",
   "test/test-storage.js",

@@ -224,7 +224,7 @@ assert.strictEqual(closeLookup('2026-01-06').price, 105);
 assert.strictEqual(createCloseLookup(noisyPrices)('2026-01-06').price, 205);
 const yahooLookup = createPriceLookup({ '2026-01-05': 105, '2026-01-01': 101 });
 assert.strictEqual(yahooLookup('2026-01-05').price, 101);
-assert.strictEqual(yahooLookup('2026-01-05', 'same_day').price, 105);
+assert.strictEqual(yahooLookup('2026-01-06').price, 105);
 // The exported calculator helper still supports sparse legacy cache callers.
 assert.deepStrictEqual(findCustomBenchmarkEntry('2026-09-01', legacyDualSlotCache, benchmark),
   legacyDualSlotCache['2026-08-31']);

@@ -155,7 +155,7 @@ Windows 自动读取支持手动系统代理及其绕过列表，不解析 PAC �
 
 ### 自动发布 Release（推荐）
 
-仓库已配置 **Publish offline Release** 工作流。先按 [提交与发版规范](./COMMIT_GUIDE.md) 更新版本号及 CHANGELOG、提交并推送代码，再推送与 `package.json` 一致的版本标签。例如本次版本：
+仓库已配置 **Publish offline Release** 工作流。先按 [协作与发版规范](./AGENTS.md) 更新版本号及 CHANGELOG、提交并推送代码，再推送与 `package.json` 一致的版本标签。例如本次版本：
 
 ```bash
 git push origin main
@@ -237,7 +237,7 @@ backups/   自动快照
 | | [CODE_REVIEW.md](./docs/technical/CODE_REVIEW.md) | 当前问题与销项总表、按日期归档的审查记录 |
 | | [数据迁移说明.md](./数据迁移说明.md) | 旧账本与冷数据迁移恢复操作指南（根目录） |
 | **📋 项目与规范** | [CHANGELOG.md](./CHANGELOG.md) | 完整的版本发布历史与技术特性演进（根目录） |
-| | [COMMIT_GUIDE.md](./COMMIT_GUIDE.md) | Git 提交与版本发布规范指南（根目录） |
+| | [AGENTS.md](./AGENTS.md) | 协作、提交与版本发布规范（根目录） |
 | | [TASKS.md](./docs/project/TASKS.md) | 系统改进任务、技术债及完成验证记录 |
 
 ## 常见问题

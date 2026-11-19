@@ -18,7 +18,6 @@
   --ambient-bg: radial-gradient(ellipse 62% 48% at 8% 100%, rgba(188, 223, 255, 0.72) 0%, rgba(222, 240, 255, 0.36) 34%, transparent 72%), radial-gradient(ellipse 50% 38% at 45% 0%, rgba(255, 237, 177, 0.52) 0%, rgba(255, 247, 218, 0.26) 42%, transparent 76%);
   --color-panel-bg: rgba(255, 255, 255, 0.45);
   --color-panel-border: rgba(0, 0, 0, 0.07);
-  --color-card-hover-border: rgba(0, 0, 0, 0.14);
 
   --color-primary: #0a63b8;
   --color-primary-rgb: 10, 99, 184;
@@ -43,22 +42,13 @@
   --color-text-main: #1f2937;
   --color-heading: #2b3850;
   --color-text-muted: #4b5563;
-  --color-text-dark: #374151;
 
-  --grad-cyan: #0a63b8;
-  --grad-blue: linear-gradient(135deg, #6a68de 0%, #5856d6 100%);
-  --grad-green: linear-gradient(135deg, #34c759 0%, #248a3d 100%);
-  --grad-magenta: linear-gradient(135deg, #ff453a 0%, #d70015 100%);
-  --grad-purple: linear-gradient(135deg, #6a68de 0%, #5856d6 100%);
   --grad-panel: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(240, 244, 248, 0.78) 100%);
 
   /* 光源位于顶部：阴影正向向下 (Y+), 顶部 1px 高光切线 (inset 0 1px 0) */
   --glass-shadow: 0 8px 24px -6px rgba(31, 38, 135, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  --glass-shadow-hover: 0 20px 48px -12px rgba(31, 38, 135, 0.16), 0 4px 12px -2px rgba(31, 38, 135, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  --glass-shadow-active: 0 2px 8px -2px rgba(31, 38, 135, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.5);
 
   --input-bg: rgba(0, 0, 0, 0.025);
-  --table-hover-bg: rgba(0, 0, 0, 0.02);
   --option-bg: #ffffff;
 
   /* Apple SF Spring Physics Transitions */
@@ -66,13 +56,7 @@
   --smooth-ease: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Card styles */
-  --color-card-bg: rgba(255, 255, 255, 0.45);
-  --color-card-border: rgba(0, 0, 0, 0.07);
   --color-card-divider: rgba(0, 0, 0, 0.05);
-  --color-card-shadow: 0 6px 20px -4px rgba(31, 38, 135, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  --color-card-shadow-hover: 0 16px 38px -8px rgba(31, 38, 135, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  --color-card-bg-hover: rgba(255, 255, 255, 0.75);
-  --color-card-border-hover: rgba(0, 119, 182, 0.3);
 }
 
 /* --- 系统偏好深色主题自动触发 (Auto Dark Mode) --- */
@@ -82,7 +66,6 @@
     --ambient-bg: radial-gradient(ellipse 62% 48% at 8% 100%, rgba(20, 85, 160, 0.34) 0%, transparent 70%), radial-gradient(ellipse 50% 38% at 45% 0%, rgba(130, 79, 171, 0.22) 0%, transparent 74%);
     --color-panel-bg: rgba(20, 22, 33, 0.55);
     --color-panel-border: rgba(255, 255, 255, 0.08);
-    --color-card-hover-border: rgba(0, 242, 254, 0.35);
 
     --color-primary: #0a84ff;
     --color-primary-rgb: 10, 132, 255;
@@ -105,32 +88,17 @@
     --color-text-main: #f3f4f6;
     --color-heading: #e5eaf2;
     --color-text-muted: #9ca3af;
-    --color-text-dark: #4b5563;
 
-    --grad-cyan: #0a84ff;
-    --grad-blue: linear-gradient(135deg, #5e5ce6 0%, #5856d6 100%);
-    --grad-green: linear-gradient(135deg, #30d158 0%, #248a3d 100%);
-    --grad-magenta: linear-gradient(135deg, #ff453a 0%, #d70015 100%);
-    --grad-purple: linear-gradient(135deg, #5e5ce6 0%, #5856d6 100%);
     --grad-panel: linear-gradient(180deg, rgba(25, 27, 43, 0.88) 0%, rgba(13, 14, 22, 0.88) 100%);
 
     /* 深色物理阴影：正向向下沉降 + 顶部纯净微光切线 */
     --glass-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-    --glass-shadow-hover: 0 24px 55px -12px rgba(0, 0, 0, 0.75), 0 4px 16px -2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
-    --glass-shadow-active: 0 2px 10px -2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 
     --input-bg: rgba(255, 255, 255, 0.035);
-    --table-hover-bg: rgba(255, 255, 255, 0.02);
     --option-bg: #12141c;
 
     /* Card styles */
-    --color-card-bg: rgba(255, 255, 255, 0.03);
-    --color-card-border: rgba(255, 255, 255, 0.06);
     --color-card-divider: rgba(255, 255, 255, 0.06);
-    --color-card-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    --color-card-shadow-hover: 0 20px 45px -10px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.22);
-    --color-card-bg-hover: rgba(255, 255, 255, 0.06);
-    --color-card-border-hover: rgba(0, 242, 254, 0.35);
   }
 }
 
@@ -140,7 +108,6 @@ body.theme-light {
   --ambient-bg: radial-gradient(ellipse 62% 48% at 8% 100%, rgba(188, 223, 255, 0.72) 0%, rgba(222, 240, 255, 0.36) 34%, transparent 72%), radial-gradient(ellipse 50% 38% at 45% 0%, rgba(255, 237, 177, 0.52) 0%, rgba(255, 247, 218, 0.26) 42%, transparent 76%);
   --color-panel-bg: rgba(255, 255, 255, 0.45);
   --color-panel-border: rgba(0, 0, 0, 0.07);
-  --color-card-hover-border: rgba(0, 119, 182, 0.3);
 
   --color-primary: #0a63b8;
   --color-primary-rgb: 10, 99, 184;
@@ -163,31 +130,16 @@ body.theme-light {
   --color-text-main: #1f2937;
   --color-heading: #2b3850;
   --color-text-muted: #4b5563;
-  --color-text-dark: #374151;
 
-  --grad-cyan: #0a63b8;
-  --grad-blue: linear-gradient(135deg, #6a68de 0%, #5856d6 100%);
-  --grad-green: linear-gradient(135deg, #34c759 0%, #248a3d 100%);
-  --grad-magenta: linear-gradient(135deg, #ff453a 0%, #d70015 100%);
-  --grad-purple: linear-gradient(135deg, #6a68de 0%, #5856d6 100%);
   --grad-panel: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(240, 244, 248, 0.78) 100%);
 
   --glass-shadow: 0 8px 24px -6px rgba(31, 38, 135, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  --glass-shadow-hover: 0 20px 48px -12px rgba(31, 38, 135, 0.16), 0 4px 12px -2px rgba(31, 38, 135, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  --glass-shadow-active: 0 2px 8px -2px rgba(31, 38, 135, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.5);
 
   --input-bg: rgba(0, 0, 0, 0.025);
-  --table-hover-bg: rgba(0, 0, 0, 0.02);
   --option-bg: #ffffff;
 
   /* Card styles */
-  --color-card-bg: rgba(255, 255, 255, 0.45);
-  --color-card-border: rgba(0, 0, 0, 0.07);
   --color-card-divider: rgba(0, 0, 0, 0.05);
-  --color-card-shadow: 0 6px 20px -4px rgba(31, 38, 135, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  --color-card-shadow-hover: 0 16px 38px -8px rgba(31, 38, 135, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  --color-card-bg-hover: rgba(255, 255, 255, 0.75);
-  --color-card-border-hover: rgba(0, 119, 182, 0.3);
 }
 
 body.theme-dark {
@@ -195,7 +147,6 @@ body.theme-dark {
   --ambient-bg: radial-gradient(ellipse 62% 48% at 8% 100%, rgba(20, 85, 160, 0.34) 0%, transparent 70%), radial-gradient(ellipse 50% 38% at 45% 0%, rgba(130, 79, 171, 0.22) 0%, transparent 74%);
   --color-panel-bg: rgba(20, 22, 33, 0.55);
   --color-panel-border: rgba(255, 255, 255, 0.08);
-  --color-card-hover-border: rgba(0, 242, 254, 0.35);
 
   --color-primary: #0a84ff;
   --color-primary-rgb: 10, 132, 255;
@@ -218,28 +169,13 @@ body.theme-dark {
   --color-text-main: #f3f4f6;
   --color-heading: #e5eaf2;
   --color-text-muted: #9ca3af;
-  --color-text-dark: #4b5563;
 
-  --grad-cyan: #0a84ff;
-  --grad-blue: linear-gradient(135deg, #5e5ce6 0%, #5856d6 100%);
-  --grad-green: linear-gradient(135deg, #30d158 0%, #248a3d 100%);
-  --grad-magenta: linear-gradient(135deg, #ff453a 0%, #d70015 100%);
-  --grad-purple: linear-gradient(135deg, #5e5ce6 0%, #5856d6 100%);
   --grad-panel: linear-gradient(180deg, rgba(25, 27, 43, 0.88) 0%, rgba(13, 14, 22, 0.88) 100%);
 
   --glass-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  --glass-shadow-hover: 0 24px 55px -12px rgba(0, 0, 0, 0.75), 0 4px 16px -2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  --glass-shadow-active: 0 2px 10px -2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 
   --input-bg: rgba(255, 255, 255, 0.035);
-  --table-hover-bg: rgba(255, 255, 255, 0.02);
   --option-bg: #12141c;
 
-  --color-card-bg: rgba(255, 255, 255, 0.03);
-  --color-card-border: rgba(255, 255, 255, 0.06);
   --color-card-divider: rgba(255, 255, 255, 0.06);
-  --color-card-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  --color-card-shadow-hover: 0 20px 45px -10px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.22);
-  --color-card-bg-hover: rgba(255, 255, 255, 0.06);
-  --color-card-border-hover: rgba(0, 242, 254, 0.35);
 }

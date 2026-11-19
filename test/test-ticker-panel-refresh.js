@@ -47,7 +47,7 @@ vm.runInContext(
 const args = {
   container,
   api: { getTickerAth: async () => responses[calls++] },
-  ui: { escapeHtml: value => value, formatMonthDay: value => value }
+  ui: { escapeHtml: value => value }
 };
 
 (async () => {

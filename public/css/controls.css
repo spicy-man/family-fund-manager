@@ -449,26 +449,6 @@ body.theme-light .btn-sync-rate:hover {
   min-width: 0;
 }
 
-.benchmark-policy-group {
-  width: 162px;
-  padding: 3px;
-}
-
-.benchmark-policy-group::before {
-  top: 3px;
-  height: calc(100% - 6px);
-}
-
-.benchmark-policy-btn.segmented-control__button {
-  height: 26px;
-  padding: 4px 8px;
-  font-size: 0.66rem;
-}
-
-.benchmark-policy-group[aria-busy="true"] {
-  opacity: 0.62;
-}
-
 .benchmark-policy-help-wrap {
   position: relative;
   display: inline-grid;
@@ -536,10 +516,6 @@ body.theme-light .btn-sync-rate:hover {
   .benchmark-policy-control {
     flex-wrap: wrap;
     gap: 6px;
-  }
-
-  .benchmark-policy-group {
-    width: 142px;
   }
 }
 
@@ -802,47 +778,6 @@ body.theme-dark .checkbox-inline input[type="checkbox"] {
     border-top: 1px solid var(--color-card-divider);
     border-left: 0;
   }
-}
-
-/* --- 坐标轴分段按钮样式；时间区间已使用通用 segmented-control --- */
-.scale-slice-btn {
-  min-height: 30px;
-  padding: 6px 12px;
-  border-radius: 7px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted) !important;
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  font-size: 0.7rem;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-}
-
-.scale-slice-btn:hover {
-  color: var(--color-text-main) !important;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-body.theme-light .scale-slice-btn:hover {
-  background: rgba(0, 0, 0, 0.03);
-}
-
-.scale-slice-btn.active {
-  background: var(--color-primary) !important;
-  color: #fff !important;
-  box-shadow: 0 3px 9px rgba(var(--color-primary-rgb), 0.24);
-  font-weight: 700;
-}
-
-body.theme-light .scale-slice-btn.active {
-  background: var(--color-primary) !important;
-  color: #fff !important;
-  box-shadow: 0 3px 9px rgba(var(--color-primary-rgb), 0.24);
-  font-weight: 700;
 }
 
 /* The dock is the floating control layer; cards below it remain quiet content surfaces. */

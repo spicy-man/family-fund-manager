@@ -159,23 +159,6 @@ html {
   isolation: isolate;
 }
 
-.sidebar-nav::before {
-  position: absolute;
-  z-index: 0;
-  top: 0;
-  transform: translateY(var(--active-top, 0px));
-  left: 0;
-  width: 100%;
-  height: var(--active-height, 44px);
-  box-sizing: border-box;
-  border-radius: 12px;
-  content: '';
-  pointer-events: none;
-  background: transparent;
-  box-shadow: none;
-  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1), height 320ms cubic-bezier(0.32, 0.72, 0, 1), box-shadow 200ms ease;
-}
-
 /* The visual order mirrors the centre workspace: dashboard, trends, members, ledger. */
 .sidebar-nav a[href="#trends-section"] {
   order: 1;
@@ -463,11 +446,6 @@ body.theme-dark .app-sidebar {
   padding-bottom: 124px;
 }
 
-/* Branding now lives in the sidebar; keep the header focused on live controls. */
-.app-header .header-logo {
-  display: none;
-}
-
 @media (min-width: 1600px) {
 
   .layout-right,
@@ -508,35 +486,6 @@ body.theme-dark .app-sidebar {
   justify-content: flex-end;
   margin-left: auto;
   flex-wrap: nowrap;
-}
-
-.header-logo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.icon-logo {
-  width: 32px;
-  height: 32px;
-  color: var(--color-primary);
-  filter: drop-shadow(0 0 8px rgba(0, 153, 255, 0.35));
-}
-
-.logo-text h1 {
-  font-family: 'Outfit Variable', 'Outfit', sans-serif;
-  font-size: 1.25rem;
-  font-weight: 700;
-  background: linear-gradient(90deg, var(--color-text-main), var(--color-text-muted));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.sub-logo {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 1px;
 }
 
 .header-actions {

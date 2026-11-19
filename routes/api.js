@@ -146,7 +146,7 @@ function registerApiRoutes(app, deps) {
   }
 
   const utils = {
-    BALANCE_TOLERANCE, toFiniteNumber, isSundayDate, latestValuationDate,
+    BALANCE_TOLERANCE, toFiniteNumber, isSundayDate,
     validateValuationDate, calculateLedgerState, findLedgerIssue,
     rejectLedgerIssue, latestSettlementDate, rejectLockedPeriod,
     rejectFutureSettlementDate,

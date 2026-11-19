@@ -23,7 +23,7 @@ window.FundMemberRenderer = {
     const { escapeHtml, formatMoney, getAvatarText, getMemberAvatarColor } = utils;
 
     if (members.length === 0) {
-      grid.innerHTML = '<div style="grid-column:1 / -1;text-align:center;color:var(--color-text-muted);padding:30px;font-size:0.85rem;">暂无家庭成员。请点击右上角【家庭成员管理】添加出资人。</div>';
+      grid.innerHTML = '<div style="grid-column:1 / -1;text-align:center;color:var(--color-text-muted);padding:30px;font-size:0.85rem;">暂无家庭成员。请点击左下角【成员设置】添加出资人。</div>';
       return;
     }
 
